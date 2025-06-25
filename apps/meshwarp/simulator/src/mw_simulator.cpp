@@ -225,10 +225,12 @@ int main(int argc, char** argv) {
 
     RenderStats renderStats;
     bool recording = false;
+    uint compressedSize = 0;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = !saveImages;
         static bool showFrameCaptureWindow = false;
+        static bool showFramePreviewWindow = false;
         static char fileNameBase[256] = "screenshot";
         static bool saveAsHDR = false;
         static bool showRecordWindow = false;
@@ -252,6 +254,7 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("UI", 0, &showUI);
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
             ImGui::MenuItem("Record", 0, &showRecordWindow);
+            ImGui::MenuItem("Remote Frame Preview", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -286,6 +289,8 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,1,0,1), "Draw Calls: %d", renderStats.drawCalls);
             else
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
+
+            ImGui::TextColored(ImVec4(0,1,1,1), "Data Size: %.3f MB", static_cast<float>(compressedSize) / BYTES_IN_MB);
 
             ImGui::Separator();
 
@@ -419,6 +424,13 @@ int main(int argc, char** argv) {
 
             ImGui::End();
         }
+
+        if (showFramePreviewWindow) {
+            flags = 0;
+            ImGui::Begin("Remote Frame", 0, flags);
+            ImGui::Image((void*)(intptr_t)(renderTarget.colorBuffer), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::End();
+        }
     });
 
     app.onResize([&](uint width, uint height) {
@@ -503,8 +515,6 @@ int main(int argc, char** argv) {
             double totalGenMeshTime = 0.0;
             double totalCreateVertIndTime = 0.0;
             double totalCompressTime = 0.0;
-
-            uint compressedSize = 0;
 
             // "Send" pose to the server. this will wait until latency+/-jitter ms have passed
             poseSendRecvSimulator.sendPose(camera, now);
