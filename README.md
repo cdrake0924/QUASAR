@@ -1,5 +1,7 @@
 # ![logo](docs/images/logo_with_text.png)
 
+| [Webpage](https://quasar-gfx.github.io/) | [Paper](https://quasar-gfx.github.io/assets/quasar_siggraph_2025.pdf) | Video (Coming Soon) | [Docs](https://quasar-gfx.github.io/QUASAR/) | [Server Code](https://github.com/quasar-gfx/QUASAR) | [Client Code](https://github.com/quasar-gfx/QUASAR-client) |
+
 ## What is QUASAR?
 
 `QUASAR` is a remote rendering system that represents scene views using pixel-aligned quads, enabling temporally consistent and bandwidth-adaptive streaming for high-quality, real-time visualization for thin clients.
@@ -10,9 +12,9 @@ It includes a custom deferred rendering system with support for PBR materials, d
 
 We also include an OpenXR client that runs the same renderer, which can be found [here](https://github.com/quasar-gfx/QUASAR-client).
 
-## Docs
+## Documentation
 
-__Please refer to [QUASAR Documentation](https://quasar-gfx.github.io/QUASAR/) for more information!__
+__Please refer to the ☞☞ [QUASAR documentation](https://quasar-gfx.github.io/QUASAR/) ☜☜ for information on how to build and run this repo!__
 
 ## Credits for 3D Assets
 
