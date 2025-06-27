@@ -45,6 +45,13 @@ public:
     std::vector<std::string> outputFormats;
 
     int targetFrameRate;
+    int targetBitRate = 20; // in Mbps
+    int max_b_frames = 2;
+    int gop_size = 20;
+
+    std::string preset = "slow";
+    std::string crf = "18";
+    std::string profile = "high";
 
     Recorder(
         const RenderTargetCreateParams& params,

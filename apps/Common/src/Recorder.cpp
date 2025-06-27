@@ -45,14 +45,22 @@ void Recorder::start() {
 
     if (outputFormat == OutputFormat::MP4) {
         initializeFFmpeg();
-    }
 
-    saveThreadPool = std::make_unique<BS::thread_pool<>>(numThreads);
-    for (int i = 0; i < numThreads; i++) {
-        auto future = saveThreadPool->submit_task([this, i]() {
-            saveFrames(i);
+        // FFmpeg videos should only have one thread for saving frames so frames are synchronized
+        saveThreadPool = std::make_unique<BS::thread_pool<>>(1);
+        auto future = saveThreadPool->submit_task([this]() {
+            saveFrames(0);
         });
         (void)future;
+    }
+    else {
+        saveThreadPool = std::make_unique<BS::thread_pool<>>(numThreads);
+        for (int i = 0; i < numThreads; i++) {
+            auto future = saveThreadPool->submit_task([this, i]() {
+                saveFrames(i);
+            });
+            (void)future;
+        }
     }
 }
 
@@ -101,30 +109,35 @@ void Recorder::captureFrame(const Camera& camera) {
 }
 
 void Recorder::saveFrames(int threadID) {
-    /* Setup frame */
-    AVFrame* frame = av_frame_alloc();
+    AVFrame* frame = nullptr;
+    AVPacket* packet = nullptr;
 
-    frame->width = width;
-    frame->height = height;
-    frame->format = videoPixelFormat;
-    int ret = av_frame_get_buffer(frame, 0);
-    if (ret < 0) {
-        av_log(nullptr, AV_LOG_ERROR, "Error: Could not allocate frame data: %s\n", av_err2str(ret));
-        return;
-    }
+    if (outputFormat == OutputFormat::MP4) {
+        /* Setup frame */
+        frame = av_frame_alloc();
 
-    ret = av_frame_make_writable(frame);
-    if (ret < 0) {
-        av_log(nullptr, AV_LOG_ERROR, "Error: Could not make frame writable: %s\n", av_err2str(ret));
-        return;
-    }
+        frame->width = width;
+        frame->height = height;
+        frame->format = videoPixelFormat;
+        int ret = av_frame_get_buffer(frame, 0);
+        if (ret < 0) {
+            av_log(nullptr, AV_LOG_ERROR, "Error: Could not allocate frame data: %s\n", av_err2str(ret));
+            return;
+        }
 
-    /* Setup packet */
-    AVPacket* packet = av_packet_alloc();
-    ret = av_packet_make_writable(packet);
-    if (ret < 0) {
-        av_log(nullptr, AV_LOG_ERROR, "Error: Could not make packet writable: %s\n", av_err2str(ret));
-        return;
+        ret = av_frame_make_writable(frame);
+        if (ret < 0) {
+            av_log(nullptr, AV_LOG_ERROR, "Error: Could not make frame writable: %s\n", av_err2str(ret));
+            return;
+        }
+
+        /* Setup packet */
+        packet = av_packet_alloc();
+        ret = av_packet_make_writable(packet);
+        if (ret < 0) {
+            av_log(nullptr, AV_LOG_ERROR, "Error: Could not make packet writable: %s\n", av_err2str(ret));
+            return;
+        }
     }
 
     while (running || !frameQueue.empty()) {
@@ -160,7 +173,7 @@ void Recorder::saveFrames(int threadID) {
                 sws_scale(swsCtx, srcData, srcStride, 0, height, frame->data, frame->linesize);
             }
 
-            ret = avcodec_send_frame(codecCtx, frame);
+            int ret = avcodec_send_frame(codecCtx, frame);
             if (ret < 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
                 av_log(nullptr, AV_LOG_ERROR, "Error: Could not send frame to output encoder: %s\n", av_err2str(ret));
                 continue;
@@ -183,6 +196,7 @@ void Recorder::saveFrames(int threadID) {
             av_packet_unref(packet);
         }
         else {
+            // save image to disk
             std::stringstream ss;
             ss << "frame_" << std::setw(6) << std::setfill('0') << frameID;
             Path fileNameBase = outputPath / ss.str();
@@ -211,8 +225,8 @@ void Recorder::saveFrames(int threadID) {
         }
     }
 
-    av_packet_free(&packet);
-    av_frame_free(&frame);
+    if (frame) av_frame_free(&frame);
+    if (packet) av_packet_free(&packet);
 }
 
 void Recorder::initializeFFmpeg() {
@@ -241,13 +255,13 @@ void Recorder::initializeFFmpeg() {
     codecCtx->height = height;
     codecCtx->time_base = (AVRational){1, targetFrameRate};
     codecCtx->framerate = (AVRational){targetFrameRate, 1};
-    codecCtx->bit_rate = 30 * BYTES_IN_MB;
-    codecCtx->max_b_frames = 2;
-    codecCtx->gop_size = 20;
+    codecCtx->bit_rate = targetBitRate * BYTES_IN_MB;
+    codecCtx->max_b_frames = max_b_frames;
+    codecCtx->gop_size = gop_size;
 
-    av_opt_set(codecCtx->priv_data, "crf", "18", 0);
-    av_opt_set(codecCtx->priv_data, "preset", "slow", 0);
-    av_opt_set(codecCtx->priv_data, "profile", "high", 0);
+    av_opt_set(codecCtx->priv_data, "preset", preset.c_str(), 0);
+    av_opt_set(codecCtx->priv_data, "crf", crf.c_str(), 0);
+    av_opt_set(codecCtx->priv_data, "profile", profile.c_str(), 0);
 
     int ret = avcodec_open2(codecCtx, outputCodec, nullptr);
     if (ret < 0) {

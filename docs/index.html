@@ -362,7 +362,7 @@
 
     <h2 id="building">Building</h2>
     <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">mkdir build; cd build
-cmake ..; make -j</span></code></pre></div>
+cmake ..; cmake --build . -j $(nproc)</span></code></pre></div>
     <p>In the <code>build/</code> directory, there will be a folder called <code>apps/</code>, which follows the same directory layout as <code>&lt;repo root&gt;/apps/</code>.</p>
 
     <h3 id="external-library">Using as External Library</h3>
