@@ -10,12 +10,21 @@ uniform usampler2D idBuffer;
 
 uniform bool showObjectIDs = true;
 
+float hash(uint x) {
+    x = ((x >> 16u) ^ x) * 0x45d9f3bu;
+    x = ((x >> 16u) ^ x) * 0x45d9f3bu;
+    x = (x >> 16u) ^ x;
+    return float(x % 1000u) / 1000.0;
+}
+
+vec3 randomColor(uint id) {
+    return vec3(hash(id), hash(id + 1u), hash(id + 2u));
+}
+
 void main() {
     uvec3 ids = texture(idBuffer, TexCoords).rgb;
     uint id = showObjectIDs ? ids.r : ids.g;
 
-    vec3 col = vec3( (id % 256) / 255.0,
-                    ((id / 256) % 256) / 255.0,
-                    ((id / (256 * 256)) % 256) / 255.0 );
+    vec3 col = randomColor(id);
     FragColor = vec4(col, 1.0);
 }
