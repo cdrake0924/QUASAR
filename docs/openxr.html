@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>QUASAR: Quad-based Adaptive Streaming And Rendering</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="images/logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/logo.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <meta property="og:site_name" content="QUASAR: Quad-based Adaptive Streaming And Rendering" />
+    <meta property="og:type" content="video.other" />
+    <meta property="og:title" content="QUASAR: Quad-based Adaptive Streaming And Rendering" />
+    <meta property="og:description" content="QUASAR: Quad-based Adaptive Streaming And Rendering, 2025." />
+
+    <style type='text/css'>
+        :root {
+            --func-vert-padding: 0.5em;
+        }
+
+        span.smallcaps{font-variant: small-caps;}
+        span.underline{text-decoration: underline;}
+        div.column{display: inline-block; vertical-align: top; width: 50%;}
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            color: #000;
+            line-height: 1.5;
+        }
+        .tocstyle nav {
+            display: table;
+            padding: .4em 2em .5em 0;
+            margin-top: 1em;
+            background-color: #f6f8fa;
+            border: 1px solid DarkSlateGray;
+        }
+        h1 {
+            font-family: 'Montserrat', 'Segoe UI', sans-serif;
+            line-height: 1.2;
+            font-size: 3em;
+            margin-top: 0.5em;
+            margin-bottom: 0.2em;
+        }
+        h2, h3, h4, h5, h6 {
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 600;
+            margin-bottom: 0.1em;
+            color: DarkSlateGray;
+        }
+        h2     { margin-top: 2em; }
+        h2, h3 { border-bottom: 1px solid #ccc; }
+        p {
+        margin-left: 0px;
+        margin-right: 0px;
+        margin-top: 0.75em;
+        margin-bottom: 0.75em;
+        }
+
+        .max-width {
+            margin: 1em;
+        }
+
+        @media screen and (min-width: 680px) {
+            .max-width {
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 60px;
+            margin-bottom: 60px;
+            max-width: 800px;
+            }
+        }
+
+        .pixelated {
+            image-rendering: pixelated;
+        }
+
+        strong {
+            font-weight: 600;
+        }
+
+        .title {
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 1.25em;
+            margin-top: 0px;
+            padding-top: 0px;
+            padding-bottom: 1em;
+            margin-bottom: 2em;
+            border-bottom: 1px solid #ccc;
+            color: #444;
+        }
+
+        .centered {
+            text-align: center;
+        }
+
+        .spaced {
+            margin: 2em 0;
+        }
+        .no-bottom-margin {
+            margin-bottom: 0;
+        }
+        .top-lined {
+            padding-top: 2em;
+            border-top: 1px solid #000;
+        }
+        .bottom-lined {
+            padding-bottom: 2em;
+            border-bottom: 1px solid #888;
+        }
+        .intro {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .permalinked {
+            color: #222;
+            text-decoration: none;
+        }
+        .permalinked:hover,
+        .permalinked:focus {
+            text-decoration: underline;
+        }
+        .flattr-note {
+            vertical-align: top;
+        }
+
+        pre {
+            font-family: 'Consolas', monospace, sans-serif;
+            font-size: 11pt;
+            font-weight: normal;
+            background-color: #f6f8fa;
+            border-radius: 3px;
+            padding: 12px;
+            line-height: 1.3;
+            overflow-x:auto;
+            white-space: pre-wrap;
+        }
+
+        code {
+            font-family: 'Consolas', monospace, sans-serif;
+            font-size: 11pt;
+            font-weight: normal;
+            background-color: #f6f8fa;
+            line-height: 1.3;
+            white-space: pre;
+        }
+
+        img.teaser {
+            width: 808px;
+            height: 350px;
+            border: 1px solid #aaa;
+            box-shadow: 2px 2px 4px 0 #ddd;
+            margin: 20px 5px 0 5px;
+        }
+
+        div.image-parent {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+        }
+
+        /* CSS for an image row with a caption */
+        .image-row {
+            display: flex;
+            flex-direction: row;
+            align-items: top;
+            width: min-content;
+        }
+
+        .image-row > div { margin:10px; }
+
+        .image-caption {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .image-caption .caption {
+            margin-top: 2px;
+        }
+
+        /* Styles for API reference */
+        .apifunc {
+            margin-bottom: 1.5em;
+        }
+        .apifunc h4 {
+            margin-top: var(--func-vert-padding);
+            margin-bottom: var(--func-vert-padding);
+            overflow-x: hidden;
+        }
+        .apifunc h4 .defarg {
+            color:MediumBlue;
+        }
+        .apifunc h4 .sym_class,.sym_function,.sym_method {
+            border-radius: 4px;
+            padding: 0px 5px 0px 5px;
+            border: 0;
+            margin: 0;
+            font-size: 11pt;
+            font-weight: 600;
+            color: #fff;
+        }
+        .apifunc h4 .sym_class {
+            background-color: #d66;
+        }
+        .apifunc h4 .sym_function {
+            background-color: #66f;
+        }
+        .apifunc h4 .sym_method {
+            background-color: #6a9;
+        }
+        .apifunc p {
+            margin-top: var(--func-vert-padding);
+            margin-bottom: var(--func-vert-padding);
+        }
+        .apifunc code {
+            color: #000;
+            background-color: #f6f8fa;
+            font-family: 'Consolas', monospace, sans-serif;
+            font-weight: normal;
+            line-height: 1.3;
+            white-space: pre-wrap;
+        }
+        .apifunc h4 code {
+            font-size: 12pt;
+        }
+        .apifunc .returns, .arguments {
+            margin-top: .5em;
+            margin-bottom: 0em;
+        }
+        .apifunc {
+            padding-bottom: 1em;
+            border-bottom: 1px solid #cdcdcd;
+        }
+        .apifunc:last-child {
+            border-bottom: none;
+        }
+
+        .apifunc .args,.return_description {
+            line-height: 1.4;
+            margin-bottom: 0.5em;
+            margin-left: 2em;
+        }
+        .apifunc .args .arg .argname  {
+            font-family: 'Consolas', monospace, sans-serif;
+            font-weight: normal;
+            font-size: 12pt;
+            padding-right: .5em;
+            padding-left: 0em;
+        }
+        .apifunc .args .arg {
+            vertical-align: baseline;
+        }
+        .apifunc .args .arg .arg_short {
+            padding-left: .5em;
+        }
+
+    </style>
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,500,600" rel="stylesheet" type="text/css">
+</head>
+
+<body class='max-width'>
+    <header id='title-block-header'>
+        <div style='display: flex; flex-direction: row; align-items: center; margin-top: 20px'>
+            <img class="pixelated" style='margin-top: 0.25em' width='80px' height='80px' src='images/logo.png'></img>
+            <h1 style='margin-left: 5px;' class="title">QUASAR Client</h1>
+        </div>
+        <div class="subtitle">Quad-based Adaptive Streaming And Rendering</div>
+    </header>
+
+    <h2 style='border-bottom: 0; padding-bottom: 0;'>Table of contents</h2>
+    <div class="tocstyle">
+        <nav id="TOC">
+        <ul>
+            <li><a href="#overview" id="toc-overview">Overview</a></li>
+            <li><a href="#install-dependencies">Install Dependencies</a></li>
+            <li><a href="#building">Building and Running</a></li>
+            <li><a href="#sample-apps">Sample Apps</a>
+                <ul>
+                    <li><a href="#sceneviewer">SceneViewer</a></li>
+                    <li><a href="#atwclient">ATWClient</a></li>
+                    <li><a href="#meshwarpviewer">MeshWarpViewer</a></li>
+                    <li><a href="#meshwarpclient">MeshWarpClient</a></li>
+                    <li><a href="#quadsviewer">QuadsViewer</a></li>
+                    <li><a href="#quasarviewer">QUASARViewer</a></li>
+                </ul>
+            </li>
+            <li><a href="#debugging">Debugging</a></li>
+            <li><a href="#credit">Credit</a></li>
+            <li><a href="#citation">Citation</a></li>
+            <li><a href="#acknowledgments">Acknowledgments</a></li>
+        </ul>
+        </nav>
+    </div>
+
+    <h2 id="overview">Overview</h2>
+    <p>QUASAR is a remote rendering system that represents scene views using pixel-aligned quads, enabling temporally consistent and bandwidth-adaptive streaming for high-quality, real-time visualization for thin clients.</p>
+    <p>Our repository below provides baseline implementations of remote rendering systems designed to support and accelerate research in the field. For detailed discussion on the design principles, implementation details, and benchmarks, please see our paper:</p>
+    <blockquote>
+    <strong>QUASAR: Quad-based Adaptive Streaming And Rendering</strong><br><a href="https://users.ece.cmu.edu/~elu2/">Edward Lu</a> and <a href="https://users.ece.cmu.edu/~agr/">Anthony Rowe</a><br>ACM Transactions on Graphics 44(4) (proc. SIGGRAPH 2025)
+    </blockquote>
+    <p>Paper: <a href="https://quasar-gfx.github.io/assets/quasar_siggraph_2025.pdf">https://quasar-gfx.github.io/assets/quasar_siggraph_2025.pdf</a><br>
+    GitHub (Main): <a href="https://github.com/quasar-gfx/QUASAR">https://github.com/quasar-gfx/QUASAR</a><br>
+    GitHub (Client): <a href="https://github.com/quasar-gfx/QUASAR-client">https://github.com/quasar-gfx/QUASAR-client</a></p>
+    <div class="image-parent">
+        <div class="image-caption">
+            <img class="teaser" src="images/system_diagram.png"/>
+            <div class="caption">
+                QUASAR system diagram.
+            </div>
+        </div>
+    </div>
+
+    <h2 id="install-dependencies">Install Dependencies</h2>
+    <p>To download the OpenXR client code, clone the repository at <a href="https://github.com/quasar-gfx/QUASAR-client">https://github.com/quasar-gfx/QUASAR-client</a> using git:</p>
+    <pre><code>git clone --recursive git@github.com:quasar-gfx/QUASAR-client.git
+</code></pre>
+    <p>If you accidentally cloned the repository without <code>--recursive-submodules</code>, you can do:</p>
+    <pre><code>git submodule update --init --recursive
+</code></pre>
+    <p><strong>Note:</strong> The repository code has been tested on Meta Quest 2, Meta Quest Pro, and Meta Quest 3.</p>
+
+    <h2 id="building">Building and Running</h2>
+    <p>The following steps assume you have the latest <a href="https://developer.android.com/studio">Android Studio</a> installed on your computer:</p>
+    <ol>
+        <li>Connect your headset to your host machine. The headset can either be connected using a cable or wirelessly (see <a href="#debugging">Debugging</a>).</li>
+        <li>If this is the first time you are launching Android Studio, select <strong>Open an existing Android Studio project</strong>. If you have launched Android Studio before, click <strong>File &gt; Open</strong> instead.</li>
+        <li>Open <code>QuestClientApps/build.gradle</code> in the <a href="https://github.com/quasar-gfx/QUASAR-client">QUASAR-client</a> repository in Android Studio, select an app in the <code>Configurations</code> menu at the top (dropdown to the left of Run button), and click the Run button to build and upload (first time opening and building may take a while).
+            <ul>
+                <li>You could also open an individual sample app from the <code>QuestClientApps/Apps/</code> folders. For example, <code>QuestClientApps/Apps/QUASARViewer/build.gradle</code></li>
+            </ul>
+        </li>
+    </ol>
+
+    <h2 id="sample-apps">Sample Apps</h2>
+    <p>All apps allow you to move through a scene using the controller joysticks. You will move in the direction you are looking.</p>
+
+    <h3 id="sceneviewer">SceneViewer</h3>
+    <p>The Scene Viewer app loads a GLTF/GLB scene on the headset to view (you can download example scenes from <a href="https://drive.google.com/file/d/1zL_hsmtjyOcAbNbud92aNCxjO1kwEqlK/view?usp=drive_link">this link</a>).</p>
+    <p>Download and unzip into <code>QuestClientApps/Apps/SceneViewer/assets/models/scenes/</code> (this will be gitignored).</p>
+    <p><strong>Note:</strong> <em>You can only have ONE glb in the <code>scenes/</code> directory at once since Android will run out of storage if you have them all.</em> So, just have <code>RobotLab.glb</code> in <code>scenes/</code>.</p>
+
+    <h3 id="atwclient">ATWClient</h3>
+    <p>The ATW Client app allows the headset to act as a receiver for a stereo video stream from the server sent across a network. The headset will reproject each eye using a homography to warp the images along a plane.</p>
+    <p>First, open <code>QuestClientApps/Apps/ATWClient/include/ATWClient.h</code> and change:</p>
+    <pre><code>std::string serverIP = "192.168.4.140";
+</code></pre>
+    <p>to your <strong>server's</strong> IP address. Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
+    <pre><code># in build directory
+cd apps/atw/streamer
+./atw_streamer --size 2048x1024 --scene ../assets/scenes/robot_lab.json --video-url &lt;headset's IP&gt;:12345 --vr 1
+</code></pre>
+    <p>To get your headset's IP address, run:</p>
+    <pre><code>adb shell ip addr show wlan0  # look for address after 'inet'
+</code></pre>
+    <p>in a terminal with your headset connected. Make sure you have <code>adb</code> installed.</p>
+
+    <h3 id="meshwarpviewer">MeshWarpViewer</h3>
+    <p>The MeshWarp Viewer app will load a saved static frame from MeshWarp to view on the headset. Simply run the app on the headset to view!</p>
+
+    <h3 id="meshwarpclient">MeshWarpClient</h3>
+    <p>The MeshWarp Client app allows the headset to act as a receiver for a video and depth stream from the server sent across a network. The headset will reconstruct a mesh using the depth stream and texture map it with the video for reprojection.</p>
+    <p>First, open <code>QuestClientApps/Apps/MeshWarpClient/include/MeshWarpClient.h</code> and change:</p>
+    <pre><code>std::string serverIP = "192.168.4.140";
+</code></pre>
+    <p>Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
+    <pre><code># in build directory
+cd apps/meshwarp/streamer
+./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --video-url &lt;headset's IP&gt;:12345 --depth-url &lt;headset's IP&gt;:65432 --depth-factor 4
+</code></pre>
+
+    <h3 id="quadsviewer">QuadsViewer</h3>
+    <p>The Quads Viewer app will load a saved static frame from QuadWarp to view on the headset. You can change the scene by editing:</p>
+    <pre><code>std::string sceneName = "robot_lab";
+</code></pre>
+    <p>in <code>QuestClientApps/Apps/QuadsViewer/include/QuadsViewer.h</code>.</p>
+
+    <h3 id="quasarviewer">QUASARViewer</h3>
+    <p>The QUASAR Viewer app will load a saved static frame from QUASAR to view on the headset. You can change the scene by editing:</p>
+    <pre><code>std::string sceneName = "robot_lab";
+</code></pre>
+    <p>in <code>QuestClientApps/Apps/QUASARViewer/include/QUASARViewer.h</code>.</p>
+
+    <h2 id="debugging">Debugging</h2>
+    <p>To wirelessly connect to your headset, type this into your terminal <strong>with your headset plugged in</strong>:</p>
+    <pre><code>adb tcpip 5555
+adb connect &lt;headset's ip address&gt;:5555
+</code></pre>
+    <p>Now, you don't need to plug in your headset to upload code!</p>
+    <p>To debug/view print statements, see the <code>Logcat</code> tab on Android Studio if the headset is connected.</p>
+
+    <h2 id="credit">Credit</h2>
+    <p>A majority of the OpenXR code is based on the <a href="https://openxr-tutorial.com/android/opengles/index.html">OpenXR Android OpenGL ES tutorial</a>.</p>
+
+    <h2 id="citation">Citation</h2>
+    <p>If you find this project helpful for any research-related purposes, please consider citing our paper:</p>
+    <pre><code>@article{lu2025quasar,
+    title={QUASAR: Quad-based Adaptive Streaming And Rendering},
+    author={Lu, Edward and Rowe, Anthony},
+    journal={ACM Transactions on Graphics (TOG)},
+    volume={44},
+    number={4},
+    year={2025},
+    publisher={ACM New York, NY, USA},
+    url={https://doi.org/10.1145/3731213},
+    doi={10.1145/3731213},
+}
+</code></pre>
+
+    <h2 id="acknowledgments">Acknowledgments</h2>
+    <p>We gratefully acknowledge the authors of <a href="https://jozef.hladky.de/projects/QS">QuadStream</a> and <a href="https://cg.skku.edu/pub/2023-kim-siggraph-pvhv">PVHV</a> for their foundational ideas, which served as valuable inspiration for our work.</p>
+    <p>This work was supported in part by the NSF under Grant No. CNS1956095, the NSF Graduate Research Fellowship under Grant No. DGE2140739, and Bosch Research.</p>
+    <p>Special thanks to <a href="https://www.linkedin.com/in/taylorliii">Ziyue Li</a> and <a href="https://www.linkedin.com/in/ruiyang-dai-cmu">Ruiyang Dai</a> for helping on the implementation!</p>
+    <p>This webpage is adapted from <a href="https://nvlabs.github.io/nvdiffrast/">nvdiffrast</a>. We sincerely appreciate the authors for open-sourcing their code.</p>
+</body>
+
+</html>
