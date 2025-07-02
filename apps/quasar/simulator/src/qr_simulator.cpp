@@ -28,18 +28,6 @@
 
 using namespace quasar;
 
-const std::vector<glm::vec4> colors = {
-    glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), // primary view color is yellow
-    glm::vec4(0.0f, 0.0f, 1.0f, 1.0f),
-    glm::vec4(0.0f, 1.0f, 0.0f, 1.0f),
-    glm::vec4(1.0f, 0.5f, 0.5f, 1.0f),
-    glm::vec4(0.0f, 0.5f, 0.5f, 1.0f),
-    glm::vec4(0.5f, 0.0f, 0.0f, 1.0f),
-    glm::vec4(0.0f, 1.0f, 1.0f, 1.0f),
-    glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
-    glm::vec4(0.0f, 0.5f, 0.0f, 1.0f),
-};
-
 int main(int argc, char** argv) {
     Config config{};
     config.title = "QUASAR Simulator";

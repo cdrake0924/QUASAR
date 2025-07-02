@@ -31,9 +31,22 @@ const std::vector<glm::vec3> offsets = {
     glm::vec3(-1.0f, -1.0f, +1.0f), // Bottom-left
 };
 
+const std::vector<glm::vec4> colors = {
+    glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), // primary view color is yellow
+    glm::vec4(0.0f, 0.0f, 1.0f, 1.0f),
+    glm::vec4(0.0f, 1.0f, 0.0f, 1.0f),
+    glm::vec4(1.0f, 0.5f, 0.5f, 1.0f),
+    glm::vec4(0.5f, 0.0f, 0.0f, 1.0f),
+    glm::vec4(0.0f, 1.0f, 1.0f, 1.0f),
+    glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+    glm::vec4(0.0f, 0.5f, 0.0f, 1.0f),
+    glm::vec4(0.0f, 0.0f, 0.5f, 1.0f),
+    glm::vec4(0.5f, 0.0f, 0.5f, 1.0f),
+};
+
 int main(int argc, char** argv) {
     Config config{};
-    config.title = "Multi-Camera Receiver";
+    config.title = "QuadStream Receiver";
 
     args::ArgumentParser parser(config.title);
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
@@ -41,7 +54,9 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> sizeIn(parser, "size", "Resolution of renderer", {'s', "size"}, "1920x1080");
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<int> maxAdditionalViewsIn(parser, "maxViews", "Max views", {'l', "num-views"}, 8);
-    args::Flag disableWideFov(parser, "disable-wide-fov", "Disable wide fov view", {'W', "disable-wide-fov"});args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
+    args::Flag disableWideFov(parser, "disable-wide-fov", "Disable wide fov view", {'W', "disable-wide-fov"});
+    args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
+    args::ValueFlag<float> viewBoxSizeIn(parser, "view-box-size", "Size of view box in m", {'B', "view-size"}, 0.5f);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
     args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'W', "remote-fov-wide"}, 120.0f);
     try {
@@ -81,7 +96,6 @@ int main(int argc, char** argv) {
 
     OpenGLApp app(config);
     ForwardRenderer renderer(config);
-    float viewBoxSize = 0.5f;
 
     Scene scene;
     PerspectiveCamera camera(windowSize.x, windowSize.y);
@@ -96,6 +110,7 @@ int main(int argc, char** argv) {
     remoteCameraCenter.setPosition(glm::vec3(0.0f, 3.0f, 10.0f));
     remoteCameraCenter.updateViewMatrix();
 
+    float viewBoxSize = args::get(viewBoxSizeIn);
     for (int view = 1; view < maxViews - 1; view++) {
         const glm::vec3& offset = offsets[view - 1];
         const glm::vec3& right = remoteCameraCenter.getRightVector();
@@ -221,18 +236,11 @@ int main(int argc, char** argv) {
         nodes[view]->frustumCulled = false;
         scene.addChildNode(nodes[view]);
 
-        // Primary view color is yellow
-        glm::vec4 color = (view == 0) ? glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) :
-                glm::vec4(fmod(view * 0.6180339887f, 1.0f),
-                            fmod(view * 0.9f, 1.0f),
-                            fmod(view * 0.5f, 1.0f),
-                            1.0f);
-
         nodeWireframes[view] = new Node(meshes[view]);
         nodeWireframes[view]->frustumCulled = false;
         nodeWireframes[view]->wireframe = true;
         nodeWireframes[view]->visible = false;
-        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = color });
+        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
         scene.addChildNode(nodeWireframes[view]);
     }
 

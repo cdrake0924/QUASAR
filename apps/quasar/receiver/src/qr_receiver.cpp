@@ -25,11 +25,12 @@ const std::vector<glm::vec4> colors = {
     glm::vec4(0.0f, 0.0f, 1.0f, 1.0f),
     glm::vec4(0.0f, 1.0f, 0.0f, 1.0f),
     glm::vec4(1.0f, 0.5f, 0.5f, 1.0f),
-    glm::vec4(0.0f, 0.5f, 0.5f, 1.0f),
     glm::vec4(0.5f, 0.0f, 0.0f, 1.0f),
     glm::vec4(0.0f, 1.0f, 1.0f, 1.0f),
     glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
     glm::vec4(0.0f, 0.5f, 0.0f, 1.0f),
+    glm::vec4(0.0f, 0.0f, 0.5f, 1.0f),
+    glm::vec4(0.5f, 0.0f, 0.5f, 1.0f),
 };
 
 int main(int argc, char** argv) {
@@ -209,7 +210,7 @@ int main(int argc, char** argv) {
         nodeWireframes[view]->frustumCulled = false;
         nodeWireframes[view]->wireframe = true;
         nodeWireframes[view]->visible = false;
-        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view] });
+        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
         scene.addChildNode(nodeWireframes[view]);
     }
 

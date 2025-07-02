@@ -282,12 +282,13 @@
             <li><a href="#building">Building and Running</a></li>
             <li><a href="#sample-apps">Sample Apps</a>
                 <ul>
-                    <li><a href="#sceneviewer">SceneViewer</a></li>
-                    <li><a href="#atwclient">ATWClient</a></li>
-                    <li><a href="#meshwarpviewer">MeshWarpViewer</a></li>
-                    <li><a href="#meshwarpclient">MeshWarpClient</a></li>
-                    <li><a href="#quadsviewer">QuadsViewer</a></li>
-                    <li><a href="#quasarviewer">QUASARViewer</a></li>
+                    <li><a href="#scene-viewer">SceneViewer</a></li>
+                    <li><a href="#atw-client">ATWClient</a></li>
+                    <li><a href="#meshwarp-viewer">MeshWarpViewer</a></li>
+                    <li><a href="#meshwarp-client">MeshWarpClient</a></li>
+                    <li><a href="#quads-viewer">QuadsViewer</a></li>
+                    <li><a href="#quadstream-viewer">QuadStreamViewer</a></li>
+                    <li><a href="#quasar-viewer">QUASARViewer</a></li>
                 </ul>
             </li>
             <li><a href="#debugging">Debugging</a></li>
@@ -340,12 +341,12 @@
     <h2 id="sample-apps">Sample Apps</h2>
     <p>All apps allow you to move through a scene using the controller joysticks. You will move in the direction you are looking.</p>
 
-    <h3 id="sceneviewer">SceneViewer</h3>
+    <h3 id="scene-viewer">SceneViewer</h3>
     <p>The Scene Viewer app loads a GLTF/GLB scene on the headset to view (you can download example scenes from <a href="https://drive.google.com/file/d/1zL_hsmtjyOcAbNbud92aNCxjO1kwEqlK/view?usp=drive_link">this link</a>).</p>
     <p>Download and unzip into <code>QuestClientApps/Apps/SceneViewer/assets/models/scenes/</code> (this will be gitignored).</p>
     <p><strong>Note:</strong> <em>You can only have ONE glb in the <code>scenes/</code> directory at once since Android will run out of storage if you have them all.</em> So, just have <code>RobotLab.glb</code> in <code>scenes/</code>.</p>
 
-    <h3 id="atwclient">ATWClient</h3>
+    <h3 id="atw-client">ATWClient</h3>
     <p>The ATW Client app allows the headset to act as a receiver for a stereo video stream from the server sent across a network. The headset will reproject each eye using a homography to warp the images along a plane.</p>
     <p>First, open <code>QuestClientApps/Apps/ATWClient/include/ATWClient.h</code> and change:</p>
     <pre><code>std::string serverIP = "192.168.4.140";
@@ -360,10 +361,10 @@ cd apps/atw/streamer
 </code></pre>
     <p>in a terminal with your headset connected. Make sure you have <code>adb</code> installed.</p>
 
-    <h3 id="meshwarpviewer">MeshWarpViewer</h3>
+    <h3 id="meshwarp-viewer">MeshWarpViewer</h3>
     <p>The MeshWarp Viewer app will load a saved static frame from MeshWarp to view on the headset. Simply run the app on the headset to view!</p>
 
-    <h3 id="meshwarpclient">MeshWarpClient</h3>
+    <h3 id="meshwarp-client">MeshWarpClient</h3>
     <p>The MeshWarp Client app allows the headset to act as a receiver for a video and depth stream from the server sent across a network. The headset will reconstruct a mesh using the depth stream and texture map it with the video for reprojection.</p>
     <p>First, open <code>QuestClientApps/Apps/MeshWarpClient/include/MeshWarpClient.h</code> and change:</p>
     <pre><code>std::string serverIP = "192.168.4.140";
@@ -374,15 +375,21 @@ cd apps/meshwarp/streamer
 ./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --video-url &lt;headset's IP&gt;:12345 --depth-url &lt;headset's IP&gt;:65432 --depth-factor 4
 </code></pre>
 
-    <h3 id="quadsviewer">QuadsViewer</h3>
+    <h3 id="quads-viewer">QuadsViewer</h3>
     <p>The Quads Viewer app will load a saved static frame from QuadWarp to view on the headset. You can change the scene by editing:</p>
-    <pre><code>std::string sceneName = "robot_lab";
+    <pre><code>std::string sceneName = "robot_lab"; // choose from robot_lab, sun_temple, viking_village, or san_miguel
 </code></pre>
     <p>in <code>QuestClientApps/Apps/QuadsViewer/include/QuadsViewer.h</code>.</p>
 
-    <h3 id="quasarviewer">QUASARViewer</h3>
+    <h3 id="quadstream-viewer">QuadStreamViewer</h3>
+    <p>The QuadStream Viewer app will load a saved static frame from QuadStream to view on the headset. You can change the scene by editing:</p>
+    <pre><code>std::string sceneName = "robot_lab"; // choose from robot_lab, sun_temple, viking_village, or san_miguel
+</code></pre>
+    <p>in <code>QuestClientApps/Apps/QuadStreamViewer/include/QuadStreamViewer.h</code>.</p>
+
+    <h3 id="quasar-viewer">QUASARViewer</h3>
     <p>The QUASAR Viewer app will load a saved static frame from QUASAR to view on the headset. You can change the scene by editing:</p>
-    <pre><code>std::string sceneName = "robot_lab";
+    <pre><code>std::string sceneName = "robot_lab"; // choose from robot_lab, sun_temple, viking_village, or san_miguel
 </code></pre>
     <p>in <code>QuestClientApps/Apps/QUASARViewer/include/QUASARViewer.h</code>.</p>
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(DepthPeelingWarp)
+project(QUASAR)
 
 add_subdirectory(simulator)
 add_subdirectory(receiver)
