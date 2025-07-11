@@ -54,11 +54,9 @@ uniform struct Material {
 
     // IBL
     float IBL; // IBL contribution
-#ifdef PLATFORM_CORE
     samplerCube irradianceMap; // 6
     samplerCube prefilterMap; // 7
     sampler2D brdfLUT; // 8
-#endif
 } material;
 
 #ifdef DO_DEPTH_PEELING

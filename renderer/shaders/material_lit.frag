@@ -51,11 +51,9 @@ uniform struct Material {
 
     // IBL
     float IBL; // IBL contribution
-#ifdef PLATFORM_CORE
     samplerCube irradianceMap; // 6
     samplerCube prefilterMap; // 7
     sampler2D brdfLUT; // 8
-#endif
 } material;
 
 uniform AmbientLight ambientLight;
@@ -65,9 +63,7 @@ uniform int numPointLights;
 
 // Shadow maps
 uniform sampler2D dirLightShadowMap; // 9
-#ifdef PLATFORM_CORE
 uniform samplerCube pointLightShadowMaps[MAX_POINT_LIGHTS]; // 10+
-#endif
 
 #ifdef DO_DEPTH_PEELING
 uniform bool peelDepth;
@@ -220,18 +216,12 @@ void main() {
     vec3 radianceOut = vec3(0.0);
     radianceOut += calcDirLight(directionalLight, pbrInputs, dirLightShadowMap, fsIn.FragPosLightSpace, fsIn.Normal);
     for (int i = 0; i < numPointLights; i++) {
-#ifdef PLATFORM_CORE
         radianceOut += calcPointLight(pointLights[i], pointLightShadowMaps[i], pbrInputs, fsIn.FragPosWorld);
-#else
-        radianceOut += calcPointLight(pointLights[i], pbrInputs, fsIn.FragPosWorld);
-#endif
     }
 
     vec3 ambient = ambientLight.intensity * ambientLight.color * albedo;
-#ifdef PLATFORM_CORE
     // Apply IBL
     ambient += material.IBL * calcIBLContribution(pbrInputs, material.irradianceMap, material.prefilterMap, material.brdfLUT);
-#endif
 
     // Apply emissive component
     if (material.hasEmissiveMap) {

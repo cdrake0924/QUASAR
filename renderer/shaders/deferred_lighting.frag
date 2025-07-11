@@ -15,11 +15,9 @@ uniform sampler2D gLightPosition; // 5
 
 // Material
 uniform struct Material {
-#ifdef PLATFORM_CORE
     samplerCube irradianceMap; // 5
     samplerCube prefilterMap; // 6
     sampler2D brdfLUT; // 7
-#endif
 } material;
 
 #define MAX_POINT_LIGHTS 4
@@ -31,9 +29,7 @@ uniform int numPointLights;
 
 // Shadow maps
 uniform sampler2D dirLightShadowMap; // 9
-#ifdef PLATFORM_CORE
 uniform samplerCube pointLightShadowMaps[MAX_POINT_LIGHTS]; // 10+
-#endif
 
 void main() {
     vec4 albedo_er = texture(gAlbedo, TexCoords);
@@ -71,18 +67,12 @@ void main() {
     vec3 radianceOut = vec3(0.0);
     radianceOut += calcDirLight(directionalLight, pbrInputs, dirLightShadowMap, fragPosLightSpace, N);
     for (int i = 0; i < numPointLights; i++) {
-#ifdef PLATFORM_CORE
         radianceOut += calcPointLight(pointLights[i], pointLightShadowMaps[i], pbrInputs, fragPosWorld);
-#else
-        radianceOut += calcPointLight(pointLights[i], pbrInputs, fragPosWorld);
-#endif
     }
 
     vec3 ambient = ambientLight.intensity * ambientLight.color * albedo;
-#ifdef PLATFORM_CORE
     // Apply IBL
     ambient += IBL * calcIBLContribution(pbrInputs, material.irradianceMap, material.prefilterMap, material.brdfLUT);
-#endif
 
     // Apply emissive component
     radianceOut += emissive;

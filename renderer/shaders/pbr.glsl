@@ -147,7 +147,6 @@ vec3 calcPointLight(PointLight light, samplerCube pointLightShadowMap, PBRInfo p
     return brdf * (1.0 - shadow);
 }
 
-#ifdef PLATFORM_CORE
 vec3 calcIBLContribution(PBRInfo pbrInputs, samplerCube irradianceMap, samplerCube prefilterMap, sampler2D brdfLUT) {
 #ifdef VIEW_DEPENDENT_LIGHTING
     vec3 N = pbrInputs.N;
@@ -176,8 +175,3 @@ vec3 calcIBLContribution(PBRInfo pbrInputs, samplerCube irradianceMap, samplerCu
     return diffuse;
 #endif
 }
-#else
-vec3 calcIBLContribution(PBRInfo pbrInputs) {
-    return vec3(0.0);
-}
-#endif
