@@ -118,6 +118,17 @@ int main(int argc, char** argv) {
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST
     });
+    RenderTarget renderTargetCopy({
+        .width = remoteWindowSize.x,
+        .height = remoteWindowSize.y,
+        .internalFormat = GL_RGBA16F,
+        .format = GL_RGBA,
+        .type = GL_HALF_FLOAT,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST
+    });
 
     BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
         .width = remoteWindowSize.x,
@@ -230,6 +241,7 @@ int main(int argc, char** argv) {
         static bool showFPS = true;
         static bool showUI = !saveImages;
         static bool showFrameCaptureWindow = false;
+        static bool showMeshCaptureWindow = false;
         static bool showFramePreviewWindow = false;
         static char fileNameBase[256] = "screenshot";
         static bool saveAsHDR = false;
@@ -254,6 +266,7 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("UI", 0, &showUI);
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
             ImGui::MenuItem("Record", 0, &showRecordWindow);
+            ImGui::MenuItem("Mesh Capture", 0, &showMeshCaptureWindow);
             ImGui::MenuItem("Remote Frame Preview", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
@@ -425,6 +438,21 @@ int main(int argc, char** argv) {
             ImGui::End();
         }
 
+        if (showMeshCaptureWindow) {
+            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 300), ImGuiCond_FirstUseEver);
+            ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
+
+            if (ImGui::Button("Save Depth")) {
+                bc4DepthStreamerRT.saveToFile(outputPath / "depth.bc4.zstd");
+                Path colorFileName = outputPath / "color";
+                toneMapper.drawToRenderTarget(remoteRenderer, renderTargetCopy);
+                renderTargetCopy.saveColorAsJPG(colorFileName.appendToName(".jpg"));
+            }
+
+            ImGui::End();
+        }
+
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("Remote Frame", 0, flags);
@@ -537,6 +565,7 @@ int main(int argc, char** argv) {
 
             totalRenderTime += timeutils::secondsToMillis(window->getTime() - startTime);
 
+            // Compress depth map to BC4 format with ZSTD
             startTime = window->getTime();
             compressedSize = bc4DepthStreamerRT.compress(true);
             totalCompressTime += timeutils::secondsToMillis(window->getTime() - startTime);

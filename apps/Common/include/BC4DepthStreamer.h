@@ -51,6 +51,7 @@ public:
 
     uint compress(bool compress = false);
     void sendFrame(pose_id_t poseID);
+    void saveToFile(const std::string& filename);
 
 private:
     int targetFrameRate = 30;

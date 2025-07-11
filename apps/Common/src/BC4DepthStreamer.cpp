@@ -4,6 +4,8 @@
 
 #include <shaders_common.h>
 
+#include <Utils/FileIO.h>
+
 #define THREADS_PER_LOCALGROUP 16
 
 using namespace quasar;
@@ -102,6 +104,16 @@ uint BC4DepthStreamer::applyCodec() {
     uint compressedSize = codec.compress(data.data(), compressedData, data.size());
     compressedData.resize(compressedSize);
     return compressedSize;
+}
+
+void BC4DepthStreamer::saveToFile(const std::string& filename) {
+    std::ofstream outFile(filename, std::ios::binary);
+    if (outFile.is_open()) {
+        outFile.write(compressedData.data(), compressedData.size());
+        outFile.close();
+    } else {
+        spdlog::error("Failed to write compressed depth data to file");
+    }
 }
 
 void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
