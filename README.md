@@ -4,11 +4,9 @@
 
 ## What is QUASAR?
 
-`QUASAR` is a remote rendering system that represents scene views using pixel-aligned quads, enabling temporally consistent and bandwidth-adaptive streaming for high-quality, real-time visualization for thin clients.
+`QUASAR` is a remote rendering system that represents scene views using pixel-aligned quads, enabling temporally consistent and bandwidth-adaptive streaming for high-quality, real-time visualization on thin clients.
 
-This repository provides baseline implementations of remote rendering systems designed to support and accelerate research in the field.
-
-It includes a custom deferred rendering system with support for PBR materials, dynamic lighting, and shadows, a scene loader compatible with GLTF, OBJ, and FBX formats, and multiple reprojection techniques including [ATW](https://developers.meta.com/horizon/blog/asynchronous-timewarp-examined/), [MeshWarp](https://dl.acm.org/doi/10.1145/253284.253292), [QuadStream](https://jozef.hladky.de/projects/QS/), and [QUASAR](https://github.com/quasar-gfx/QUASAR).
+This repository provides baseline implementations of many common remote rendering systems, designed to support and accelerate research in the field. It includes a custom deferred rendering engine with support for PBR materials, dynamic lighting, and shadows, a scene loader compatible with GLTF, OBJ, and FBX formats, and multiple reprojection techniques including [ATW](https://developers.meta.com/horizon/blog/asynchronous-timewarp-examined/), [MeshWarp](https://dl.acm.org/doi/10.1145/253284.253292), [QuadStream](https://jozef.hladky.de/projects/QS/), and [QUASAR](https://github.com/quasar-gfx/QUASAR).
 
 We also include an OpenXR client that runs the same renderer, which can be found [here](https://github.com/quasar-gfx/QUASAR-client).
 
