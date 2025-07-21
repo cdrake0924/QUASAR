@@ -6,10 +6,11 @@ using namespace quasar;
 Shader* QuadMaterial::shader = nullptr;
 
 QuadMaterial::QuadMaterial(const QuadMaterialCreateParams& params)
-        : baseColor(params.baseColor)
-        , baseColorFactor(params.baseColorFactor)
-        , alphaMode(params.alphaMode)
-        , maskThreshold(params.maskThreshold) {
+    : baseColor(params.baseColor)
+    , baseColorFactor(params.baseColorFactor)
+    , alphaMode(params.alphaMode)
+    , maskThreshold(params.maskThreshold)
+{
     TextureFileCreateParams textureParams{
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,

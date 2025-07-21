@@ -46,18 +46,8 @@ public:
     std::vector<std::string> defines;
 
     Shader() = default;
-    Shader(const ShaderFileCreateParams& params)
-            : version(params.version)
-            , extensions(params.extensions)
-            , defines(params.defines) {
-        loadFromFiles(params.vertexCodePath, params.fragmentCodePath, params.geometryCodePath);
-    }
-    Shader(const ShaderDataCreateParams& params)
-            : version(params.version)
-            , extensions(params.extensions)
-            , defines(params.defines) {
-        loadFromData(params.vertexCodeData, params.vertexCodeSize, params.fragmentCodeData, params.fragmentCodeSize, params.geometryData, params.geometryDataSize);
-    }
+    Shader(const ShaderFileCreateParams& params);
+    Shader(const ShaderDataCreateParams& params);
 
     void loadFromFiles(const std::string vertexPath, const std::string fragmentPath, const std::string geometryPath = "");
     void loadFromData(const char* vertexCodeData, const GLint vertexCodeSize,

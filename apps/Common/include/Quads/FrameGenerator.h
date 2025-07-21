@@ -18,12 +18,7 @@ public:
 
     MeshFromQuads meshFromQuadsMask;
 
-    FrameGenerator(DeferredRenderer& remoteRenderer, const Scene& remoteScene, QuadsGenerator& quadsGenerator, MeshFromQuads& meshFromQuads)
-        : remoteRenderer(remoteRenderer)
-        , remoteScene(remoteScene)
-        , quadsGenerator(quadsGenerator)
-        , meshFromQuads(meshFromQuads)
-        , meshFromQuadsMask(meshFromQuads.remoteWindowSize, meshFromQuads.maxProxies / 4) {}
+    FrameGenerator(DeferredRenderer& remoteRenderer, const Scene& remoteScene, QuadsGenerator& quadsGenerator, MeshFromQuads& meshFromQuads);
 
     struct Stats {
         double timeToCreateProxiesMs = 0.0;

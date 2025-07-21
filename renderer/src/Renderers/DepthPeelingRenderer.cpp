@@ -3,18 +3,19 @@
 using namespace quasar;
 
 DepthPeelingRenderer::DepthPeelingRenderer(const Config& config, uint maxLayers, bool edp)
-        : maxLayers(maxLayers)
-        , DeferredRenderer(config)
-        , compositeLayersShader({
-            .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
-            .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
-            .fragmentCodeData = SHADER_BUILTIN_COMPOSITE_LAYERS_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_COMPOSITE_LAYERS_FRAG_len,
-            .defines = {
-                "#define MAX_LAYERS " + std::to_string(maxLayers)
-            }
-        })
-        , edp(edp) {
+    : maxLayers(maxLayers)
+    , DeferredRenderer(config)
+    , compositeLayersShader({
+        .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
+        .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
+        .fragmentCodeData = SHADER_BUILTIN_COMPOSITE_LAYERS_FRAG,
+        .fragmentCodeSize = SHADER_BUILTIN_COMPOSITE_LAYERS_FRAG_len,
+        .defines = {
+            "#define MAX_LAYERS " + std::to_string(maxLayers)
+        }
+    })
+    , edp(edp)
+{
     // Enable depth peeling in shaders
     LitMaterial::extraShaderDefines.push_back("#define DO_DEPTH_PEELING");
     UnlitMaterial::extraShaderDefines.push_back("#define DO_DEPTH_PEELING");

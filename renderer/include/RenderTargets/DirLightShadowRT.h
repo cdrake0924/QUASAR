@@ -11,19 +11,20 @@ public:
     Texture depthBuffer;
 
     DirLightShadowRT(const RenderTargetCreateParams& params)
-            : RenderTargetBase(params)
-            , depthBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_DEPTH_COMPONENT24,
-                .format = GL_DEPTH_COMPONENT,
-                .type = GL_UNSIGNED_INT,
-                .wrapS = GL_CLAMP_TO_BORDER,
-                .wrapT = GL_CLAMP_TO_BORDER,
-                .minFilter = GL_LINEAR,
-                .magFilter = GL_LINEAR,
-                .hasBorder = true
-            }) {
+        : RenderTargetBase(params)
+        , depthBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_DEPTH_COMPONENT24,
+            .format = GL_DEPTH_COMPONENT,
+            .type = GL_UNSIGNED_INT,
+            .wrapS = GL_CLAMP_TO_BORDER,
+            .wrapT = GL_CLAMP_TO_BORDER,
+            .minFilter = GL_LINEAR,
+            .magFilter = GL_LINEAR,
+            .hasBorder = true
+        })
+    {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
 

@@ -13,9 +13,10 @@
 using namespace quasar;
 
 OpenGLApp::OpenGLApp(const Config& config)
-        : window(config.window)
-        , guiManager(config.guiManager)
-        , targetFramerate(config.enableVSync ? config.targetFramerate : 0) {
+    : window(config.window)
+    , guiManager(config.guiManager)
+    , targetFramerate(config.enableVSync ? config.targetFramerate : 0)
+{
     spdlog::set_pattern("[%H:%M:%S] [%^%L%$] %v");
 
     // Check opengl version

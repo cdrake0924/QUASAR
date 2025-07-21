@@ -45,23 +45,23 @@ public:
     BoundingSphere boundingSphere;
 
     PointLight(const PointLightCreateParams& params)
-            : position(params.position)
-            , constant(params.constant)
-            , linear(params.linear)
-            , quadratic(params.quadratic)
-            , intensityThreshold(params.intensityThreshold)
-            , Light({
-                .color = params.color,
-                .intensity = params.intensity,
-                .shadowNear = params.shadowNear,
-                .shadowFar = params.shadowFar,
-                .shadowMapRes = params.shadowMapRes
-            })
-            , shadowMapRenderTarget({ .width = shadowMapRes, .height = shadowMapRes })
-            , boundingSphere(position, getLightRadius())
-            , debug(params.debug) {
+        : position(params.position)
+        , constant(params.constant)
+        , linear(params.linear)
+        , quadratic(params.quadratic)
+        , intensityThreshold(params.intensityThreshold)
+        , Light({
+            .color = params.color,
+            .intensity = params.intensity,
+            .shadowNear = params.shadowNear,
+            .shadowFar = params.shadowFar,
+            .shadowMapRes = params.shadowMapRes
+        })
+        , shadowMapRenderTarget({ .width = shadowMapRes, .height = shadowMapRes })
+        , boundingSphere(position, getLightRadius())
+        , debug(params.debug)
+    {
         shadowProjectionMat = glm::perspective(glm::radians(params.shadowFov), 1.0f, params.shadowNear, params.shadowFar);
-
         updateLookAtFace();
     }
 

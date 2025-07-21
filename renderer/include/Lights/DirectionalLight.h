@@ -32,17 +32,18 @@ public:
     DirShadowMapMaterial shadowMapMaterial;
 
     DirectionalLight(const DirectionalLightCreateParams& params)
-            : direction(params.direction)
-            , distance(params.distance)
-            , orthoBoxSize(params.orthoBoxSize)
-            , Light({
-                .color = params.color,
-                .intensity = params.intensity,
-                .shadowNear = params.shadowNear,
-                .shadowFar = params.shadowFar,
-                .shadowMapRes = params.shadowMapRes
-            })
-            , shadowMapRenderTarget({ .width = shadowMapRes, .height = shadowMapRes }) {
+        : direction(params.direction)
+        , distance(params.distance)
+        , orthoBoxSize(params.orthoBoxSize)
+        , Light({
+            .color = params.color,
+            .intensity = params.intensity,
+            .shadowNear = params.shadowNear,
+            .shadowFar = params.shadowFar,
+            .shadowMapRes = params.shadowMapRes
+        })
+        , shadowMapRenderTarget({ .width = shadowMapRes, .height = shadowMapRes })
+    {
         updateLightSpaceMatrix();
     }
 

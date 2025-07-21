@@ -6,16 +6,17 @@ Shader* LitMaterial::shader = nullptr;
 std::vector<std::string> LitMaterial::extraShaderDefines;
 
 LitMaterial::LitMaterial(const LitMaterialCreateParams& params)
-        : baseColor(params.baseColor)
-        , baseColorFactor(params.baseColorFactor)
-        , alphaMode(params.alphaMode)
-        , maskThreshold(params.maskThreshold)
-        , emissiveFactor(params.emissiveFactor)
-        , metallic(params.metallic)
-        , metallicFactor(params.metallicFactor)
-        , roughness(params.roughness)
-        , roughnessFactor(params.roughnessFactor)
-        , metalRoughnessCombined(params.metalRoughnessCombined) {
+    : baseColor(params.baseColor)
+    , baseColorFactor(params.baseColorFactor)
+    , alphaMode(params.alphaMode)
+    , maskThreshold(params.maskThreshold)
+    , emissiveFactor(params.emissiveFactor)
+    , metallic(params.metallic)
+    , metallicFactor(params.metallicFactor)
+    , roughness(params.roughness)
+    , roughnessFactor(params.roughnessFactor)
+    , metalRoughnessCombined(params.metalRoughnessCombined)
+{
     TextureFileCreateParams textureParams{
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,

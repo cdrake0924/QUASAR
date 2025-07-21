@@ -27,10 +27,11 @@ public:
     uint rate;
 
     PoseStreamer(Camera* camera, std::string receiverURL, uint rate = 30)
-            : camera(camera)
-            , receiverURL(receiverURL)
-            , rate(rate)
-            , streamer(receiverURL, sizeof(Pose)) {
+        : camera(camera)
+        , receiverURL(receiverURL)
+        , rate(rate)
+        , streamer(receiverURL, sizeof(Pose))
+    {
         spdlog::info("Created PoseStreamer that sends to URL: {}", receiverURL);
     }
 

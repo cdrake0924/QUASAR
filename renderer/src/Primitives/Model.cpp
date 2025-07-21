@@ -18,6 +18,14 @@
 
 using namespace quasar;
 
+Model::Model(const ModelCreateParams& params)
+    : flipTextures(params.flipTextures)
+    , gammaCorrected(params.gammaCorrected)
+    , IBL(params.IBL)
+{
+    loadFromFile(params);
+}
+
 Model::~Model() {
     for (auto mesh : meshes) {
         delete mesh;

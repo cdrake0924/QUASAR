@@ -8,7 +8,10 @@
 using namespace quasar;
 
 Animation::AnimationProperty::AnimationProperty(const glm::vec3& initialState, bool isRotation)
-    : initialState(initialState), currentState(initialState), isRotation(isRotation) {}
+    : initialState(initialState)
+    , currentState(initialState)
+    , isRotation(isRotation)
+{}
 
 void Animation::AnimationProperty::setProperties(bool reverse, bool loop) {
     this->reverse = reverse;
@@ -112,7 +115,6 @@ void Animation::AnimationProperty::update(double deltaTime) {
         currentState = keyframes.empty() ? initialState : keyframes.back().value;
     }
 }
-
 
 void Animation::AnimationProperty::reset() {
     elapsedTime = 0.0f;

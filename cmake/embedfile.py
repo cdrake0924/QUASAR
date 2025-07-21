@@ -31,9 +31,9 @@ def read_with_includes(fname, included=None):
     return "".join(lines)
 
 def main(argv):
-    if len(argv) < 3:
+    if len(argv) < 4:
         print(f"USAGE: {argv[0]} {{sym}} {{rsrc}} {{out_file}}\n\n"
-              "  Creates {sym}.c from the contents of {rsrc}\n")
+              "  Creates {sym}.h from the contents of {rsrc}\n")
         return 1
 
     sym = argv[1]

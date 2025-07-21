@@ -34,24 +34,12 @@ struct Vertex {
                tangent == other.tangent && bitangent == other.bitangent;
     }
 
-    Vertex() {
-    }
-    Vertex(glm::vec3 position)
-        : position(position) {
-    }
-    Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords)
-        : position(position), normal(normal), texCoords(texCoords) {
-    }
-    Vertex(glm::vec3 position, glm::vec3 color, glm::vec3 normal)
-        : position(position), color(color), normal(normal) {
-    }
-    Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords, glm::vec3 tangent, glm::vec3 bitangent)
-        : position(position), normal(normal), texCoords(texCoords), tangent(tangent), bitangent(bitangent) {
-    }
-    Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords, glm::vec3 tangent)
-        : position(position), normal(normal), texCoords(texCoords), tangent(tangent) {
-        bitangent = glm::cross(normal, tangent);
-    }
+    Vertex() = default;
+    Vertex(glm::vec3 position);
+    Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords);
+    Vertex(glm::vec3 position, glm::vec3 color, glm::vec3 normal);
+    Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords, glm::vec3 tangent, glm::vec3 bitangent);
+    Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords, glm::vec3 tangent);
 
     static uint32_t nextID;
 

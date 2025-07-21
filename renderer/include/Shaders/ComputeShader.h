@@ -38,18 +38,8 @@ public:
     std::vector<std::string> extensions;
     std::vector<std::string> defines;
 
-    ComputeShader(const ComputeShaderDataCreateParams& params)
-            : version(params.version)
-            , extensions(params.extensions)
-            , defines(params.defines) {
-        loadFromData(params.computeCodeData, params.computeCodeSize);
-    }
-    ComputeShader(const ComputeShaderFileCreateParams& params)
-            : version(params.version)
-            , extensions(params.extensions)
-            , defines(params.defines) {
-        loadFromFile(params.computeCodePath);
-    }
+    ComputeShader(const ComputeShaderDataCreateParams& params);
+    ComputeShader(const ComputeShaderFileCreateParams& params);
 
     void setBuffer(GLenum target, int slot, const Buffer& buffer) const {
         glBindBufferBase(target, slot, buffer);

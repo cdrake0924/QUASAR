@@ -5,23 +5,24 @@
 using namespace quasar;
 
 DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string receiverURL)
-        : receiverURL(receiverURL)
-        , imageSize(params.width * params.height * sizeof(GLushort))
-        , streamer(receiverURL)
-        , data(std::vector<char>(sizeof(pose_id_t) + imageSize))
-        , RenderTarget(params)
-        , renderTargetCopy({
-            .width = width,
-            .height = height,
-            .internalFormat = colorBuffer.internalFormat,
-            .format = colorBuffer.format,
-            .type = colorBuffer.type,
-            .wrapS = colorBuffer.wrapS,
-            .wrapT = colorBuffer.wrapT,
-            .minFilter = colorBuffer.minFilter,
-            .magFilter = colorBuffer.magFilter,
-            .multiSampled = colorBuffer.multiSampled
-        }) {
+    : receiverURL(receiverURL)
+    , imageSize(params.width * params.height * sizeof(GLushort))
+    , streamer(receiverURL)
+    , data(std::vector<char>(sizeof(pose_id_t) + imageSize))
+    , RenderTarget(params)
+    , renderTargetCopy({
+        .width = width,
+        .height = height,
+        .internalFormat = colorBuffer.internalFormat,
+        .format = colorBuffer.format,
+        .type = colorBuffer.type,
+        .wrapS = colorBuffer.wrapS,
+        .wrapT = colorBuffer.wrapT,
+        .minFilter = colorBuffer.minFilter,
+        .magFilter = colorBuffer.magFilter,
+        .multiSampled = colorBuffer.multiSampled
+    })
+{
     spdlog::info("Created DepthStreamer that sends to URL: {}", receiverURL);
 
 #if !defined(__APPLE__) && !defined(__ANDROID__)
@@ -31,6 +32,10 @@ DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string
     running = true;
     dataSendingThread = std::thread(&DepthStreamer::sendData, this);
 #endif
+}
+
+DepthStreamer::~DepthStreamer() {
+    close();
 }
 
 void DepthStreamer::close() {

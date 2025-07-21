@@ -25,27 +25,8 @@ public:
         double bitrateMbps = 0.0;
     } stats;
 
-    DataStreamerTCP(std::string url, int maxDataSize = 65535, bool nonBlocking = false)
-            : url(url)
-            , maxDataSize(maxDataSize)
-            , socket(nonBlocking) {
-        if (url.empty()) {
-            return;
-        }
-
-        socket.setReuseAddr();
-        socket.setSendSize(maxDataSize);
-
-        dataSendingThread = std::thread(&DataStreamerTCP::sendData, this);
-    }
-
-    ~DataStreamerTCP() {
-        ready = false;
-
-        if (dataSendingThread.joinable()) {
-            dataSendingThread.join();
-        }
-    }
+    DataStreamerTCP(std::string url, int maxDataSize = 65535, bool nonBlocking = false);
+    ~DataStreamerTCP();
 
     int send(std::vector<char>& data, bool copy = false);
 

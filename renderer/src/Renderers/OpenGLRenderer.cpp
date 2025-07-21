@@ -84,15 +84,16 @@ void glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLs
 #endif
 
 OpenGLRenderer::OpenGLRenderer(const Config& config)
-        : width(config.width), height(config.height)
-        , windowWidth(config.width), windowHeight(config.height)
-        , skyboxShader({
-            .vertexCodeData = SHADER_BUILTIN_SKYBOX_VERT,
-            .vertexCodeSize = SHADER_BUILTIN_SKYBOX_VERT_len,
-            .fragmentCodeData = SHADER_BUILTIN_SKYBOX_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_SKYBOX_FRAG_len
-        })
-        , outputFsQuad() {
+    : width(config.width), height(config.height)
+    , windowWidth(config.width), windowHeight(config.height)
+    , skyboxShader({
+        .vertexCodeData = SHADER_BUILTIN_SKYBOX_VERT,
+        .vertexCodeSize = SHADER_BUILTIN_SKYBOX_VERT_len,
+        .fragmentCodeData = SHADER_BUILTIN_SKYBOX_FRAG,
+        .fragmentCodeSize = SHADER_BUILTIN_SKYBOX_FRAG_len
+    })
+    , outputFsQuad()
+{
 #ifdef GL_CORE
     // Enable setting vertex size for point clouds
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);

@@ -15,7 +15,8 @@ public:
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
             .fragmentCodeData = SHADER_COMMON_HOLE_FILLER_FRAG,
             .fragmentCodeSize = SHADER_COMMON_HOLE_FILLER_FRAG_len
-        }) {}
+        })
+    {}
 
     void setDepthThreshold(float depthThreshold) {
         shader.bind();

@@ -11,7 +11,10 @@ namespace quasar {
 class BoundingSphere {
 public:
     BoundingSphere() = default;
-    BoundingSphere(const glm::vec3& center, float radius) : center(center), radius(radius) {}
+    BoundingSphere(const glm::vec3& center, float radius)
+        : center(center)
+        , radius(radius)
+    {}
 
     glm::vec3 getCenter() const {
         return center;

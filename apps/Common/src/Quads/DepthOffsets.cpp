@@ -25,9 +25,8 @@ DepthOffsets::DepthOffsets(const glm::uvec2& size)
 #if !defined(__APPLE__) && !defined(__ANDROID__)
     , cudaImage(buffer)
 #endif
-    , data(size.x * size.y * 4 * sizeof(uint16_t)) {
-
-}
+    , data(size.x * size.y * 4 * sizeof(uint16_t))
+{}
 
 uint DepthOffsets::loadFromMemory(std::vector<char>& compressedData, bool decompress) {
     double startTime = timeutils::getTimeMicros();

@@ -4,7 +4,8 @@ using namespace quasar;
 
 VRCamera::VRCamera()
     : left()
-    , right() {
+    , right()
+{
     left.setPosition(glm::vec3(-0.032f, 0.0f, 0.0f));
     right.setPosition(glm::vec3(0.032f, 0.0f, 0.0f));
 

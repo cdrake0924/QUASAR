@@ -16,19 +16,20 @@ static int interrupt_callback(void* ctx) {
     return shouldTerminate;
 }
 
-VideoStreamer::VideoStreamer(const RenderTargetCreateParams& params,
-                             const std::string& videoURL,
-                             int targetFrameRate,
-                             int targetBitRateMbps,
-                             const std::string& formatName)
-        : targetFrameRate(targetFrameRate)
-        , targetBitRate(targetBitRateMbps * BYTES_IN_MB)
-        , formatName(formatName)
-        , RenderTarget(params)
+VideoStreamer::VideoStreamer(
+        const RenderTargetCreateParams& params,
+        const std::string& videoURL,
+        int targetFrameRate,
+        int targetBitRateMbps,
+        const std::string& formatName)
+    : targetFrameRate(targetFrameRate)
+    , targetBitRate(targetBitRateMbps * BYTES_IN_MB)
+    , formatName(formatName)
+    , RenderTarget(params)
 #if !defined(__APPLE__) && !defined(__ANDROID__)
-        , cudaGLImage(colorBuffer)
+    , cudaGLImage(colorBuffer)
 #endif
-        {
+{
     this->videoURL = (formatName == "mpegts") ?
                         "udp://" + videoURL :
                             formatName + "://" + videoURL;
@@ -169,6 +170,27 @@ VideoStreamer::VideoStreamer(const RenderTargetCreateParams& params,
     spdlog::info("Created VideoStreamer that sends to URL: {} ({})", videoURL, formatName);
 
     videoStreamerThread = std::thread(&VideoStreamer::encodeAndSendFrames, this);
+}
+
+VideoStreamer::~VideoStreamer() {
+    shouldTerminate = true;
+    sendFrames = false;
+
+    // Send dummy frame to unblock thread
+    frameReady = true;
+    cv.notify_one();
+
+    if (videoStreamerThread.joinable()) {
+        videoStreamerThread.join();
+    }
+
+    avio_closep(&outputFormatCtx->pb);
+    avformat_close_input(&outputFormatCtx);
+    avformat_free_context(outputFormatCtx);
+
+    av_frame_free(&frame);
+    av_packet_unref(packet);
+    av_packet_free(&packet);
 }
 
 void VideoStreamer::sendFrame(pose_id_t poseID) {
@@ -340,23 +362,17 @@ void VideoStreamer::encodeAndSendFrames() {
     }
 }
 
-VideoStreamer::~VideoStreamer() {
-    shouldTerminate = true;
-    sendFrames = false;
+float VideoStreamer::getFrameRate() {
+    return 1.0f / timeutils::millisToSeconds(stats.totalTimeToSendMs);
+}
 
-    // Send dummy frame to unblock thread
-    frameReady = true;
-    cv.notify_one();
+void VideoStreamer::setTargetFrameRate(int targetFrameRate) {
+    this->targetFrameRate = targetFrameRate;
+    codecCtx->time_base = {1, targetFrameRate};
+    codecCtx->framerate = {targetFrameRate, 1};
+}
 
-    if (videoStreamerThread.joinable()) {
-        videoStreamerThread.join();
-    }
-
-    avio_closep(&outputFormatCtx->pb);
-    avformat_close_input(&outputFormatCtx);
-    avformat_free_context(outputFormatCtx);
-
-    av_frame_free(&frame);
-    av_packet_unref(packet);
-    av_packet_free(&packet);
+void VideoStreamer::setTargetBitRate(uint targetBitRate) {
+    this->targetBitRate = targetBitRate;
+    outputFormatCtx->bit_rate = targetBitRate;
 }

@@ -21,7 +21,7 @@ enum class ShaderType {
 
 class ShaderBase : public OpenGLObject {
 public:
-    ShaderBase();
+    ShaderBase() = default;
     ~ShaderBase() override;
 
     void bind() const override;

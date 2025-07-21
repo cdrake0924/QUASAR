@@ -41,12 +41,7 @@ public:
 
     bool isGLTF = false;
 
-    Model(const ModelCreateParams& params)
-            : flipTextures(params.flipTextures)
-            , gammaCorrected(params.gammaCorrected)
-            , IBL(params.IBL) {
-        loadFromFile(params);
-    }
+    Model(const ModelCreateParams& params);
     ~Model();
 
     virtual void bindMaterial(const Scene& scene, const glm::mat4& model,

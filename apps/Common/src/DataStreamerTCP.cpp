@@ -2,6 +2,29 @@
 
 using namespace quasar;
 
+DataStreamerTCP::DataStreamerTCP(std::string url, int maxDataSize, bool nonBlocking)
+    : url(url)
+    , maxDataSize(maxDataSize)
+    , socket(nonBlocking)
+{
+    if (url.empty()) {
+        return;
+    }
+
+    socket.setReuseAddr();
+    socket.setSendSize(maxDataSize);
+
+    dataSendingThread = std::thread(&DataStreamerTCP::sendData, this);
+}
+
+DataStreamerTCP::~DataStreamerTCP() {
+    ready = false;
+
+    if (dataSendingThread.joinable()) {
+        dataSendingThread.join();
+    }
+}
+
 int DataStreamerTCP::send(std::vector<char>& data, bool copy) {
     if (!ready) {
         return -1;

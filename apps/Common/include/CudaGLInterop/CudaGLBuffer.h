@@ -13,7 +13,9 @@ namespace quasar {
 class CudaGLBuffer {
 public:
     CudaGLBuffer() = default;
-    CudaGLBuffer(Buffer& buffer) : buffer(&buffer) {
+    CudaGLBuffer(Buffer& buffer)
+        : buffer(&buffer)
+    {
         cudautils::checkCudaDevice();
         registerBuffer(buffer);
     }

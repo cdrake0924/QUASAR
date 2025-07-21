@@ -38,6 +38,13 @@ GLFWWindow::GLFWWindow(const Config& config) {
     }
 }
 
+GLFWWindow::~GLFWWindow() {
+    if (window != nullptr) {
+        glfwDestroyWindow(window);
+        window = nullptr;
+    }
+}
+
 glm::uvec2 GLFWWindow::getSize() {
     int frameBufferWidth, frameBufferHeight;
     glfwGetFramebufferSize(window, &frameBufferWidth, &frameBufferHeight);

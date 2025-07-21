@@ -3,6 +3,22 @@
 
 using namespace quasar;
 
+Shader::Shader(const ShaderFileCreateParams& params)
+    : version(params.version)
+    , extensions(params.extensions)
+    , defines(params.defines)
+{
+    loadFromFiles(params.vertexCodePath, params.fragmentCodePath, params.geometryCodePath);
+}
+
+Shader::Shader(const ShaderDataCreateParams& params)
+    : version(params.version)
+    , extensions(params.extensions)
+    , defines(params.defines)
+{
+    loadFromData(params.vertexCodeData, params.vertexCodeSize, params.fragmentCodeData, params.fragmentCodeSize, params.geometryData, params.geometryDataSize);
+}
+
 void Shader::loadFromFiles(const std::string vertexPath, const std::string fragmentPath, const std::string geometryPath) {
     std::string vertexCode = FileIO::loadTextFile(vertexPath);
     std::string fragmentCode = FileIO::loadTextFile(fragmentPath);

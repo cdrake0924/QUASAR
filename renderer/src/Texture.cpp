@@ -3,6 +3,50 @@
 
 using namespace quasar;
 
+Texture::Texture() {
+    target = GL_TEXTURE_2D;
+}
+
+Texture::Texture(const TextureDataCreateParams& params)
+    : width(params.width)
+    , height(params.height)
+    , internalFormat(params.internalFormat)
+    , format(params.format)
+    , type(params.type)
+    , wrapS(params.wrapS)
+    , wrapT(params.wrapT)
+    , minFilter(params.minFilter)
+    , magFilter(params.magFilter)
+    , alignment(params.alignment)
+    , multiSampled(params.multiSampled)
+    , numSamples(params.numSamples)
+{
+    target = !params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE;
+    loadFromData(params.data);
+
+    if (params.hasBorder) {
+        glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, glm::value_ptr(params.borderColor));
+    }
+}
+
+Texture::Texture(const TextureFileCreateParams& params)
+    : type(params.type)
+    , wrapS(params.wrapS)
+    , wrapT(params.wrapT)
+    , minFilter(params.minFilter)
+    , magFilter(params.magFilter)
+    , alignment(params.alignment)
+    , multiSampled(params.multiSampled)
+    , numSamples(params.numSamples)
+{
+    target = !params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE;
+    loadFromFile(params);
+}
+
+Texture::~Texture() {
+    cleanup();
+}
+
 void Texture::loadFromData(const unsigned char* data) {
     glGenTextures(1, &ID);
 

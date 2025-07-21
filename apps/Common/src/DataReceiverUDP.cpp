@@ -2,6 +2,21 @@
 
 using namespace quasar;
 
+DataReceiverUDP::DataReceiverUDP(std::string url, int maxDataSize, bool nonBlocking)
+    : url(url)
+    , maxDataSize(maxDataSize)
+    , socket(nonBlocking)
+{
+    socket.bind(url);
+
+    running = true;
+    dataRecvingThread = std::thread(&DataReceiverUDP::recvData, this);
+}
+
+DataReceiverUDP::~DataReceiverUDP() {
+    close();
+}
+
 void DataReceiverUDP::close() {
     running = false;
 

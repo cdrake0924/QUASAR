@@ -28,9 +28,7 @@ public:
     } stats;
 
     DepthStreamer(const RenderTargetCreateParams& params, std::string receiverURL);
-    ~DepthStreamer() {
-        close();
-    }
+    ~DepthStreamer();
 
     void close();
 

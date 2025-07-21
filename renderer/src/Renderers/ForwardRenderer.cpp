@@ -1,20 +1,21 @@
+#include <Cameras/VRCamera.h>
 #include <Renderers/ForwardRenderer.h>
 
 using namespace quasar;
 
 ForwardRenderer::ForwardRenderer(const Config& config)
-        : multiSampled(config.pipeline.multiSampleState.multiSampleEnabled)
-        , frameRT({ .width = config.width, .height = config.height, .multiSampled = false })
+    : multiSampled(config.pipeline.multiSampleState.multiSampleEnabled)
+    , frameRT({ .width = config.width, .height = config.height, .multiSampled = false })
 #if !defined(__APPLE__) && !defined(__ANDROID__)
-        , frameRT_MS({
-            .width = config.width,
-            .height = config.height,
-            .multiSampled = true,
-            .numSamples = config.pipeline.multiSampleState.numSamples
-        })
+    , frameRT_MS({
+        .width = config.width,
+        .height = config.height,
+        .multiSampled = true,
+        .numSamples = config.pipeline.multiSampleState.numSamples
+    })
 #endif
-        , OpenGLRenderer(config) {
-}
+    , OpenGLRenderer(config)
+{}
 
 void ForwardRenderer::setScreenShaderUniforms(const Shader& screenShader) {
     // Set FrameRenderTarget texture uniforms

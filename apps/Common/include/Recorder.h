@@ -59,20 +59,7 @@ public:
         PostProcessingEffect& effect,
         const Path& outputPath,
         int targetFrameRate = 60,
-        uint numThreads = 8)
-            : RenderTarget(params)
-            , renderer(renderer)
-            , effect(effect)
-            , targetFrameRate(targetFrameRate)
-            , numThreads(numThreads)
-            , outputPath(outputPath)
-            , outputFormats({"MP4", "PNG", "JPG"})
-#if !defined(__APPLE__) && !defined(__ANDROID__)
-            , cudaImage(colorBuffer)
-#endif
-    {
-        setOutputPath(outputPath);
-    }
+        uint numThreads = 8);
     ~Recorder();
 
     void saveScreenshotToFile(const Path& filename, bool saveAsHDR = false);

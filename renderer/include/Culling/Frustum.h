@@ -16,8 +16,14 @@ public:
         float constant = 0.0f;
 
         FPlane() = default;
-        FPlane(const glm::vec3& p1, const glm::vec3& norm) : normal(glm::normalize(norm)), constant(-glm::dot(normal, p1)) {}
-        FPlane(const glm::vec3& norm, float constant) : normal(norm), constant(constant) {
+        FPlane(const glm::vec3& p1, const glm::vec3& norm)
+            : normal(glm::normalize(norm))
+            , constant(-glm::dot(normal, p1))
+        {}
+        FPlane(const glm::vec3& norm, float constant)
+            : normal(norm)
+            , constant(constant)
+        {
             float length = glm::length(normal);
             normal /= length;
             constant /= length;

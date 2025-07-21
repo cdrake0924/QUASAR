@@ -15,9 +15,7 @@ public:
     GLFWwindow* window;
 
     GLFWWindow(const Config& config);
-    ~GLFWWindow() {
-        glfwTerminate();
-    }
+    ~GLFWWindow();
 
     glm::uvec2 getSize() override;
 

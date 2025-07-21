@@ -3,30 +3,30 @@
 using namespace quasar;
 
 DeferredRenderer::DeferredRenderer(const Config& config)
-        : multiSampled(config.pipeline.multiSampleState.multiSampleEnabled)
-        , outputRT({
-            .width = config.width,
-            .height = config.height,
-            .internalFormat = GL_RGBA16F,
-            .format = GL_RGBA,
-            .type = GL_HALF_FLOAT,
-            .wrapS = GL_CLAMP_TO_EDGE,
-            .wrapT = GL_CLAMP_TO_EDGE,
-            .minFilter = GL_LINEAR,
-            .magFilter = GL_LINEAR,
-            .multiSampled = false
-        })
-        , frameRT({ .width = config.width, .height = config.height, .multiSampled = false })
+    : multiSampled(config.pipeline.multiSampleState.multiSampleEnabled)
+    , outputRT({
+        .width = config.width,
+        .height = config.height,
+        .internalFormat = GL_RGBA16F,
+        .format = GL_RGBA,
+        .type = GL_HALF_FLOAT,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_LINEAR,
+        .magFilter = GL_LINEAR,
+        .multiSampled = false
+    })
+    , frameRT({ .width = config.width, .height = config.height, .multiSampled = false })
 #if !defined(__APPLE__) && !defined(__ANDROID__)
-        , frameRT_MS({
-            .width = config.width,
-            .height = config.height,
-            .multiSampled = true,
-            .numSamples = config.pipeline.multiSampleState.numSamples
-        })
+    , frameRT_MS({
+        .width = config.width,
+        .height = config.height,
+        .multiSampled = true,
+        .numSamples = config.pipeline.multiSampleState.numSamples
+    })
 #endif
-        , OpenGLRenderer(config) {
-}
+    , OpenGLRenderer(config)
+{}
 
 void DeferredRenderer::setScreenShaderUniforms(const Shader& screenShader) {
     // Set FrameRenderTarget texture uniforms

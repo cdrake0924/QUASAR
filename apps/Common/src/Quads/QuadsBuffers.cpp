@@ -10,19 +10,18 @@
 using namespace quasar;
 
 QuadBuffers::QuadBuffers(uint maxProxies)
-        : maxProxies(maxProxies)
-        , numProxies(maxProxies)
-        , normalSphericalsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
-        , depthsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(float), nullptr, GL_DYNAMIC_COPY)
-        , offsetSizeFlattenedsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
+    : maxProxies(maxProxies)
+    , numProxies(maxProxies)
+    , normalSphericalsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
+    , depthsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(float), nullptr, GL_DYNAMIC_COPY)
+    , offsetSizeFlattenedsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
 #if !defined(__APPLE__) && !defined(__ANDROID__)
-        , cudaBufferNormalSphericals(normalSphericalsBuffer)
-        , cudaBufferDepths(depthsBuffer)
-        , cudaBufferOffsetSizeFlatteneds(offsetSizeFlattenedsBuffer)
+    , cudaBufferNormalSphericals(normalSphericalsBuffer)
+    , cudaBufferDepths(depthsBuffer)
+    , cudaBufferOffsetSizeFlatteneds(offsetSizeFlattenedsBuffer)
 #endif
-        , data(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked)) {
-
-}
+    , data(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked))
+{}
 
 void QuadBuffers::resize(uint numProxies) {
     this->numProxies = numProxies;

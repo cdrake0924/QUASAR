@@ -30,11 +30,12 @@ public:
     uint shadowMapRes = 2048;
 
     Light(const LightCreateParams& params)
-            : color(params.color)
-            , intensity(params.intensity)
-            , shadowNear(params.shadowNear)
-            , shadowFar(params.shadowFar)
-            , shadowMapRes(params.shadowMapRes) { }
+        : color(params.color)
+        , intensity(params.intensity)
+        , shadowNear(params.shadowNear)
+        , shadowFar(params.shadowFar)
+        , shadowMapRes(params.shadowMapRes)
+    {}
 
     virtual void bindMaterial(const Material* material) = 0;
 };

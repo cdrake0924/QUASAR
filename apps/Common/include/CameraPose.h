@@ -27,7 +27,8 @@ struct Pose {
 
     Pose() = default;
     Pose(const glm::mat4& view, const glm::mat4& proj, time_t timestamp)
-            : mono{view, glm::mat4(1.0f), proj, glm::mat4(1.0f)}, timestamp(timestamp) {}
+            : mono{view, glm::mat4(1.0f), proj, glm::mat4(1.0f)}
+            , timestamp(timestamp) {}
 
     void setViewMatrix(const glm::mat4& view) {
         mono.view = view;

@@ -93,57 +93,58 @@ public:
     } stats;
 
     QRSimulator(
-                const PerspectiveCamera& remoteCamera,
-                uint maxLayers,
-                QuadsGenerator& quadsGenerator, MeshFromQuads& meshFromQuads, FrameGenerator& frameGenerator)
-            : quadsGenerator(quadsGenerator)
-            , meshFromQuads(meshFromQuads)
-            , frameGenerator(frameGenerator)
-            , maxLayers(maxLayers)
-            , quads(maxLayers)
-            , depthOffsets(maxLayers)
-            , maxVerticesDepth(quadsGenerator.remoteWindowSize.x * quadsGenerator.remoteWindowSize.y)
-            , meshFromDepthShader({
-                .computeCodeData = SHADER_COMMON_MESH_FROM_DEPTH_COMP,
-                .computeCodeSize = SHADER_COMMON_MESH_FROM_DEPTH_COMP_len,
-                .defines = {
-                    "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-                }
-            })
-            , refFrameRT({
-                .width = quadsGenerator.remoteWindowSize.x,
-                .height = quadsGenerator.remoteWindowSize.y,
-                .internalFormat = GL_RGBA16F,
-                .format = GL_RGBA,
-                .type = GL_HALF_FLOAT,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST
-            })
-            , maskFrameRT({
-                .width = quadsGenerator.remoteWindowSize.x,
-                .height = quadsGenerator.remoteWindowSize.y,
-                .internalFormat = GL_RGBA16F,
-                .format = GL_RGBA,
-                .type = GL_HALF_FLOAT,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST
-            })
-            , maskTempRT({
-                .width = quadsGenerator.remoteWindowSize.x,
-                .height = quadsGenerator.remoteWindowSize.y,
-                .internalFormat = GL_RGBA16F,
-                .format = GL_RGBA,
-                .type = GL_HALF_FLOAT,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST
-            })
-            , meshScenes(2) {
+            const PerspectiveCamera& remoteCamera,
+            uint maxLayers,
+            QuadsGenerator& quadsGenerator, MeshFromQuads& meshFromQuads, FrameGenerator& frameGenerator)
+        : quadsGenerator(quadsGenerator)
+        , meshFromQuads(meshFromQuads)
+        , frameGenerator(frameGenerator)
+        , maxLayers(maxLayers)
+        , quads(maxLayers)
+        , depthOffsets(maxLayers)
+        , maxVerticesDepth(quadsGenerator.remoteWindowSize.x * quadsGenerator.remoteWindowSize.y)
+        , meshFromDepthShader({
+            .computeCodeData = SHADER_COMMON_MESH_FROM_DEPTH_COMP,
+            .computeCodeSize = SHADER_COMMON_MESH_FROM_DEPTH_COMP_len,
+            .defines = {
+                "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
+            }
+        })
+        , refFrameRT({
+            .width = quadsGenerator.remoteWindowSize.x,
+            .height = quadsGenerator.remoteWindowSize.y,
+            .internalFormat = GL_RGBA16F,
+            .format = GL_RGBA,
+            .type = GL_HALF_FLOAT,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST
+        })
+        , maskFrameRT({
+            .width = quadsGenerator.remoteWindowSize.x,
+            .height = quadsGenerator.remoteWindowSize.y,
+            .internalFormat = GL_RGBA16F,
+            .format = GL_RGBA,
+            .type = GL_HALF_FLOAT,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST
+        })
+        , maskTempRT({
+            .width = quadsGenerator.remoteWindowSize.x,
+            .height = quadsGenerator.remoteWindowSize.y,
+            .internalFormat = GL_RGBA16F,
+            .format = GL_RGBA,
+            .type = GL_HALF_FLOAT,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST
+        })
+        , meshScenes(2)
+    {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 

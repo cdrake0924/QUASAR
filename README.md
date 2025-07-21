@@ -12,7 +12,7 @@ We also include an OpenXR client that runs the same renderer, which can be found
 
 ## Documentation
 
-__Please refer to the ☞☞ [QUASAR documentation](https://quasar-gfx.github.io/QUASAR/) ☜☜ for information on how to build and run this repo!__
+__Please visit the ☞☞ [QUASAR documentation](https://quasar-gfx.github.io/QUASAR/) ☜☜ for information on how to build and run this repo!__
 
 ## Credits for 3D Assets
 

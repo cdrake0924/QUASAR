@@ -15,7 +15,8 @@ public:
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
             .fragmentCodeData = SHADER_BUILTIN_SHOW_IDS_FRAG,
             .fragmentCodeSize = SHADER_BUILTIN_SHOW_IDS_FRAG_len
-        }) {}
+        })
+    {}
 
     void showObjectIDs(bool showObjectID) {
         shader.bind();

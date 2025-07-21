@@ -18,10 +18,11 @@ public:
     GLint internalFormat = GL_RGB;
 
     Renderbuffer(const RenderbufferCreateParams& params)
-            : width(params.width)
-            , height(params.height)
-            , internalFormat(params.internalFormat)
-            , OpenGLObject() {
+        : width(params.width)
+        , height(params.height)
+        , internalFormat(params.internalFormat)
+        , OpenGLObject()
+    {
         glGenRenderbuffers(1, &ID);
         glBindRenderbuffer(GL_RENDERBUFFER, ID);
         glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);

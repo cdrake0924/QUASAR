@@ -38,21 +38,18 @@ public:
 
     uint videoWidth, videoHeight;
 
-    VideoTexture(const TextureDataCreateParams& params,
-                 const std::string& videoURL,
-                 const std::string& formatName = "mpegts");
+    VideoTexture(
+        const TextureDataCreateParams& params,
+        const std::string& videoURL,
+        const std::string& formatName = "mpegts");
     ~VideoTexture();
 
     pose_id_t draw(pose_id_t poseID = -1);
     pose_id_t getLatestPoseID();
 
-    void setMaxQueueSize(uint maxQueueSize) {
-        this->maxQueueSize = maxQueueSize;
-    }
+    void setMaxQueueSize(uint maxQueueSize);
 
-    float getFrameRate() {
-        return 1.0f / timeutils::millisToSeconds(stats.totalTimeToReceiveMs);
-    }
+    float getFrameRate();
 
     void resize(uint width, uint height);
 

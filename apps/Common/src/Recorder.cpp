@@ -7,6 +7,27 @@
 
 using namespace quasar;
 
+Recorder::Recorder(
+        const RenderTargetCreateParams& params,
+        OpenGLRenderer& renderer,
+        PostProcessingEffect& effect,
+        const Path& outputPath,
+        int targetFrameRate,
+        uint numThreads)
+    : RenderTarget(params)
+    , renderer(renderer)
+    , effect(effect)
+    , targetFrameRate(targetFrameRate)
+    , numThreads(numThreads)
+    , outputPath(outputPath)
+    , outputFormats({"MP4", "PNG", "JPG"})
+#if !defined(__APPLE__) && !defined(__ANDROID__)
+    , cudaImage(colorBuffer)
+#endif
+{
+    setOutputPath(outputPath);
+}
+
 Recorder::~Recorder() {
     if (running) {
         stop();

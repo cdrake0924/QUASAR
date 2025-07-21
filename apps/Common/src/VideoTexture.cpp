@@ -317,3 +317,11 @@ void VideoTexture::resize(uint width, uint height) {
     internalHeight = height;
     Texture::resize(width, height);
 }
+
+void VideoTexture::setMaxQueueSize(uint maxQueueSize) {
+    this->maxQueueSize = maxQueueSize;
+}
+
+float VideoTexture::getFrameRate() {
+    return 1.0f / timeutils::millisToSeconds(stats.totalTimeToReceiveMs);
+}

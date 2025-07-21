@@ -43,27 +43,18 @@ public:
         double bitrateMbps = 0.0;
     } stats;
 
-    VideoStreamer(const RenderTargetCreateParams& params,
-                  const std::string& videoURL,
-                  int targetFrameRate = 30,
-                  int targetBitRateMbps = 10,
-                  const std::string& formatName = "mpegts");
+    VideoStreamer(
+        const RenderTargetCreateParams& params,
+        const std::string& videoURL,
+        int targetFrameRate = 30,
+        int targetBitRateMbps = 10,
+        const std::string& formatName = "mpegts");
     ~VideoStreamer();
 
-    float getFrameRate() {
-        return 1.0f / timeutils::millisToSeconds(stats.totalTimeToSendMs);
-    }
+    float getFrameRate();
 
-    void setTargetFrameRate(int targetFrameRate) {
-        this->targetFrameRate = targetFrameRate;
-        codecCtx->time_base = {1, targetFrameRate};
-        codecCtx->framerate = {targetFrameRate, 1};
-    }
-
-    void setTargetBitRate(uint targetBitRate) {
-        this->targetBitRate = targetBitRate;
-        outputFormatCtx->bit_rate = targetBitRate;
-    }
+    void setTargetFrameRate(int targetFrameRate);
+    void setTargetBitRate(uint targetBitRate);
 
     void sendFrame(pose_id_t poseID);
 

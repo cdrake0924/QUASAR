@@ -49,7 +49,8 @@ public:
         , posePrediction(params.posePrediction)
         , poseSmoothing(params.poseSmoothing)
         , generator(params.seed)
-        , distribution(-networkJitterS, networkJitterS) { }
+        , distribution(-networkJitterS, networkJitterS)
+    {}
 
     void setNetworkLatency(double networkLatencyMs) {
         networkLatencyS = timeutils::millisToSeconds(networkLatencyMs);

@@ -20,18 +20,8 @@ public:
 
     int maxDataSize;
 
-    DataStreamerUDP(std::string url, int maxDataSize, bool nonBlocking = false)
-            : url(url)
-            , maxDataSize(maxDataSize)
-            , socket(nonBlocking) {
-        socket.setAddress(url);
-
-        running = true;
-        dataSendingThread = std::thread(&DataStreamerUDP::sendData, this);
-    }
-    ~DataStreamerUDP() {
-        close();
-    }
+    DataStreamerUDP(std::string url, int maxDataSize, bool nonBlocking = false);
+    ~DataStreamerUDP();
 
     void close();
 

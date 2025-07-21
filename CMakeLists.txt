@@ -40,6 +40,9 @@ endif()
 # imgui
 if (NOT ANDROID)
     add_subdirectory(${EXTERNAL_DIR}/imgui/tnt)
+    if (LINUX)
+        target_compile_options(imgui INTERFACE -Wdeprecated-enum-enum-conversion)
+    endif()
     set(RENDERER_LIBS ${RENDERER_LIBS} imgui)
 endif()
 

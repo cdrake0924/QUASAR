@@ -64,50 +64,9 @@ public:
 
     bool indirectDraw = false;
 
-    Mesh() : vertexBuffer(GL_ARRAY_BUFFER, sizeof(Vertex))
-            , indexBuffer(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint)) {
-        setArrayBufferAttributes(Vertex::getVertexInputAttributes(), sizeof(Vertex));
-    }
-    Mesh(const MeshDataCreateParams& params)
-            : material(params.material)
-            , IBL(params.IBL)
-            , usage(params.usage)
-            , vertexBuffer(GL_ARRAY_BUFFER, sizeof(Vertex), params.usage)
-            , indexBuffer(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint), params.usage)
-            , indirectDraw(params.indirectDraw)
-            , indirectBuffer(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawElementsIndirectCommand), params.usage)
-            , vertexSize(params.vertexSize)
-            , attributes(params.attributes) {
-        setArrayBufferAttributes(params.attributes, params.vertexSize);
-        setBuffers(params.verticesData, params.verticesSize, params.indicesData, params.indicesSize);
-
-        if (indirectDraw) {
-            indirectBuffer.bind();
-            DrawElementsIndirectCommand indirectCommand;
-            indirectBuffer.setData(sizeof(DrawElementsIndirectCommand), &indirectCommand);
-            indirectBuffer.unbind();
-        }
-    }
-    Mesh(const MeshSizeCreateParams& params)
-            : material(params.material)
-            , IBL(params.IBL)
-            , usage(params.usage)
-            , vertexBuffer(GL_ARRAY_BUFFER, sizeof(Vertex), params.usage)
-            , indexBuffer(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint), params.usage)
-            , indirectDraw(params.indirectDraw)
-            , indirectBuffer(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawElementsIndirectCommand), params.usage)
-            , vertexSize(params.vertexSize)
-            , attributes(params.attributes) {
-        setArrayBufferAttributes(params.attributes, params.vertexSize);
-        setBuffers(params.maxVertices, params.maxIndices);
-
-        if (indirectDraw) {
-            indirectBuffer.bind();
-            DrawElementsIndirectCommand indirectCommand;
-            indirectBuffer.setData(sizeof(DrawElementsIndirectCommand), &indirectCommand);
-            indirectBuffer.unbind();
-        }
-    }
+    Mesh();
+    Mesh(const MeshDataCreateParams& params);
+    Mesh(const MeshSizeCreateParams& params);
 
     virtual void bindMaterial(const Scene& scene, const glm::mat4& model,
                               const Material* overrideMaterial = nullptr, const Texture* prevIDMap = nullptr) override;

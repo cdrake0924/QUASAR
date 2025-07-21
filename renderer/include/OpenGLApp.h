@@ -16,8 +16,8 @@ public:
     OpenGLApp(const Config& config);
     ~OpenGLApp() = default;
 
-    void onRender(RenderCallback callback) { renderCallback = callback; };
-    void onResize(ResizeCallback callback) { resizeCallback = callback; };
+    void onRender(const RenderCallback& callback) { renderCallback = callback; };
+    void onResize(const ResizeCallback& callback) { resizeCallback = callback; };
 
     virtual void run();
 

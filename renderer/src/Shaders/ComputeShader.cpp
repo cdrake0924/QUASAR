@@ -5,6 +5,22 @@
 
 using namespace quasar;
 
+ComputeShader::ComputeShader(const ComputeShaderDataCreateParams& params)
+    : version(params.version)
+    , extensions(params.extensions)
+    , defines(params.defines)
+{
+    loadFromData(params.computeCodeData, params.computeCodeSize);
+}
+
+ComputeShader::ComputeShader(const ComputeShaderFileCreateParams& params)
+    : version(params.version)
+    , extensions(params.extensions)
+    , defines(params.defines)
+{
+    loadFromFile(params.computeCodePath);
+}
+
 void ComputeShader::startTiming() {
 #ifdef GL_CORE
     if (!startQueryID) {

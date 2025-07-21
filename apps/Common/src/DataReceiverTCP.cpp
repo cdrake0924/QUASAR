@@ -9,7 +9,9 @@
 using namespace quasar;
 
 DataReceiverTCP::DataReceiverTCP(const std::string& url, bool nonBlocking)
-    : url(url), socket(nonBlocking) {
+    : url(url)
+    , socket(nonBlocking)
+{
     start();
 }
 

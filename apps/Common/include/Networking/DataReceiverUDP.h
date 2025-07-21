@@ -21,18 +21,8 @@ public:
 
     int maxDataSize;
 
-    DataReceiverUDP(std::string url, int maxDataSize, bool nonBlocking = false)
-            : url(url)
-            , maxDataSize(maxDataSize)
-            , socket(nonBlocking) {
-        socket.bind(url);
-
-        running = true;
-        dataRecvingThread = std::thread(&DataReceiverUDP::recvData, this);
-    }
-    ~DataReceiverUDP() {
-        close();
-    }
+    DataReceiverUDP(std::string url, int maxDataSize, bool nonBlocking = false);
+    ~DataReceiverUDP();
 
     void close();
 

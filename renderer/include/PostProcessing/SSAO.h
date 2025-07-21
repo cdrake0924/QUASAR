@@ -13,46 +13,47 @@ namespace quasar {
 class SSAO: public PostProcessingEffect {
 public:
     SSAO(glm::uvec2& windowSize, PerspectiveCamera& camera, uint seed = 42)
-            : windowSize(windowSize)
-            , camera(camera)
-            , generator(seed)
-            , randomFloats(0.0, 1.0)
-            , ssaoShader({
-                .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
-                .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
-                .fragmentCodeData = SHADER_BUILTIN_SSAO_FRAG,
-                .fragmentCodeSize = SHADER_BUILTIN_SSAO_FRAG_len
-            })
-            , ssaoBlurShader({
-                .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
-                .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
-                .fragmentCodeData = SHADER_BUILTIN_SSAO_BLUR_FRAG,
-                .fragmentCodeSize = SHADER_BUILTIN_SSAO_BLUR_FRAG_len
-            })
-            , ssaoFinalShader({
-                .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
-                .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
-                .fragmentCodeData = SHADER_BUILTIN_SSAO_FINAL_FRAG,
-                .fragmentCodeSize = SHADER_BUILTIN_SSAO_FINAL_FRAG_len
-            })
-            , ssaoRenderTarget({
-                .width = windowSize.x,
-                .height = windowSize.y,
-                .internalFormat = GL_RED,
-                .format = GL_RED,
-                .type = GL_FLOAT,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST
-            })
-            , ssaoBlurRenderTarget({
-                .width = windowSize.x,
-                .height = windowSize.y,
-                .internalFormat = GL_RED,
-                .format = GL_RED,
-                .type = GL_FLOAT,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST
-            }) {
+        : windowSize(windowSize)
+        , camera(camera)
+        , generator(seed)
+        , randomFloats(0.0, 1.0)
+        , ssaoShader({
+            .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
+            .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
+            .fragmentCodeData = SHADER_BUILTIN_SSAO_FRAG,
+            .fragmentCodeSize = SHADER_BUILTIN_SSAO_FRAG_len
+        })
+        , ssaoBlurShader({
+            .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
+            .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
+            .fragmentCodeData = SHADER_BUILTIN_SSAO_BLUR_FRAG,
+            .fragmentCodeSize = SHADER_BUILTIN_SSAO_BLUR_FRAG_len
+        })
+        , ssaoFinalShader({
+            .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
+            .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
+            .fragmentCodeData = SHADER_BUILTIN_SSAO_FINAL_FRAG,
+            .fragmentCodeSize = SHADER_BUILTIN_SSAO_FINAL_FRAG_len
+        })
+        , ssaoRenderTarget({
+            .width = windowSize.x,
+            .height = windowSize.y,
+            .internalFormat = GL_RED,
+            .format = GL_RED,
+            .type = GL_FLOAT,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST
+        })
+        , ssaoBlurRenderTarget({
+            .width = windowSize.x,
+            .height = windowSize.y,
+            .internalFormat = GL_RED,
+            .format = GL_RED,
+            .type = GL_FLOAT,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST
+        })
+    {
         for (uint i = 0; i < 64; ++i) {
             glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
             sample = glm::normalize(sample);

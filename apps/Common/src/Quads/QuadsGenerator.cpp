@@ -10,33 +10,34 @@
 using namespace quasar;
 
 QuadsGenerator::QuadsGenerator(glm::uvec2& remoteWindowSize)
-        : remoteWindowSize(remoteWindowSize)
-        , depthOffsetBufferSize(2u * remoteWindowSize) // 4 offsets per pixel
-        , maxProxies(remoteWindowSize.x * remoteWindowSize.y)
-        , sizesBuffer(GL_SHADER_STORAGE_BUFFER, 1, sizeof(BufferSizes), nullptr, GL_DYNAMIC_COPY)
-        , genQuadMapShader({
-            .computeCodeData = SHADER_COMMON_GEN_QUADMAP_COMP,
-            .computeCodeSize = SHADER_COMMON_GEN_QUADMAP_COMP_len,
-            .defines = {
-                "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-            }
-        })
-        , simplifyQuadMapShader({
-            .computeCodeData = SHADER_COMMON_SIMPLIFY_QUADMAP_COMP,
-            .computeCodeSize = SHADER_COMMON_SIMPLIFY_QUADMAP_COMP_len,
-            .defines = {
-                "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-            }
-        })
-        , gatherQuadsShader({
-            .computeCodeData = SHADER_COMMON_GATHER_QUADS_COMP,
-            .computeCodeSize = SHADER_COMMON_GATHER_QUADS_COMP_len,
-            .defines = {
-                "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-            }
-        })
-        , quadBuffers(maxProxies)
-        , depthOffsets(depthOffsetBufferSize) {
+    : remoteWindowSize(remoteWindowSize)
+    , depthOffsetBufferSize(2u * remoteWindowSize) // 4 offsets per pixel
+    , maxProxies(remoteWindowSize.x * remoteWindowSize.y)
+    , sizesBuffer(GL_SHADER_STORAGE_BUFFER, 1, sizeof(BufferSizes), nullptr, GL_DYNAMIC_COPY)
+    , genQuadMapShader({
+        .computeCodeData = SHADER_COMMON_GEN_QUADMAP_COMP,
+        .computeCodeSize = SHADER_COMMON_GEN_QUADMAP_COMP_len,
+        .defines = {
+            "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
+        }
+    })
+    , simplifyQuadMapShader({
+        .computeCodeData = SHADER_COMMON_SIMPLIFY_QUADMAP_COMP,
+        .computeCodeSize = SHADER_COMMON_SIMPLIFY_QUADMAP_COMP_len,
+        .defines = {
+            "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
+        }
+    })
+    , gatherQuadsShader({
+        .computeCodeData = SHADER_COMMON_GATHER_QUADS_COMP,
+        .computeCodeSize = SHADER_COMMON_GATHER_QUADS_COMP_len,
+        .defines = {
+            "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
+        }
+    })
+    , quadBuffers(maxProxies)
+    , depthOffsets(depthOffsetBufferSize)
+{
     // Make sure maxProxySize is a power of 2
     glm::uvec2 maxProxySize = remoteWindowSize;
     maxProxySize.x = 1 << static_cast<int>(glm::ceil(glm::log2(static_cast<float>(maxProxySize.x))));

@@ -19,111 +19,112 @@ public:
     Texture depthStencilBuffer;
 
     GBuffer(const RenderTargetCreateParams& params)
-            : RenderTargetBase(params)
-            , albedoBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_RGBA8,
-                .format = GL_RGBA,
-                .type = GL_UNSIGNED_BYTE,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = params.minFilter,
-                .magFilter = params.magFilter,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            })
-            , pbrBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_RGBA8,
-                .format = GL_RGBA,
-                .type = GL_UNSIGNED_BYTE,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = params.minFilter,
-                .magFilter = params.magFilter,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            })
-            , alphaBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_RG8,
-                .format = GL_RG,
-                .type = GL_UNSIGNED_BYTE,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = params.minFilter,
-                .magFilter = params.magFilter,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            })
-            , normalsBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_RGB16F,
-                .format = GL_RGB,
-                .type = GL_HALF_FLOAT,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = params.minFilter,
-                .magFilter = params.magFilter,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            })
-            , positionBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_RGBA16F,
-                .format = GL_RGBA,
-                .type = GL_HALF_FLOAT,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            })
-            , lightPositionBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_RGBA16F,
-                .format = GL_RGBA,
-                .type = GL_HALF_FLOAT,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            })
-            , idBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_RGB32UI,
-                .format = GL_RGB_INTEGER,
-                .type = GL_UNSIGNED_INT,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            })
-            , depthStencilBuffer({
-                .width = width,
-                .height = height,
-                .internalFormat = GL_DEPTH32F_STENCIL8,
-                .format = GL_DEPTH_STENCIL,
-                .type = GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
-                .wrapS = GL_CLAMP_TO_EDGE,
-                .wrapT = GL_CLAMP_TO_EDGE,
-                .minFilter = GL_NEAREST,
-                .magFilter = GL_NEAREST,
-                .multiSampled = params.multiSampled,
-                .numSamples = params.numSamples
-            }) {
+        : RenderTargetBase(params)
+        , albedoBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGBA8,
+            .format = GL_RGBA,
+            .type = GL_UNSIGNED_BYTE,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = params.minFilter,
+            .magFilter = params.magFilter,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+        , pbrBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGBA8,
+            .format = GL_RGBA,
+            .type = GL_UNSIGNED_BYTE,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = params.minFilter,
+            .magFilter = params.magFilter,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+        , alphaBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RG8,
+            .format = GL_RG,
+            .type = GL_UNSIGNED_BYTE,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = params.minFilter,
+            .magFilter = params.magFilter,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+        , normalsBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGB16F,
+            .format = GL_RGB,
+            .type = GL_HALF_FLOAT,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = params.minFilter,
+            .magFilter = params.magFilter,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+        , positionBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGBA16F,
+            .format = GL_RGBA,
+            .type = GL_HALF_FLOAT,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+        , lightPositionBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGBA16F,
+            .format = GL_RGBA,
+            .type = GL_HALF_FLOAT,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+        , idBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGB32UI,
+            .format = GL_RGB_INTEGER,
+            .type = GL_UNSIGNED_INT,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+        , depthStencilBuffer({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_DEPTH32F_STENCIL8,
+            .format = GL_DEPTH_STENCIL,
+            .type = GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
+            .wrapS = GL_CLAMP_TO_EDGE,
+            .wrapT = GL_CLAMP_TO_EDGE,
+            .minFilter = GL_NEAREST,
+            .magFilter = GL_NEAREST,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples
+        })
+    {
         framebuffer.bind();
         framebuffer.attachTexture(albedoBuffer, GL_COLOR_ATTACHMENT0);
         framebuffer.attachTexture(pbrBuffer, GL_COLOR_ATTACHMENT1);

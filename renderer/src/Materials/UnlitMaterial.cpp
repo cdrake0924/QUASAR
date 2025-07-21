@@ -6,10 +6,11 @@ Shader* UnlitMaterial::shader = nullptr;
 std::vector<std::string> UnlitMaterial::extraShaderDefines;
 
 UnlitMaterial::UnlitMaterial(const UnlitMaterialCreateParams& params)
-        : baseColor(params.baseColor)
-        , baseColorFactor(params.baseColorFactor)
-        , alphaMode(params.alphaMode)
-        , maskThreshold(params.maskThreshold) {
+    : baseColor(params.baseColor)
+    , baseColorFactor(params.baseColorFactor)
+    , alphaMode(params.alphaMode)
+    , maskThreshold(params.maskThreshold)
+{
     TextureFileCreateParams textureParams{
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,

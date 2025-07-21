@@ -11,15 +11,16 @@
 using namespace quasar;
 
 BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const std::string& receiverURL)
-        : RenderTarget(params)
-        , receiverURL(receiverURL)
-        , streamer(receiverURL)
-        , bc4CompressionShader({
-            .computeCodeData = SHADER_COMMON_BC4_COMPRESS_COMP,
-            .computeCodeSize = SHADER_COMMON_BC4_COMPRESS_COMP_len,
-            .defines = {
-                "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-            }}) {
+    : RenderTarget(params)
+    , receiverURL(receiverURL)
+    , streamer(receiverURL)
+    , bc4CompressionShader({
+        .computeCodeData = SHADER_COMMON_BC4_COMPRESS_COMP,
+        .computeCodeSize = SHADER_COMMON_BC4_COMPRESS_COMP_len,
+        .defines = {
+            "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
+    }})
+{
     // Round up to nearest multiple of BC4_BLOCK_SIZE
     width = (params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE;
     height = (params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE;

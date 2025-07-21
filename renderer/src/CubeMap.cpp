@@ -15,6 +15,51 @@ const glm::mat4 CubeMap::captureViews[] = {
     glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
 };
 
+CubeMap::CubeMap()
+    : vertexBuffer(GL_ARRAY_BUFFER, sizeof(CubeMapVertex))
+{
+    target = GL_TEXTURE_CUBE_MAP;
+}
+
+CubeMap::CubeMap(const CubeMapCreateParams& params)
+    : type(params.type)
+    , wrapR(params.wrapR)
+    , Texture({
+        .width = params.width,
+        .height = params.height,
+        .format = params.format,
+        .wrapS = params.wrapS,
+        .wrapT = params.wrapT,
+        .minFilter = params.minFilter,
+        .magFilter = params.magFilter
+    })
+    , vertexBuffer(GL_ARRAY_BUFFER, sizeof(CubeMapVertex))
+{
+    target = GL_TEXTURE_CUBE_MAP;
+    if (params.rightFaceTexturePath != "" && params.leftFaceTexturePath != "" &&
+        params.topFaceTexturePath != "" && params.bottomFaceTexturePath != "" &&
+        params.frontFaceTexturePath != "" && params.backFaceTexturePath != "") {
+        initBuffers();
+        std::vector<std::string> faceTexturePaths = {
+            params.rightFaceTexturePath,
+            params.leftFaceTexturePath,
+            params.topFaceTexturePath,
+            params.bottomFaceTexturePath,
+            params.frontFaceTexturePath,
+            params.backFaceTexturePath
+        };
+        loadFromFiles(faceTexturePaths, params.format, params.wrapS, params.wrapT, params.wrapR, params.minFilter, params.magFilter);
+    }
+    else {
+        init(params.width, params.height, params.type);
+    }
+}
+
+CubeMap::~CubeMap() {
+    glDeleteBuffers(1, &vertexArrayBuffer);
+    glDeleteTextures(1, &ID);
+}
+
 void CubeMap::init(uint width, uint height, CubeMapType type) {
     initBuffers();
 

@@ -2,6 +2,21 @@
 
 using namespace quasar;
 
+DataStreamerUDP::DataStreamerUDP(std::string url, int maxDataSize, bool nonBlocking)
+    : url(url)
+    , maxDataSize(maxDataSize)
+    , socket(nonBlocking)
+{
+    socket.setAddress(url);
+
+    running = true;
+    dataSendingThread = std::thread(&DataStreamerUDP::sendData, this);
+}
+
+DataStreamerUDP::~DataStreamerUDP() {
+    close();
+}
+
 void DataStreamerUDP::close() {
     running = false;
 

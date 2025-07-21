@@ -6,8 +6,6 @@ using namespace quasar;
 
 GLuint ShaderBase::bindedShaderID = 0;
 
-ShaderBase::ShaderBase() = default;
-
 ShaderBase::~ShaderBase() {
     glDeleteProgram(ID);
 }

@@ -2,14 +2,22 @@
 
 using namespace quasar;
 
+FrameGenerator::FrameGenerator(DeferredRenderer& remoteRenderer, const Scene& remoteScene, QuadsGenerator& quadsGenerator, MeshFromQuads& meshFromQuads)
+    : remoteRenderer(remoteRenderer)
+    , remoteScene(remoteScene)
+    , quadsGenerator(quadsGenerator)
+    , meshFromQuads(meshFromQuads)
+    , meshFromQuadsMask(meshFromQuads.remoteWindowSize, meshFromQuads.maxProxies / 4)
+{}
+
 uint FrameGenerator::generateRefFrame(
         const FrameRenderTarget& frameRT,
         const PerspectiveCamera& remoteCamera,
         const Mesh& mesh,
         std::vector<char>& quads, std::vector<char>& depthOffsets,
         uint& numProxies, uint& numDepthOffsets,
-        bool compress
-    ) {
+        bool compress)
+{
     const glm::vec2 gBufferSize = glm::vec2(frameRT.width, frameRT.height);
     uint outputSize = 0;
 
@@ -57,8 +65,8 @@ uint FrameGenerator::generateResFrame(
         const Mesh& currMesh, const Mesh& maskMesh,
         std::vector<char>& quads, std::vector<char>& depthOffsets,
         uint& numProxies, uint& numDepthOffsets,
-        bool compress
-    ) {
+        bool compress)
+{
     const glm::vec2 gBufferSize = glm::vec2(frameRT.width, frameRT.height);
     uint outputSize = 0;
 

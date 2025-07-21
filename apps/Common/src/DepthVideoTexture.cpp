@@ -4,6 +4,11 @@
 
 using namespace quasar;
 
+DepthVideoTexture::DepthVideoTexture(const TextureDataCreateParams& params, std::string streamerURL)
+    : DataReceiverTCP(streamerURL, false)
+    , Texture(params)
+{}
+
 pose_id_t DepthVideoTexture::getLatestPoseID() {
     if (depthFrames.empty()) {
         return -1;

@@ -20,7 +20,9 @@ private:
 public:
     Buffer vertexBuffer;
 
-    FullScreenQuad() : vertexBuffer(GL_ARRAY_BUFFER, sizeof(FSQuadVertex), GL_STATIC_DRAW) {
+    FullScreenQuad()
+        : vertexBuffer(GL_ARRAY_BUFFER, sizeof(FSQuadVertex), GL_STATIC_DRAW)
+    {
         // Vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
         std::vector<FSQuadVertex> quadVertices = {
             // Bottom triangle

@@ -24,10 +24,11 @@ public:
     std::string streamerURL;
 
     PoseReceiver(Camera* camera, std::string streamerURL, float poseDropThresMs = 50.0f)
-            : camera(camera)
-            , streamerURL(streamerURL)
-            , poseDropThresUs(timeutils::millisToMicros(poseDropThresMs))
-            , DataReceiverUDP(streamerURL, sizeof(Pose)) {
+        : camera(camera)
+        , streamerURL(streamerURL)
+        , poseDropThresUs(timeutils::millisToMicros(poseDropThresMs))
+        , DataReceiverUDP(streamerURL, sizeof(Pose))
+    {
         spdlog::info("Created PoseReceiver that recvs from URL: {}", streamerURL);
     }
 

@@ -13,7 +13,9 @@ namespace quasar {
 class CudaGLImage {
 public:
     CudaGLImage() = default;
-    CudaGLImage(Texture& texture) : texture(&texture) {
+    CudaGLImage(Texture& texture)
+        : texture(&texture)
+    {
         cudautils::checkCudaDevice();
         registerTexture(texture);
     }

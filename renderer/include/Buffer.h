@@ -17,11 +17,19 @@ public:
         glGenBuffers(1, &ID);
     }
     Buffer(GLenum target, size_t dataSize, GLenum usage = GL_STATIC_DRAW)
-            : target(target), numElems(0), dataSize(dataSize), usage(usage) {
+        : target(target)
+        , numElems(0)
+        , dataSize(dataSize)
+        , usage(usage)
+    {
         glGenBuffers(1, &ID);
     }
     Buffer(GLenum target, uint numElems, size_t dataSize, const void* data, GLenum usage = GL_STATIC_DRAW)
-            : target(target), numElems(numElems), dataSize(dataSize), usage(usage) {
+        : target(target)
+        , numElems(numElems)
+        , dataSize(dataSize)
+        , usage(usage)
+    {
         glGenBuffers(1, &ID);
         bind();
         setData(numElems, data);
@@ -32,7 +40,11 @@ public:
     }
 
     Buffer(const Buffer& other)
-        : target(other.target), usage(other.usage), numElems(other.numElems), dataSize(other.dataSize) {
+        : target(other.target)
+        , usage(other.usage)
+        , numElems(other.numElems)
+        , dataSize(other.dataSize)
+    {
         glGenBuffers(1, &ID);
         bind();
         std::vector<char> data(other.numElems * other.dataSize);
