@@ -139,16 +139,16 @@ public:
     }
 
     GPUPointLight toGPULight() const {
-        GPUPointLight glight{};
-        glight.position = position;
-        glight.color = color;
-        glight.intensity = intensity;
-        glight.constant = constant;
-        glight.linear = linear;
-        glight.quadratic = quadratic;
-        glight.farPlane = shadowFar;
-        glight.shadowIndex = channel;
-        return glight;
+        GPUPointLight gpulight{};
+        gpulight.position = position;
+        gpulight.color = color;
+        gpulight.intensity = intensity;
+        gpulight.constant = constant;
+        gpulight.linear = linear;
+        gpulight.quadratic = quadratic;
+        gpulight.farPlane = shadowFar;
+        gpulight.shadowIndex = channel;
+        return gpulight;
     }
 
 private:

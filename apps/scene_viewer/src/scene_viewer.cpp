@@ -215,12 +215,12 @@ int main(int argc, char** argv) {
 
             if (scene.ambientLight != nullptr && ImGui::CollapsingHeader("Ambient Light Settings")) {
                 ImGui::ColorEdit3("Color", (float*)&scene.ambientLight->color);
-                ImGui::DragFloat("Strength", &scene.ambientLight->intensity, 0.1f, 0.1f, 1.0f);
+                ImGui::DragFloat("Strength", &scene.ambientLight->intensity, 0.05f, 0.1f, 2.0f);
             }
 
             if (scene.directionalLight != nullptr && ImGui::CollapsingHeader("Directional Light Settings")) {
                 ImGui::ColorEdit3("Color", (float*)&scene.directionalLight->color);
-                ImGui::DragFloat("Strength", &scene.directionalLight->intensity, 0.1f, 0.1f, 100.0f);
+                ImGui::DragFloat("Strength", &scene.directionalLight->intensity, 0.05f, 0.1f, 10.0f);
                 ImGui::DragFloat3("Direction", (float*)&scene.directionalLight->direction, 0.1f, -5.0f, 5.0f);
                 ImGui::DragFloat("Distance", &scene.directionalLight->distance, 0.1f, 0.0f, 100.0f);
 

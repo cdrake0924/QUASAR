@@ -20,6 +20,12 @@ struct DirectionalLightCreateParams {
 
 class DirectionalLight : public Light {
 public:
+    struct GPUDirectionalLight {
+        glm::vec3 direction;
+        glm::vec3 color;
+        float intensity;
+    };
+
     glm::vec3 direction = glm::vec3(0.0f);
     float distance = 100.0f;
 
@@ -48,10 +54,19 @@ public:
     }
 
     void bindMaterial(const Material* material) override {
-        material->getShader()->setVec3("directionalLight.direction", direction);
-        material->getShader()->setVec3("directionalLight.color", color);
-        material->getShader()->setFloat("directionalLight.intensity", intensity);
+        GPUDirectionalLight gpuLight = toGPULight();
+        material->getShader()->setVec3("directionalLight.direction", gpuLight.direction);
+        material->getShader()->setVec3("directionalLight.color", gpuLight.color);
+        material->getShader()->setFloat("directionalLight.intensity", gpuLight.intensity);
         updateLightSpaceMatrix();
+    }
+
+    GPUDirectionalLight toGPULight() const {
+        GPUDirectionalLight gpuLight{};
+        gpuLight.direction = glm::normalize(direction);
+        gpuLight.color = color;
+        gpuLight.intensity = intensity;
+        return gpuLight;
     }
 
 private:

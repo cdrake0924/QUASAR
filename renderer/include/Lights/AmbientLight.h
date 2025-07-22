@@ -12,6 +12,11 @@ struct AmbientLightCreateParams {
 
 class AmbientLight : public Light {
 public:
+    struct GPUAmbientLight {
+        glm::vec3 color;
+        float intensity;
+    };
+
     AmbientLight(const AmbientLightCreateParams& params)
         : Light({
             .color = params.color,
@@ -19,8 +24,16 @@ public:
         }) {}
 
     void bindMaterial(const Material* material) override {
-        material->getShader()->setVec3("ambientLight.color", color);
-        material->getShader()->setFloat("ambientLight.intensity", intensity);
+        GPUAmbientLight gpuAmbientLight = toGPULight();
+        material->getShader()->setVec3("ambientLight.color", gpuAmbientLight.color);
+        material->getShader()->setFloat("ambientLight.intensity", gpuAmbientLight.intensity);
+    }
+
+    GPUAmbientLight toGPULight() const {
+        GPUAmbientLight gpuAmbientLight{};
+        gpuAmbientLight.color = color;
+        gpuAmbientLight.intensity = intensity;
+        return gpuAmbientLight;
     }
 };
 
