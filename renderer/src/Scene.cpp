@@ -131,6 +131,8 @@ int Scene::bindDirectionalLight(const Material* material, int texIdx) {
     if (directionalLight != nullptr) {
         directionalLight->bindMaterial(material);
         material->getShader()->setMat4("lightSpaceMatrix", directionalLight->lightSpaceMatrix);
+
+        // Bind shadow map
         material->getShader()->setTexture("dirLightShadowMap",
                                           directionalLight->shadowMapRenderTarget.depthBuffer, texIdx);
     }
@@ -152,13 +154,26 @@ int Scene::bindPointLights(const Material* material, int texIdx) {
         auto& pointLight = pointLights[i];
         pointLight->setChannel(i);
         uboData.lights[i] = pointLight->toGPULight();
+
+        // Bind shadow maps
+#ifdef GL_CORE
         shader->setTexture("pointLightShadowMaps[" + std::to_string(i) + "]",
                            pointLight->shadowMapRenderTarget.depthCubeMap, texIdx);
+#else
+        // This is a hack to get around GLES's lack of samplerCube arrays
+        shader->setTexture("pointLightShadowMaps" + std::to_string(i),
+                           pointLight->shadowMapRenderTarget.depthCubeMap, texIdx);
+#endif
         texIdx++;
     }
+    // Set empty lights and shadow maps for remaining slots
     for (int i = uboData.numPointLights; i < PointLight::maxPointLights; ++i) {
         uboData.lights[i] = PointLight::GPUPointLight();
+#ifdef GL_CORE
         shader->clearTexture("pointLightShadowMaps[" + std::to_string(i) + "]", texIdx);
+#else
+        shader->clearTexture("pointLightShadowMaps" + std::to_string(i), texIdx);
+#endif
     }
 
     pointLightUBO.bind();

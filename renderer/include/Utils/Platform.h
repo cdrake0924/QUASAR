@@ -2,7 +2,11 @@
 #define PLATFORM_H
 
 // Platform detection and OpenGL includes
-#if defined(__linux__)
+#if defined(__ANDROID__)
+    #define PLATFORM_ANDROID
+    #define GL_ES
+    #include <GLES3/gl32.h>
+#elif defined(__linux__)
     #define PLATFORM_LINUX
     #define GL_CORE
     #include <glad/glad.h>
@@ -14,10 +18,6 @@
     #define PLATFORM_APPLE
     #define GL_CORE
     #include <glad/glad.h>
-#elif defined(__ANDROID__)
-    #define PLATFORM_ANDROID
-    #define GL_ES
-    #include <GLES3/gl32.h>
 #endif
 
 // Type aliases for convenience

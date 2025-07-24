@@ -127,25 +127,25 @@ GLuint ShaderBase::createShader(std::string version, std::vector<std::string> ex
     sources.emplace_back("#version " + version + "\n");
 
     // Extensions
+#if defined(PLATFORM_OPENXR)
+    sources.emplace_back("#extension GL_OVR_multiview : enable\n");
+#endif
 #ifdef GL_ES
     sources.emplace_back("#extension GL_EXT_shader_io_blocks : enable\n");
-#endif
-#if defined(__ANDROID__)
-    sources.emplace_back("#extension GL_OVR_multiview : enable\n");
 #endif
     for (const auto& ext : extensions) {
         sources.emplace_back(ext + "\n");
     }
 
     // Platform defines
-#if defined(__linux__)
-    sources.emplace_back("#define LINUX\n");
-#elif defined(__APPLE__)
-    sources.emplace_back("#define APPLE\n");
-#elif defined(_WIN32) || defined(_WIN64)
-    sources.emplace_back("#define WINDOWS\n");
-#elif defined(__ANDROID__)
+#if defined(PLATFORM_ANDROID)
     sources.emplace_back("#define ANDROID\n");
+#elif defined(PLATFORM_LINUX)
+    sources.emplace_back("#define LINUX\n");
+#elif defined(PLATFORM_APPLE)
+    sources.emplace_back("#define APPLE\n");
+#elif defined(PLATFORM_WINDOWS)
+    sources.emplace_back("#define WINDOWS\n");
 #endif
 
     // Precision defines

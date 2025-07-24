@@ -67,6 +67,11 @@ layout(std140) uniform PointLightBlock {
 uniform sampler2D dirLightShadowMap; // 9
 #ifndef GL_ES
 uniform samplerCube pointLightShadowMaps[MAX_POINT_LIGHTS]; // 10+
+#else
+uniform samplerCube pointLightShadowMaps0; // 10
+uniform samplerCube pointLightShadowMaps1; // 11
+uniform samplerCube pointLightShadowMaps2; // 12
+uniform samplerCube pointLightShadowMaps3; // 13
 #endif
 
 #ifdef DO_DEPTH_PEELING
@@ -219,12 +224,17 @@ void main() {
     // Apply reflectance equation for lights
     vec3 radianceOut = vec3(0.0);
     radianceOut += calcDirLight(directionalLight, pbrInputs, dirLightShadowMap, fsIn.FragPosLightSpace, fsIn.Normal);
-#ifndef GL_ES
     for (int i = 0; i < numPointLights; i++) {
         PointLight light = pointLights[i];
+#ifndef GL_ES
         radianceOut += calcPointLight(light, pointLightShadowMaps[light.shadowIndex], pbrInputs, fsIn.FragPosWorld);
-    }
+#else
+             if (i == 0) radianceOut += calcPointLight(light, pointLightShadowMaps0, pbrInputs, fsIn.FragPosWorld);
+        else if (i == 1) radianceOut += calcPointLight(light, pointLightShadowMaps1, pbrInputs, fsIn.FragPosWorld);
+        else if (i == 2) radianceOut += calcPointLight(light, pointLightShadowMaps2, pbrInputs, fsIn.FragPosWorld);
+        else if (i == 3) radianceOut += calcPointLight(light, pointLightShadowMaps3, pbrInputs, fsIn.FragPosWorld);
 #endif
+    }
 
     vec3 ambient = ambientLight.intensity * ambientLight.color * albedo;
     // Apply IBL

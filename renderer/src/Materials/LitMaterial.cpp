@@ -99,8 +99,7 @@ LitMaterial::LitMaterial(const LitMaterialCreateParams& params)
 #ifdef GL_CORE
             .fragmentCodeData = SHADER_BUILTIN_DEFERRED_GBUFFER_FRAG,
             .fragmentCodeSize = SHADER_BUILTIN_DEFERRED_GBUFFER_FRAG_len,
-#endif
-#ifdef GL_ES
+#else
             .fragmentCodeData = SHADER_BUILTIN_MATERIAL_LIT_FRAG,
             .fragmentCodeSize = SHADER_BUILTIN_MATERIAL_LIT_FRAG_len,
 
