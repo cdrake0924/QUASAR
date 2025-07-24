@@ -1,3 +1,4 @@
+#include <Cameras/VRCamera.h>
 #include <Renderers/DeferredRenderer.h>
 
 using namespace quasar;
@@ -104,30 +105,6 @@ RenderStats DeferredRenderer::drawSkyBox(Scene& scene, const Camera& camera) {
     return stats;
 }
 
-RenderStats DeferredRenderer::drawObjects(Scene& scene, const Camera& camera, uint32_t clearMask) {
-    pipeline.apply();
-
-    RenderStats stats;
-
-    // Update shadows
-    updateDirLightShadow(scene, camera);
-    updatePointLightShadows(scene, camera);
-
-    // Draw all objects in the scene
-    stats += drawScene(scene, camera, clearMask);
-
-    // Draw lights for debugging
-    stats += drawLights(scene, camera);
-
-    // Draw lighting pass
-    stats += lightingPass(scene, camera);
-
-    // Draw skybox
-    stats += drawSkyBox(scene, camera);
-
-    return stats;
-}
-
 RenderStats DeferredRenderer::drawObjectsNoLighting(Scene& scene, const Camera& camera, uint32_t clearMask) {
     pipeline.apply();
 
@@ -141,6 +118,46 @@ RenderStats DeferredRenderer::drawObjectsNoLighting(Scene& scene, const Camera& 
 
     // Draw skybox
     stats += drawSkyBox(scene, camera);
+
+    return stats;
+}
+
+RenderStats DeferredRenderer::drawObjects(Scene& scene, const Camera& camera, uint32_t clearMask) {
+    RenderStats stats;
+    if (camera.isVR()) {
+        auto* vrCamera = static_cast<const VRCamera*>(&camera);
+
+        pipeline.rasterState.scissorTestEnabled = true;
+
+        // Left eye
+        frameRT.setScissor(0, 0, width / 2, height);
+        frameRT.setViewport(0, 0, width / 2, height);
+        stats += drawObjects(scene, vrCamera->left, clearMask);
+
+        // Right eye
+        frameRT.setScissor(width / 2, 0, width / 2, height);
+        frameRT.setViewport(width / 2, 0, width / 2, height);
+        stats += drawObjects(scene, vrCamera->right, clearMask);
+    }
+    else {
+        pipeline.apply();
+
+        // Update shadows
+        updateDirLightShadow(scene, camera);
+        updatePointLightShadows(scene, camera);
+
+        // Draw all objects in the scene
+        stats += drawScene(scene, camera, clearMask);
+
+        // Draw lights for debugging
+        stats += drawLights(scene, camera);
+
+        // Draw lighting pass
+        stats += lightingPass(scene, camera);
+
+        // Draw skybox
+        stats += drawSkyBox(scene, camera);
+    }
 
     return stats;
 }

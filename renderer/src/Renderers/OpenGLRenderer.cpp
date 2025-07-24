@@ -1,5 +1,5 @@
-#include <Renderers/OpenGLRenderer.h>
 #include <Primitives/Sphere.h>
+#include <Renderers/OpenGLRenderer.h>
 #include <Materials/UnlitMaterial.h>
 
 using namespace quasar;

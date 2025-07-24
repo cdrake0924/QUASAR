@@ -320,7 +320,6 @@ int main(int argc, char** argv) {
 
         atwShader.bind();
         atwShader.setBool("atwEnabled", atwEnabled);
-        atwShader.setBool("toneMap", false);
         atwShader.setMat4("projectionInverse", camera.getProjectionMatrixInverse());
         atwShader.setMat4("viewInverse", camera.getViewMatrixInverse());
         if (currPoseID != prevPoseID && poseStreamer.getPose(currPoseID, &currentFramePose, &elapsedTime)) {

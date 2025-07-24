@@ -186,6 +186,15 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
+            glm::vec3 position = camera.getPosition();
+            glm::vec3 rotation = camera.getRotationEuler();
+            ImGui::BeginDisabled();
+            ImGui::DragFloat3("Camera Position", (float*)&position);
+            ImGui::DragFloat3("Camera Rotation", (float*)&rotation);
+            ImGui::EndDisabled();
+
+            ImGui::Separator();
+
             ImGui::Text("Video URL: %s (%s)", videoURL.c_str(), videoFormat.c_str());
             ImGui::Text("Depth URL: %s", depthURL.c_str());
             ImGui::Text("Pose URL: %s", poseURL.c_str());

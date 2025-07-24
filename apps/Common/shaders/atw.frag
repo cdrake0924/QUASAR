@@ -1,3 +1,4 @@
+#include "constants.glsl"
 #include "camera_utils.glsl"
 
 out vec4 FragColor;
