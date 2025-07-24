@@ -96,9 +96,14 @@ LitMaterial::LitMaterial(const LitMaterialCreateParams& params)
         ShaderDataCreateParams pbrShaderParams{
             .vertexCodeData = SHADER_BUILTIN_COMMON_VERT,
             .vertexCodeSize = SHADER_BUILTIN_COMMON_VERT_len,
+#ifdef GL_CORE
             .fragmentCodeData = SHADER_BUILTIN_DEFERRED_GBUFFER_FRAG,
             .fragmentCodeSize = SHADER_BUILTIN_DEFERRED_GBUFFER_FRAG_len,
+#endif
 #ifdef GL_ES
+            .fragmentCodeData = SHADER_BUILTIN_MATERIAL_LIT_FRAG,
+            .fragmentCodeSize = SHADER_BUILTIN_MATERIAL_LIT_FRAG_len,
+
             .extensions = {
                 "#extension GL_EXT_texture_cube_map_array : enable"
             },

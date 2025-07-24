@@ -61,11 +61,13 @@ uniform DirectionalLight directionalLight;
 layout(std140) uniform PointLightBlock {
     PointLight pointLights[MAX_POINT_LIGHTS];
     int numPointLights;
-}
+};
 
 // Shadow maps
 uniform sampler2D dirLightShadowMap; // 9
+#ifndef GL_ES
 uniform samplerCube pointLightShadowMaps[MAX_POINT_LIGHTS]; // 10+
+#endif
 
 #ifdef DO_DEPTH_PEELING
 uniform bool peelDepth;
@@ -217,10 +219,12 @@ void main() {
     // Apply reflectance equation for lights
     vec3 radianceOut = vec3(0.0);
     radianceOut += calcDirLight(directionalLight, pbrInputs, dirLightShadowMap, fsIn.FragPosLightSpace, fsIn.Normal);
+#ifndef GL_ES
     for (int i = 0; i < numPointLights; i++) {
         PointLight light = pointLights[i];
         radianceOut += calcPointLight(light, pointLightShadowMaps[light.shadowIndex], pbrInputs, fsIn.FragPosWorld);
     }
+#endif
 
     vec3 ambient = ambientLight.intensity * ambientLight.color * albedo;
     // Apply IBL

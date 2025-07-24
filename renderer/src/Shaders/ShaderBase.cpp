@@ -1,5 +1,7 @@
+#include <regex>
+#include <sstream>
+#include <iomanip>
 #include <spdlog/spdlog.h>
-
 #include <Shaders/ShaderBase.h>
 
 using namespace quasar;
@@ -118,68 +120,59 @@ void ShaderBase::clearTexture(const std::string& name, int slot) const {
 
 GLuint ShaderBase::createShader(std::string version, std::vector<std::string> extensions, std::vector<std::string> defines,
                                 const char* shaderData, const GLint shaderSize, ShaderType type) {
-    std::vector<GLchar const*> shaderSrcs;
-    std::vector<GLint> shaderSrcsSizes;
+    std::vector<std::string> sources;
+    shaderSourceLines.clear();
 
     // Add version string
-    std::string versionStr = "#version " + version + "\n";
-    shaderSrcs.push_back(versionStr.c_str());
-    shaderSrcsSizes.push_back(versionStr.size());
+    sources.emplace_back("#version " + version + "\n");
 
-    std::vector<std::string> extensionsWithNewline;
+    // Extensions
 #ifdef GL_ES
-    extensionsWithNewline.push_back("#extension GL_EXT_shader_io_blocks : enable\n");
+    sources.emplace_back("#extension GL_EXT_shader_io_blocks : enable\n");
 #endif
 #if defined(__ANDROID__)
-    extensionsWithNewline.push_back("#extension GL_OVR_multiview : enable\n");
+    sources.emplace_back("#extension GL_OVR_multiview : enable\n");
 #endif
-    // User extensions
-    for (const auto& extension : extensions) {
-        extensionsWithNewline.push_back(extension + "\n");
+    for (const auto& ext : extensions) {
+        sources.emplace_back(ext + "\n");
     }
 
-    // Add extensions
-    for (const auto& extension : extensionsWithNewline) {
-        shaderSrcs.push_back(extension.c_str());
-        shaderSrcsSizes.push_back(extension.size());
-    }
-
-    std::vector<std::string> definesWithNewline;
     // Platform defines
-#ifdef GL_ES
-    definesWithNewline.push_back("#define PLATFORM_ES\n");
-#endif
-#if defined(__ANDROID__)
-    definesWithNewline.push_back("#define ANDROID\n");
-#elif defined(_WIN32) || defined(_WIN64)
-    definesWithNewline.push_back("#define WINDOWS\n");
-    definesWithNewline.push_back("#define PLATFORM_CORE\n");
-#elif defined(__linux__)
-    definesWithNewline.push_back("#define LINUX\n");
-    definesWithNewline.push_back("#define PLATFORM_CORE\n");
+#if defined(__linux__)
+    sources.emplace_back("#define LINUX\n");
 #elif defined(__APPLE__)
-    definesWithNewline.push_back("#define APPLE\n");
-    definesWithNewline.push_back("#define PLATFORM_CORE\n");
+    sources.emplace_back("#define APPLE\n");
+#elif defined(_WIN32) || defined(_WIN64)
+    sources.emplace_back("#define WINDOWS\n");
+#elif defined(__ANDROID__)
+    sources.emplace_back("#define ANDROID\n");
 #endif
+
     // Precision defines
-    definesWithNewline.push_back("precision highp float;\n");
-    definesWithNewline.push_back("precision highp int;\n");
-    definesWithNewline.push_back("precision highp sampler2D;\n");
+    sources.emplace_back("precision highp float;\n");
+    sources.emplace_back("precision highp int;\n");
+    sources.emplace_back("precision highp sampler2D;\n");
 
     // User defines
-    for (const auto& define : defines) {
-        definesWithNewline.push_back(define + "\n");
+    for (const auto& def : defines) {
+        sources.emplace_back(def + "\n");
     }
 
-    // Add defines
-    for (const auto& define : definesWithNewline) {
-        shaderSrcs.push_back(define.c_str());
-        shaderSrcsSizes.push_back(define.size());
+    // Add shader source code
+    std::istringstream shaderStream(std::string(shaderData, shaderSize));
+    std::string line;
+    while (std::getline(shaderStream, line)) {
+        sources.push_back(line + "\n");
     }
 
-    // Add shader data
-    shaderSrcs.push_back(shaderData);
-    shaderSrcsSizes.push_back(shaderSize);
+    shaderSourceLines = sources;
+
+    std::vector<const GLchar*> cSources;
+    std::vector<GLint> lengths;
+    for (const auto& src : sources) {
+        cSources.push_back(src.c_str());
+        lengths.push_back((GLint)src.size());
+    }
 
     GLuint shader;
     switch (type) {
@@ -200,9 +193,9 @@ GLuint ShaderBase::createShader(std::string version, std::vector<std::string> ex
             return -1;
     }
 
-    glShaderSource(shader, shaderSrcs.size(), shaderSrcs.data(), shaderSrcsSizes.data());
+    glShaderSource(shader, cSources.size(), cSources.data(), lengths.data());
     glCompileShader(shader);
-    checkCompileErrors(shader, type);
+    checkCompileErrors(shader,type);
 
     return shader;
 }
@@ -210,21 +203,11 @@ GLuint ShaderBase::createShader(std::string version, std::vector<std::string> ex
 void ShaderBase::checkCompileErrors(GLuint shader, ShaderType type) {
     std::string shaderTypeStr;
     switch (type) {
-        case ShaderType::VERTEX:
-            shaderTypeStr = "VERTEX";
-            break;
-        case ShaderType::FRAGMENT:
-            shaderTypeStr = "FRAGMENT";
-            break;
-        case ShaderType::GEOMETRY:
-            shaderTypeStr = "GEOMETRY";
-            break;
-        case ShaderType::COMPUTE:
-            shaderTypeStr = "COMPUTE";
-            break;
-        default:
-            shaderTypeStr = "UNKNOWN";
-            break;
+        case ShaderType::VERTEX:   shaderTypeStr = "VERTEX"; break;
+        case ShaderType::FRAGMENT: shaderTypeStr = "FRAGMENT"; break;
+        case ShaderType::GEOMETRY: shaderTypeStr = "GEOMETRY"; break;
+        case ShaderType::COMPUTE:  shaderTypeStr = "COMPUTE"; break;
+        default:                   shaderTypeStr = "UNKNOWN"; break;
     }
 
     GLint success;
@@ -232,13 +215,54 @@ void ShaderBase::checkCompileErrors(GLuint shader, ShaderType type) {
     if (type != ShaderType::PROGRAM) {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if (!success) {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            spdlog::error("Failed to compile {} shader:\n{}", shaderTypeStr, infoLog);
+            glGetShaderInfoLog(shader, sizeof(infoLog), nullptr, infoLog);
+
+            std::string infoStr(infoLog);
+            spdlog::error("Failed to compile {} shader:\n{}", shaderTypeStr, infoStr);
+
+            // Try to extract line number
+#if defined(GL_CORE) && !defined(__APPLE__)
+            // GL Core error: "0(111) : message"
+            std::regex lineRegex(R"(\((\d+)\))");
+#else
+            // GLES error: "ERROR: 0:111: message"
+            std::regex lineRegex(R"(ERROR:\s*\d+:(\d+):)");
+#endif
+            std::smatch match;
+            int errorLine = -1;
+            if (std::regex_search(infoStr, match, lineRegex)) {
+                errorLine = std::stoi(match[1]);
+            }
+
+            // Show context if we know the line and have source
+            if (errorLine > 0 && !shaderSourceLines.empty()) {
+                int lineIndex = errorLine - 1;
+                int startLine = std::max(0, lineIndex - 5);
+                int endLine = std::min((int)shaderSourceLines.size(), lineIndex + 6);
+
+                std::stringstream contextStream;
+                contextStream << "---- Shader Error Context ----\n";
+                for (int i = startLine; i < endLine; ++i) {
+                    if (i == lineIndex) {
+                        contextStream << ">>> ";
+                    }
+                    else {
+                        contextStream << "    ";
+                    }
+                    contextStream << std::setw(4) << i + 1 << ": " << shaderSourceLines[i];
+                }
+
+                spdlog::error("{}", contextStream.str());
+            }
+            else {
+                spdlog::warn("Could not extract line number or shader source is empty.");
+            }
         }
-    } else {
+    }
+    else {
         glGetProgramiv(shader, GL_LINK_STATUS, &success);
         if (!success) {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+            glGetProgramInfoLog(shader, sizeof(infoLog), nullptr, infoLog);
             spdlog::error("Failed to link program:\n{}", infoLog);
         }
     }

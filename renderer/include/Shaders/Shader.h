@@ -30,7 +30,7 @@ struct ShaderFileCreateParams {
 #ifdef GL_CORE
     std::string version = "410 core";
 #else
-    std::string version = "310 es";
+    std::string version = "320 es";
 #endif
     std::string vertexCodePath = "";
     std::string fragmentCodePath = "";
@@ -41,7 +41,7 @@ struct ShaderFileCreateParams {
 
 class Shader : public ShaderBase {
 public:
-    std::string version = "410 core";
+    std::string version;
     std::vector<std::string> extensions;
     std::vector<std::string> defines;
 

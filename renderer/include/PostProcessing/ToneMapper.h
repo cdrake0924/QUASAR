@@ -2,6 +2,7 @@
 #define TONE_MAP_EFFECT_H
 
 #include <Shaders/ToneMapShader.h>
+#include <RenderTargets/FrameRenderTarget.h>
 
 #include <PostProcessing/PostProcessingEffect.h>
 
@@ -9,7 +10,10 @@ namespace quasar {
 
 class ToneMapper : public PostProcessingEffect {
 public:
-    ToneMapper() = default;
+    ToneMapper() {
+        enableToneMapping(true);
+        setExposure(1.0f);
+    }
 
     void enableToneMapping(bool enable) {
         shader.bind();

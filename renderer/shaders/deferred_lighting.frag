@@ -29,7 +29,9 @@ layout(std140) uniform PointLightBlock {
 
 // Shadow maps
 uniform sampler2D dirLightShadowMap; // 9
+#ifndef GL_ES
 uniform samplerCube pointLightShadowMaps[MAX_POINT_LIGHTS]; // 10+
+#endif
 
 void main() {
     vec4 albedo_er = texture(gAlbedo, TexCoords);
@@ -66,10 +68,12 @@ void main() {
     // Apply reflectance equation for lights
     vec3 radianceOut = vec3(0.0);
     radianceOut += calcDirLight(directionalLight, pbrInputs, dirLightShadowMap, fragPosLightSpace, N);
+#ifndef GL_ES
     for (int i = 0; i < numPointLights; i++) {
         PointLight light = pointLights[i];
         radianceOut += calcPointLight(light, pointLightShadowMaps[light.shadowIndex], pbrInputs, fragPosWorld);
     }
+#endif
 
     vec3 ambient = ambientLight.intensity * ambientLight.color * albedo;
     // Apply IBL

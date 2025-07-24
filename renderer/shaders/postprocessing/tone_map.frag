@@ -10,8 +10,8 @@ uniform sampler2D screenNormals;
 uniform sampler2D screenPositions;
 uniform usampler2D idBuffer;
 
-uniform bool toneMap = true;
-uniform float exposure = 1.0;
+uniform bool toneMap;
+uniform float exposure;
 
 void main() {
     vec3 color = texture(screenColor, TexCoords).rgb;

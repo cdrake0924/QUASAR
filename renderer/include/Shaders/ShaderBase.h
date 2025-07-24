@@ -51,6 +51,8 @@ protected:
 
 protected:
     mutable std::unordered_map<std::string, std::any> uniformCache;
+    mutable std::vector<std::string> shaderSourceLines;
+
     static GLuint bindedShaderID;
 };
 
