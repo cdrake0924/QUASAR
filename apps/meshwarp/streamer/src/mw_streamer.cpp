@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, videoURL, config.targetFramerate, targetBitrate, videoFormat);
 
     BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
+        .magFilter = GL_NEAREST,
     }, depthURL);
 
     PoseReceiver poseReceiver = PoseReceiver(&camera, poseURL);

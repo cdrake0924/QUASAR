@@ -6,12 +6,12 @@ Scene::Scene()
     : irradianceCubeMap({
         .width = 32,
         .height = 32,
-        .type = CubeMapType::STANDARD
+        .type = CubeMapType::STANDARD,
     })
     , prefilterCubeMap({
         .width = 128,
         .height = 128,
-        .type = CubeMapType::PREFILTER
+        .type = CubeMapType::PREFILTER,
     })
     , captureRenderTarget({
         .width = 1024,
@@ -22,10 +22,10 @@ Scene::Scene()
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR })
+        .magFilter = GL_LINEAR ,})
     , captureRenderBuffer({
         .width = 1024,
-        .height = 1024
+        .height = 1024,
     })
     , brdfLUT({
         .internalFormat = GL_RG16F,
@@ -35,32 +35,32 @@ Scene::Scene()
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-        .data = nullptr
+        .data = nullptr,
     })
     , brdfFsQuad()
     , equirectToCubeMapShader({
         .vertexCodeData = SHADER_BUILTIN_CUBEMAP_VERT,
         .vertexCodeSize = SHADER_BUILTIN_CUBEMAP_VERT_len,
         .fragmentCodeData = SHADER_BUILTIN_EQUIRECTANGULAR2CUBEMAP_FRAG,
-        .fragmentCodeSize = SHADER_BUILTIN_EQUIRECTANGULAR2CUBEMAP_FRAG_len
+        .fragmentCodeSize = SHADER_BUILTIN_EQUIRECTANGULAR2CUBEMAP_FRAG_len,
     })
     , convolutionShader({
         .vertexCodeData = SHADER_BUILTIN_CUBEMAP_VERT,
         .vertexCodeSize = SHADER_BUILTIN_CUBEMAP_VERT_len,
         .fragmentCodeData = SHADER_BUILTIN_IRRADIANCE_CONVOLUTION_FRAG,
-        .fragmentCodeSize = SHADER_BUILTIN_IRRADIANCE_CONVOLUTION_FRAG_len
+        .fragmentCodeSize = SHADER_BUILTIN_IRRADIANCE_CONVOLUTION_FRAG_len,
     })
     , prefilterShader({
         .vertexCodeData = SHADER_BUILTIN_CUBEMAP_VERT,
         .vertexCodeSize = SHADER_BUILTIN_CUBEMAP_VERT_len,
         .fragmentCodeData = SHADER_BUILTIN_PREFILTER_FRAG,
-        .fragmentCodeSize = SHADER_BUILTIN_PREFILTER_FRAG_len
+        .fragmentCodeSize = SHADER_BUILTIN_PREFILTER_FRAG_len,
     })
     , brdfShader({
         .vertexCodeData = SHADER_BUILTIN_BRDF_VERT,
         .vertexCodeSize = SHADER_BUILTIN_BRDF_VERT_len,
         .fragmentCodeData = SHADER_BUILTIN_BRDF_FRAG,
-        .fragmentCodeSize = SHADER_BUILTIN_BRDF_FRAG_len
+        .fragmentCodeSize = SHADER_BUILTIN_BRDF_FRAG_len,
     }),
     pointLightUBO(GL_UNIFORM_BUFFER, 1, sizeof(GPUPointLightBlock), nullptr, GL_DYNAMIC_DRAW)
 {}

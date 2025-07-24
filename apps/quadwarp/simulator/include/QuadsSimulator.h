@@ -99,7 +99,7 @@ public:
             .wrapS = GL_CLAMP_TO_EDGE,
             .wrapT = GL_CLAMP_TO_EDGE,
             .minFilter = GL_NEAREST,
-            .magFilter = GL_NEAREST
+            .magFilter = GL_NEAREST,
         })
         , maskFrameRT({
             .width = quadsGenerator.remoteWindowSize.x,
@@ -110,7 +110,7 @@ public:
             .wrapS = GL_CLAMP_TO_EDGE,
             .wrapT = GL_CLAMP_TO_EDGE,
             .minFilter = GL_NEAREST,
-            .magFilter = GL_NEAREST
+            .magFilter = GL_NEAREST,
         })
         , maskTempRT({
             .width = quadsGenerator.remoteWindowSize.x,
@@ -121,7 +121,7 @@ public:
             .wrapS = GL_CLAMP_TO_EDGE,
             .wrapT = GL_CLAMP_TO_EDGE,
             .minFilter = GL_NEAREST,
-            .magFilter = GL_NEAREST
+            .magFilter = GL_NEAREST,
         })
         , copyRT({
             .width = quadsGenerator.remoteWindowSize.x,
@@ -132,7 +132,7 @@ public:
             .wrapS = GL_CLAMP_TO_EDGE,
             .wrapT = GL_CLAMP_TO_EDGE,
             .minFilter = GL_NEAREST,
-            .magFilter = GL_NEAREST
+            .magFilter = GL_NEAREST,
         })
         , meshScenes(2)
     {
@@ -149,7 +149,7 @@ public:
             .maxIndices = maxIndices,
             .vertexSize = sizeof(QuadVertex),
             .attributes = QuadVertex::getVertexInputAttributes(),
-            .material = new QuadMaterial({ .baseColorTexture = &refFrameRT.colorBuffer }),
+            .material = new QuadMaterial({ .baseColorTexture = &refFrameRT.colorBuffer ,}),
             .usage = GL_DYNAMIC_DRAW,
             .indirectDraw = true
         });
@@ -173,7 +173,7 @@ public:
         // We can use less vertices and indicies for the mask since it will be sparse
         meshParams.maxVertices /= 4;
         meshParams.maxIndices /= 4;
-        meshParams.material = new QuadMaterial({ .baseColorTexture = &maskFrameRT.colorBuffer });
+        meshParams.material = new QuadMaterial({ .baseColorTexture = &maskFrameRT.colorBuffer ,});
         maskFrameMesh = Mesh(meshParams);
         maskFrameNode.setEntity(&maskFrameMesh);
         maskFrameNode.frustumCulled = false;
@@ -187,7 +187,7 @@ public:
         depthMesh = Mesh({
             .maxVertices = maxVerticesDepth,
             .material = &depthMaterial,
-            .usage = GL_DYNAMIC_DRAW
+            .usage = GL_DYNAMIC_DRAW,
         });
         depthNode.setEntity(&depthMesh);
         depthNode.frustumCulled = false;
@@ -372,9 +372,9 @@ private:
     // Scenes with resulting mesh
     std::vector<Scene> meshScenes;
 
-    QuadMaterial wireframeMaterial = QuadMaterial({.baseColor = colors[0]});
-    QuadMaterial maskWireframeMaterial = QuadMaterial({.baseColor = colors[colors.size()-1]});
-    UnlitMaterial depthMaterial = UnlitMaterial({.baseColor = colors[2]});
+    QuadMaterial wireframeMaterial = QuadMaterial({.baseColor = colors[0],});
+    QuadMaterial maskWireframeMaterial = QuadMaterial({.baseColor = colors[colors.size()-1],});
+    UnlitMaterial depthMaterial = UnlitMaterial({.baseColor = colors[2],});
 };
 
 } // namespace quasar

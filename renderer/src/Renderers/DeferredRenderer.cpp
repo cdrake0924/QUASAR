@@ -14,15 +14,19 @@ DeferredRenderer::DeferredRenderer(const Config& config)
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-        .multiSampled = false
+        .multiSampled = false,
     })
-    , frameRT({ .width = config.width, .height = config.height, .multiSampled = false })
+    , frameRT({
+        .width = config.width,
+        .height = config.height,
+        .multiSampled = false,
+    })
 #if !defined(__APPLE__) && !defined(__ANDROID__)
     , frameRT_MS({
         .width = config.width,
         .height = config.height,
         .multiSampled = true,
-        .numSamples = config.pipeline.multiSampleState.numSamples
+        .numSamples = config.pipeline.multiSampleState.numSamples,
     })
 #endif
     , OpenGLRenderer(config)

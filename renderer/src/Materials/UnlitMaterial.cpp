@@ -15,7 +15,7 @@ UnlitMaterial::UnlitMaterial(const UnlitMaterialCreateParams& params)
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,
         .minFilter = GL_LINEAR_MIPMAP_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     };
 
     if (params.baseColorTexturePath != "") {
@@ -42,7 +42,7 @@ UnlitMaterial::UnlitMaterial(const UnlitMaterialCreateParams& params)
             .vertexCodeSize = SHADER_BUILTIN_COMMON_VERT_len,
             .fragmentCodeData = SHADER_BUILTIN_MATERIAL_UNLIT_FRAG,
             .fragmentCodeSize = SHADER_BUILTIN_MATERIAL_UNLIT_FRAG_len,
-            .defines = defines
+            .defines = defines,
         };
         shader = new Shader(unlitShaderParams);
     }

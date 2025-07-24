@@ -20,20 +20,20 @@ public:
     AmbientLight(const AmbientLightCreateParams& params)
         : Light({
             .color = params.color,
-            .intensity = params.intensity
+            .intensity = params.intensity,
         }) {}
 
     void bindMaterial(const Material* material) override {
-        GPUAmbientLight gpuAmbientLight = toGPULight();
+        const GPUAmbientLight gpuAmbientLight = toGPULight();
         material->getShader()->setVec3("ambientLight.color", gpuAmbientLight.color);
         material->getShader()->setFloat("ambientLight.intensity", gpuAmbientLight.intensity);
     }
 
-    GPUAmbientLight toGPULight() const {
-        GPUAmbientLight gpuAmbientLight{};
-        gpuAmbientLight.color = color;
-        gpuAmbientLight.intensity = intensity;
-        return gpuAmbientLight;
+    const GPUAmbientLight toGPULight() const {
+        return {
+            .color = color,
+            .intensity = intensity,
+        };
     }
 };
 

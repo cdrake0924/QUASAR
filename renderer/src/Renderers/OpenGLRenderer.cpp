@@ -90,7 +90,7 @@ OpenGLRenderer::OpenGLRenderer(const Config& config)
         .vertexCodeData = SHADER_BUILTIN_SKYBOX_VERT,
         .vertexCodeSize = SHADER_BUILTIN_SKYBOX_VERT_len,
         .fragmentCodeData = SHADER_BUILTIN_SKYBOX_FRAG,
-        .fragmentCodeSize = SHADER_BUILTIN_SKYBOX_FRAG_len
+        .fragmentCodeSize = SHADER_BUILTIN_SKYBOX_FRAG_len,
     })
     , outputFsQuad()
 {
@@ -205,7 +205,7 @@ RenderStats OpenGLRenderer::drawLightsImpl(Scene& scene, const Camera& camera) {
         if (pointLight->debug) {
             auto material = new UnlitMaterial({ .baseColor = glm::vec4(pointLight->color, 1.0) });
             Sphere light = Sphere({
-                .material = material
+                .material = material,
             }, 32, 32);
             Node nodeLight = Node(&light);
             nodeLight.setPosition(pointLight->position);

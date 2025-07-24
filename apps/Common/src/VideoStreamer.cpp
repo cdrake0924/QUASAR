@@ -46,7 +46,7 @@ VideoStreamer::VideoStreamer(
         .wrapT = colorBuffer.wrapT,
         .minFilter = colorBuffer.minFilter,
         .magFilter = colorBuffer.magFilter,
-        .multiSampled = colorBuffer.multiSampled
+        .multiSampled = colorBuffer.multiSampled,
     });
 
     int ret;

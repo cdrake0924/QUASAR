@@ -31,7 +31,7 @@ CubeMap::CubeMap(const CubeMapCreateParams& params)
         .wrapS = params.wrapS,
         .wrapT = params.wrapT,
         .minFilter = params.minFilter,
-        .magFilter = params.magFilter
+        .magFilter = params.magFilter,
     })
     , vertexBuffer(GL_ARRAY_BUFFER, sizeof(CubeMapVertex))
 {

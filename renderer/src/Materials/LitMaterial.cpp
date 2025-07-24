@@ -22,7 +22,7 @@ LitMaterial::LitMaterial(const LitMaterialCreateParams& params)
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,
         .minFilter = GL_LINEAR_MIPMAP_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     };
 
     if (params.albedoTexturePath != "") {

@@ -28,7 +28,7 @@ DepthPeelingRenderer::DepthPeelingRenderer(const Config& config, uint maxLayers,
 
     RenderTargetCreateParams params {
         .width = config.width,
-        .height = config.height
+        .height = config.height,
     };
     for (int i = 0; i < maxLayers; i++) {
         peelingLayers.emplace_back(params);

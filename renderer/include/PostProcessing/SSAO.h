@@ -21,19 +21,19 @@ public:
             .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
             .fragmentCodeData = SHADER_BUILTIN_SSAO_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_SSAO_FRAG_len
+            .fragmentCodeSize = SHADER_BUILTIN_SSAO_FRAG_len,
         })
         , ssaoBlurShader({
             .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
             .fragmentCodeData = SHADER_BUILTIN_SSAO_BLUR_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_SSAO_BLUR_FRAG_len
+            .fragmentCodeSize = SHADER_BUILTIN_SSAO_BLUR_FRAG_len,
         })
         , ssaoFinalShader({
             .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
             .fragmentCodeData = SHADER_BUILTIN_SSAO_FINAL_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_SSAO_FINAL_FRAG_len
+            .fragmentCodeSize = SHADER_BUILTIN_SSAO_FINAL_FRAG_len,
         })
         , ssaoRenderTarget({
             .width = windowSize.x,
@@ -42,7 +42,7 @@ public:
             .format = GL_RED,
             .type = GL_FLOAT,
             .minFilter = GL_NEAREST,
-            .magFilter = GL_NEAREST
+            .magFilter = GL_NEAREST,
         })
         , ssaoBlurRenderTarget({
             .width = windowSize.x,
@@ -51,7 +51,7 @@ public:
             .format = GL_RED,
             .type = GL_FLOAT,
             .minFilter = GL_NEAREST,
-            .magFilter = GL_NEAREST
+            .magFilter = GL_NEAREST,
         })
     {
         for (uint i = 0; i < 64; ++i) {
@@ -79,7 +79,7 @@ public:
             .wrapT = GL_REPEAT,
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
-            .data = reinterpret_cast<unsigned char*>(ssaoNoise.data())
+            .data = reinterpret_cast<unsigned char*>(ssaoNoise.data()),
         });
     }
 

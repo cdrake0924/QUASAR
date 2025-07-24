@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, videoURL, videoFormat);
 
     BC4DepthVideoTexture videoTextureDepth({
@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
+        .magFilter = GL_NEAREST,
     }, depthURL);
 
     // "Remote" camera
@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
     Mesh mesh = Mesh({
         .maxVertices = maxVertices,
         .maxIndices = maxIndices,
-        .material = new UnlitMaterial({ .baseColorTexture = &videoTextureColor }),
+        .material = new UnlitMaterial({ .baseColorTexture = &videoTextureColor ,}),
         .usage = GL_DYNAMIC_DRAW
     });
     Node node = Node(&mesh);
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
         .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
         .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
         .fragmentCodeData = SHADER_BUILTIN_SHOW_TEXTURE_FRAG,
-        .fragmentCodeSize = SHADER_BUILTIN_SHOW_TEXTURE_FRAG_len
+        .fragmentCodeSize = SHADER_BUILTIN_SHOW_TEXTURE_FRAG_len,
     });
 
     ComputeShader meshFromBC4Shader({
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, renderer, toneMapper, outputPath, config.targetFramerate);
 
     double elapsedTimeColor, elapsedTimeDepth;

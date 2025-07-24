@@ -112,7 +112,7 @@ public:
             .wrapS = GL_CLAMP_TO_EDGE,
             .wrapT = GL_CLAMP_TO_EDGE,
             .minFilter = GL_NEAREST,
-            .magFilter = GL_NEAREST
+            .magFilter = GL_NEAREST,
         };
         MeshSizeCreateParams meshParams({
             .maxVertices = maxVertices,
@@ -120,7 +120,7 @@ public:
             .vertexSize = sizeof(QuadVertex),
             .attributes = QuadVertex::getVertexInputAttributes(),
             .usage = GL_DYNAMIC_DRAW,
-            .indirectDraw = true
+            .indirectDraw = true,
         });
         for (int view = 0; view < maxViews; view++) {
             if (view == maxViews - 1) {
@@ -129,7 +129,7 @@ public:
             serverFrameRTs.emplace_back(rtParams);
             copyRTs.emplace_back(rtParams);
 
-            meshParams.material = new QuadMaterial({ .baseColorTexture = &serverFrameRTs[view].colorBuffer });
+            meshParams.material = new QuadMaterial({ .baseColorTexture = &serverFrameRTs[view].colorBuffer ,});
             // We can use less vertices and indicies for the additional views since they will be sparse
             meshParams.maxVertices = maxVertices / (view == 0 || view != maxViews - 1 ? 1 : 4);
             meshParams.maxIndices = maxIndices / (view == 0 || view != maxViews - 1 ? 1 : 4);
@@ -143,11 +143,11 @@ public:
             serverFrameWireframesLocal.emplace_back(&serverFrameMeshes[view]);
             serverFrameWireframesLocal[view].frustumCulled = false;
             serverFrameWireframesLocal[view].wireframe = true;
-            serverFrameWireframesLocal[view].overrideMaterial = new QuadMaterial({ .baseColor = color });
+            serverFrameWireframesLocal[view].overrideMaterial = new QuadMaterial({ .baseColor = color ,});
 
             MeshSizeCreateParams depthMeshParams = {
                 .maxVertices = maxVerticesDepth,
-                .material = new QuadMaterial({ .baseColor = color }),
+                .material = new QuadMaterial({ .baseColor = color ,}),
                 .usage = GL_DYNAMIC_DRAW
             };
             depthMeshes.emplace_back(depthMeshParams);
@@ -325,9 +325,9 @@ private:
 
     Scene meshScene;
 
-    QuadMaterial wireframeMaterial = QuadMaterial({.baseColor = colors[0]});
-    QuadMaterial maskWireframeMaterial = QuadMaterial({.baseColor = colors[colors.size()-1]});
-    UnlitMaterial depthMaterial = UnlitMaterial({.baseColor = colors[2]});
+    QuadMaterial wireframeMaterial = QuadMaterial({.baseColor = colors[0],});
+    QuadMaterial maskWireframeMaterial = QuadMaterial({.baseColor = colors[colors.size()-1],});
+    UnlitMaterial depthMaterial = UnlitMaterial({.baseColor = colors[2],});
 };
 
 } // namespace quasar

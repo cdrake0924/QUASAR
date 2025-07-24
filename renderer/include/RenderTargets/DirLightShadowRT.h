@@ -22,7 +22,7 @@ public:
             .wrapT = GL_CLAMP_TO_BORDER,
             .minFilter = GL_LINEAR,
             .magFilter = GL_LINEAR,
-            .hasBorder = true
+            .hasBorder = true,
         })
     {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);

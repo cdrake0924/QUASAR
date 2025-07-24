@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
+        .magFilter = GL_NEAREST,
     });
 
     // Shaders

@@ -76,11 +76,11 @@ public:
             .intensity = params.intensity,
             .shadowNear = params.shadowNear,
             .shadowFar = params.shadowFar,
-            .shadowMapRes = params.shadowMapRes
+            .shadowMapRes = params.shadowMapRes,
         })
         , shadowMapRenderTarget({
             .width = shadowMapRes,
-            .height = shadowMapRes
+            .height = shadowMapRes,
         })
         , boundingSphere(position, getLightRadius())
         , debug(params.debug)
@@ -140,17 +140,17 @@ public:
         }
     }
 
-    GPUPointLight toGPULight() const {
-        GPUPointLight gpulight{};
-        gpulight.position = position;
-        gpulight.color = color;
-        gpulight.intensity = intensity;
-        gpulight.constant = constant;
-        gpulight.linear = linear;
-        gpulight.quadratic = quadratic;
-        gpulight.farPlane = shadowFar;
-        gpulight.shadowIndex = channel;
-        return gpulight;
+    const GPUPointLight toGPULight() const {
+        return {
+            .position = position,
+            .shadowIndex = channel,
+            .color = color,
+            .intensity = intensity,
+            .constant = constant,
+            .linear = linear,
+            .quadratic = quadratic,
+            .farPlane = shadowFar,
+        };
     }
 
 private:

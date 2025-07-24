@@ -10,7 +10,7 @@ DirShadowMapMaterial::DirShadowMapMaterial() {
             .vertexCodeData = SHADER_BUILTIN_DIRSHADOW_VERT,
             .vertexCodeSize = SHADER_BUILTIN_DIRSHADOW_VERT_len,
             .fragmentCodeData = SHADER_BUILTIN_DIRSHADOW_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_DIRSHADOW_FRAG_len
+            .fragmentCodeSize = SHADER_BUILTIN_DIRSHADOW_FRAG_len,
         };
         shader = new Shader(dirShadowMapParams);
     }

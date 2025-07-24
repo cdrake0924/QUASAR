@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, videoURL, config.targetFramerate, targetBitrate, videoFormat);
 
     PoseReceiver poseReceiver = PoseReceiver(camera.get(), poseURL);

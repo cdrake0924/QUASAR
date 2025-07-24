@@ -20,7 +20,7 @@ DepthOffsets::DepthOffsets(const glm::uvec2& size)
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
+        .magFilter = GL_NEAREST,
     })
 #if !defined(__APPLE__) && !defined(__ANDROID__)
     , cudaImage(buffer)

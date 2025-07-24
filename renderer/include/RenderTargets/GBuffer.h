@@ -31,7 +31,7 @@ public:
             .minFilter = params.minFilter,
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
         , pbrBuffer({
             .width = width,
@@ -44,7 +44,7 @@ public:
             .minFilter = params.minFilter,
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
         , alphaBuffer({
             .width = width,
@@ -57,7 +57,7 @@ public:
             .minFilter = params.minFilter,
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
         , normalsBuffer({
             .width = width,
@@ -70,7 +70,7 @@ public:
             .minFilter = params.minFilter,
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
         , positionBuffer({
             .width = width,
@@ -83,7 +83,7 @@ public:
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
         , lightPositionBuffer({
             .width = width,
@@ -96,7 +96,7 @@ public:
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
         , idBuffer({
             .width = width,
@@ -109,7 +109,7 @@ public:
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
         , depthStencilBuffer({
             .width = width,
@@ -122,7 +122,7 @@ public:
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
             .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples
+            .numSamples = params.numSamples,
         })
     {
         framebuffer.bind();

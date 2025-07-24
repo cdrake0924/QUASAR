@@ -176,7 +176,7 @@ int SceneLoader::parseSkybox(jsmntok_t* tokens, int i, const char* json, Scene& 
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     };
 
     CubeMapCreateParams skyBoxParams{};

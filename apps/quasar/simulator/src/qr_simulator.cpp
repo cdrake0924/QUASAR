@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, renderer, holeFiller, outputPath, config.targetFramerate);
     CameraAnimator cameraAnimator(cameraPathFile);
 
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
         .networkJitterMs = networkJitter,
         .renderTimeMs = rerenderInterval / MILLISECONDS_IN_SECOND,
         .posePrediction = posePrediction,
-        .poseSmoothing = poseSmoothing
+        .poseSmoothing = poseSmoothing,
     });
 
     bool* showLayers = new bool[maxViews];

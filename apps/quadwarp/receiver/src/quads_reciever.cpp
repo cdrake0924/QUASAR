@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
     MeshFromQuads meshFromQuads(windowSize);
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
         .flipVertically = true,
-        .path = colorFileName
+        .path = colorFileName,
     });
 
     Mesh* mesh;
@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
         .maxIndices = numProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
         .vertexSize = sizeof(QuadVertex),
         .attributes = QuadVertex::getVertexInputAttributes(),
-        .material = new QuadMaterial({ .baseColorTexture = &colorTexture }),
+        .material = new QuadMaterial({ .baseColorTexture = &colorTexture ,}),
         .usage = GL_DYNAMIC_DRAW,
         .indirectDraw = true
     });

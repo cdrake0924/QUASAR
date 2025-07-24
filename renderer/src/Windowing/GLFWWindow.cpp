@@ -78,7 +78,7 @@ CursorPos GLFWWindow::getCursorPos() {
     glfwGetCursorPos(window, &xpos, &ypos);
     CursorPos pos{
         .x = xpos,
-        .y = ypos
+        .y = ypos,
     };
     return pos;
 }

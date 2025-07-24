@@ -461,7 +461,7 @@ Texture* Model::loadMaterialTexture(aiMaterial const* aiMat, aiString aiTextureP
                 .minFilter = GL_LINEAR_MIPMAP_LINEAR,
                 .magFilter = GL_LINEAR,
                 .alignment = 1,
-                .data = data
+                .data = data,
             });
 
             FileIO::freeImage(data);
@@ -479,7 +479,7 @@ Texture* Model::loadMaterialTexture(aiMaterial const* aiMat, aiString aiTextureP
             .minFilter = GL_LINEAR_MIPMAP_LINEAR,
             .magFilter = GL_LINEAR,
             .gammaCorrected = shouldGammaCorrect,
-            .path = texturePath
+            .path = texturePath,
         });
         texturesLoaded[texturePath] = texture;
         return texturesLoaded[texturePath];

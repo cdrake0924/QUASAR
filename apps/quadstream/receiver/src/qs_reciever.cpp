@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
     MeshFromQuads meshFromQuads(windowSize);
@@ -156,7 +156,7 @@ int main(int argc, char** argv) {
         .wrapT = GL_REPEAT,
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
-        .flipVertically = true
+        .flipVertically = true,
     };
     for (int view = 0; view < maxViews; view++) {
         Path colorFileName = dataPath.appendToName("color" + std::to_string(view));
@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
             .maxIndices = numProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
             .vertexSize = sizeof(QuadVertex),
             .attributes = QuadVertex::getVertexInputAttributes(),
-            .material = new QuadMaterial({ .baseColorTexture = &colorTextures[view] }),
+            .material = new QuadMaterial({ .baseColorTexture = &colorTextures[view] ,}),
             .usage = GL_DYNAMIC_DRAW,
             .indirectDraw = true
         });
@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
         nodeWireframes[view]->frustumCulled = false;
         nodeWireframes[view]->wireframe = true;
         nodeWireframes[view]->visible = false;
-        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
+        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] ,});
         scene.addChildNode(nodeWireframes[view]);
     }
 

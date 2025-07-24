@@ -14,7 +14,7 @@ public:
         ,  depthCubeMap({
             .width = params.width,
             .height = params.height,
-            .type = CubeMapType::SHADOW
+            .type = CubeMapType::SHADOW,
         })
     {
         framebuffer.bind();

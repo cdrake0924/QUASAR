@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
+        .magFilter = GL_NEAREST,
     });
     RenderTarget renderTargetCopy({
         .width = remoteWindowSize.x,
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
+        .magFilter = GL_NEAREST,
     });
 
     BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
+        .magFilter = GL_NEAREST,
     });
 
     glm::uvec2 depthMapSize = remoteWindowSize;
@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
     Mesh mesh = Mesh({
         .maxVertices = maxVertices,
         .maxIndices = maxIndices,
-        .material = new UnlitMaterial({ .baseColorTexture = &renderTarget.colorBuffer }),
+        .material = new UnlitMaterial({ .baseColorTexture = &renderTarget.colorBuffer ,}),
         .usage = GL_DYNAMIC_DRAW
     });
     Node node = Node(&mesh);
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, renderer, toneMapper, outputPath, config.targetFramerate);
     CameraAnimator cameraAnimator(cameraPathFile);
 
@@ -231,7 +231,7 @@ int main(int argc, char** argv) {
         .networkJitterMs = networkJitter,
         .renderTimeMs = rerenderInterval / MILLISECONDS_IN_SECOND,
         .posePrediction = posePrediction,
-        .poseSmoothing = poseSmoothing
+        .poseSmoothing = poseSmoothing,
     });
 
     RenderStats renderStats;

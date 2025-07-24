@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
         .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
         .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
         .fragmentCodeData = SHADER_COMMON_ATW_FRAG,
-        .fragmentCodeSize = SHADER_COMMON_ATW_FRAG_len
+        .fragmentCodeSize = SHADER_COMMON_ATW_FRAG_len,
     });
 
     // Post processing
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR
+        .magFilter = GL_LINEAR,
     }, renderer, toneMapper, outputPath, config.targetFramerate);
 
     bool atwEnabled = true;

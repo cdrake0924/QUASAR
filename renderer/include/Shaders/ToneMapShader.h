@@ -12,7 +12,7 @@ public:
             .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
             .fragmentCodeData = SHADER_BUILTIN_TONE_MAP_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_TONE_MAP_FRAG_len
+            .fragmentCodeSize = SHADER_BUILTIN_TONE_MAP_FRAG_len,
         })
     {}
 };

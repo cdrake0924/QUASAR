@@ -46,27 +46,27 @@ public:
             .intensity = params.intensity,
             .shadowNear = params.shadowNear,
             .shadowFar = params.shadowFar,
-            .shadowMapRes = params.shadowMapRes
+            .shadowMapRes = params.shadowMapRes,
         })
-        , shadowMapRenderTarget({ .width = shadowMapRes, .height = shadowMapRes })
+        , shadowMapRenderTarget({ .width = shadowMapRes, .height = shadowMapRes ,})
     {
         updateLightSpaceMatrix();
     }
 
     void bindMaterial(const Material* material) override {
-        GPUDirectionalLight gpuLight = toGPULight();
+        const GPUDirectionalLight gpuLight = toGPULight();
         material->getShader()->setVec3("directionalLight.direction", gpuLight.direction);
         material->getShader()->setVec3("directionalLight.color", gpuLight.color);
         material->getShader()->setFloat("directionalLight.intensity", gpuLight.intensity);
         updateLightSpaceMatrix();
     }
 
-    GPUDirectionalLight toGPULight() const {
-        GPUDirectionalLight gpuLight{};
-        gpuLight.direction = glm::normalize(direction);
-        gpuLight.color = color;
-        gpuLight.intensity = intensity;
-        return gpuLight;
+    const GPUDirectionalLight toGPULight() const {
+        return {
+           .direction = glm::normalize(direction),
+           .color = color,
+           .intensity = intensity,
+        };
     }
 
 private:
