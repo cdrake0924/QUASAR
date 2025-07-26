@@ -53,8 +53,9 @@ VideoStreamer::VideoStreamer(
         ",height=" + std::to_string(videoHeight) +
         ",framerate=" + std::to_string(targetFrameRate) + "/1 ! "
         "queue ! videoconvert ! video/x-raw,format=I420 ! "
-        "x264enc tune=zerolatency bitrate=" + std::to_string(targetBitRate / 1024) +
-        " speed-preset=ultrafast ! rtph264pay config-interval=1 pt=96 name=pay0 ! "
+        "nvh264enc preset=4 bitrate=" + std::to_string(targetBitRate / 1000) +
+        " rc-mode=cbr zerolatency=true ! "
+        "rtph264pay config-interval=1 pt=96 name=pay0 ! "
         "udpsink host=" + host + " port=" + std::to_string(port);
 
     GError* error = nullptr;

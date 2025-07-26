@@ -29,9 +29,10 @@ __Please visit the ☞☞ [QUASAR documentation](https://quasar-gfx.github.io/QU
 
 - **[args.hxx](https://github.com/Taywee/args)**
 - **[BS_thread_pool](https://github.com/bshoshany/thread-pool)**
+- **[FFmpeg](https://ffmpeg.org/)**
 - **[glfw](https://github.com/glfw/glfw)**
 - **[glm](https://github.com/g-truc/glm)**
-- **[gstreamer](https://gstreamer.freedesktop.org/)**
+- **[GStreamer](https://gstreamer.freedesktop.org/)**
 - **[imgui](https://github.com/ocornut/imgui)**
 - **[jsmn](https://github.com/zserge/jsmn)**
 - **[assimp](https://github.com/assimp/assimp)**
