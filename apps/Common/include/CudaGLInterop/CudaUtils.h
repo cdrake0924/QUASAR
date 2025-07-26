@@ -1,7 +1,7 @@
 #ifndef CUDA_UTILS_H
 #define CUDA_UTILS_H
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 
 #include <spdlog/spdlog.h>
 
@@ -28,6 +28,6 @@ CUdevice checkCudaDevice();
 
 } // namespace quasar
 
-#endif // !defined(__APPLE__) && !defined(__ANDROID__)
+#endif
 
 #endif // CUDA_UTILS_H

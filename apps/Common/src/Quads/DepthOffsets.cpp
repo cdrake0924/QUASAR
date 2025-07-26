@@ -22,7 +22,7 @@ DepthOffsets::DepthOffsets(const glm::uvec2& size)
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     , cudaImage(buffer)
 #endif
     , data(size.x * size.y * 4 * sizeof(uint16_t))
@@ -38,7 +38,7 @@ uint DepthOffsets::loadFromMemory(std::vector<char>& compressedData, bool decomp
     }
     stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     cudaImage.copyToArray(size.x * 4 * sizeof(uint16_t), size.y, size.x * 4 * sizeof(uint16_t), data.data());
 #else
     buffer.setData(size.x, size.y, data.data());
@@ -58,7 +58,7 @@ uint DepthOffsets::loadFromFile(const std::string& filename, uint* numBytesLoade
     return loadFromMemory(depthOffsetsCompressed, compressed);
 }
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 uint DepthOffsets::saveToMemory(std::vector<char>& compressedData, bool compress) {
     cudaImage.copyToArray(size.x * 4 * sizeof(uint16_t), size.y, size.x * 4 * sizeof(uint16_t), data.data());
     compressedData.resize(data.size());

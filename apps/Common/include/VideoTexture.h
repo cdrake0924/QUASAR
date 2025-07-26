@@ -64,16 +64,14 @@ private:
     };
     std::deque<FrameData> frames;
 
+    GstElement* pipeline = nullptr;
+    GstElement* appsink = nullptr;
+
     pose_id_t unpackPoseIDFromFrame(const uint8_t* data, int width, int height);
 
     void receiveFrame();
-
-    // GStreamer components
-    GstElement* pipeline = nullptr;
-    GstElement* appsink = nullptr;
 };
 
 } // namespace quasar
 
 #endif // VIDEO_TEXTURE_H
-

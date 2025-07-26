@@ -278,7 +278,7 @@ uint QuadsGenerator::saveQuadsToMemory(std::vector<char>& compressedData, bool c
 }
 
 uint QuadsGenerator::saveDepthOffsetsToMemory(std::vector<char>& compressedData, bool compress) {
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     return depthOffsets.saveToMemory(compressedData, compress);
 #else
     return 0;
@@ -293,7 +293,7 @@ uint QuadsGenerator::saveToFile(const std::string& filename) {
 }
 
 uint QuadsGenerator::saveDepthOffsetsToFile(const std::string& filename) {
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     return depthOffsets.saveToFile(filename);
 #else
     return 0;

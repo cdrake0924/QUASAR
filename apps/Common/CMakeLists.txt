@@ -14,11 +14,11 @@ find_package(Threads REQUIRED)
 set(LIBS ${LIBS} Threads::Threads)
 
 # CUDA
-if (NOT APPLE)
-    find_package(CUDAToolkit REQUIRED)
-    set(LIBS ${LIBS} ${CUDA_LIBRARIES})
-    set(LIBS ${LIBS} CUDA::cudart)
-    set(LIBS ${LIBS} CUDA::cuda_driver)
+set(HAS_CUDA 0)
+find_package(CUDAToolkit QUIET)
+if (CUDAToolkit_FOUND)
+    set(LIBS ${LIBS} CUDA::cudart CUDA::cuda_driver)
+    set(HAS_CUDA 1)
 endif()
 
 # ZLIB
@@ -64,6 +64,9 @@ file(GLOB_RECURSE SRCS
 add_library(${TARGET} STATIC ${PUBLIC_HDRS} ${SRCS})
 
 target_compile_options(${TARGET} PRIVATE -Wno-cast-calling-convention -Wunused-variable)
+if (HAS_CUDA)
+    target_compile_options(${TARGET} PUBLIC -DHAS_CUDA)
+endif()
 
 target_include_directories(${TARGET} PUBLIC ${PUBLIC_HDR_DIR} ${CMAKE_CURRENT_BINARY_DIR}/shaders
     ${GSTREAMER_INCLUDE_DIRS} ${GSTREAMER_APP_INCLUDE_DIRS})

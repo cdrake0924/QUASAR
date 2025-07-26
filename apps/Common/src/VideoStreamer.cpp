@@ -18,7 +18,7 @@ VideoStreamer::VideoStreamer(
     , videoWidth(params.width + poseIDOffset)
     , videoHeight(params.height)
     , RenderTarget(params)
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     , cudaGLImage(colorBuffer)
 #endif
 {
@@ -131,7 +131,7 @@ void VideoStreamer::setTargetBitRate(uint targetBitRate) {
 }
 
 void VideoStreamer::sendFrame(pose_id_t poseID) {
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     bind();
     blitToRenderTarget(*renderTargetCopy);
     unbind();
@@ -184,7 +184,7 @@ void VideoStreamer::encodeAndSendFrames() {
         frameReady = false;
 
         time_t startCopyTime = timeutils::getTimeMicros();
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
         auto cudaStruct = cudaBufferQueue.front();
         pose_id_t poseIDToSend = cudaStruct.poseID;
         cudaArray* cudaBuffer = cudaStruct.buffer;

@@ -7,7 +7,7 @@
 #include <Utils/FileIO.h>
 #include <Codec/ZSTDCodec.h>
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLBuffer.h>
 #endif
 
@@ -62,7 +62,7 @@ private:
 
     std::vector<char> data;
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     CudaGLBuffer cudaBufferNormalSphericals;
     CudaGLBuffer cudaBufferDepths;
     CudaGLBuffer cudaBufferOffsetSizeFlatteneds;

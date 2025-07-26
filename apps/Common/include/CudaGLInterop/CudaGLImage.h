@@ -1,7 +1,7 @@
 #ifndef CUDA_IMAGE_H
 #define CUDA_IMAGE_H
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 
 #include <Texture.h>
 

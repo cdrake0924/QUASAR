@@ -1,4 +1,4 @@
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 
 #include <spdlog/spdlog.h>
 

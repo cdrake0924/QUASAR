@@ -15,7 +15,7 @@
 #include <RenderTargets/RenderTarget.h>
 #include <CameraPose.h>
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLImage.h>
 #endif
 
@@ -62,7 +62,7 @@ private:
 
     RenderTarget* renderTargetCopy;
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     CudaGLImage cudaGLImage;
     struct CudaBuffer {
         pose_id_t poseID;

@@ -28,7 +28,7 @@ extern "C" {
 
 #include <PostProcessing/PostProcessingEffect.h>
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLImage.h>
 #endif
 
@@ -116,7 +116,7 @@ private:
     std::condition_variable queueCV;
 
     int64_t recordingStartTime;
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     CudaGLImage cudaImage;
 #endif
 

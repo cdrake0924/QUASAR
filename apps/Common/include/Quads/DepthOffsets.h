@@ -5,7 +5,7 @@
 #include <Utils/FileIO.h>
 #include <Codec/ZSTDCodec.h>
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLImage.h>
 #endif
 
@@ -26,7 +26,7 @@ public:
 
     uint loadFromMemory(std::vector<char>& compressedData, bool decompress = true);
     uint loadFromFile(const std::string& filename, uint* numBytesLoaded = nullptr, bool compressed = true);
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     uint saveToMemory(std::vector<char>& compressedData, bool compress = true);
     uint saveToFile(const std::string& filename);
 #endif
@@ -36,7 +36,7 @@ private:
 
     std::vector<char> data;
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     CudaGLImage cudaImage;
 #endif
 };

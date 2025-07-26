@@ -21,7 +21,7 @@ Recorder::Recorder(
     , numThreads(numThreads)
     , outputPath(outputPath)
     , outputFormats({"MP4", "PNG", "JPG"})
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     , cudaImage(colorBuffer)
 #endif
 {
@@ -111,7 +111,7 @@ void Recorder::captureFrame(const Camera& camera) {
 
     std::vector<uint8_t> renderTargetData(width * height * 4);
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     cudaImage.copyToArray(
         width * 4, height, width * 4, renderTargetData.data());
 #else

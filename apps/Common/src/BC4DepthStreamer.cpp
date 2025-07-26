@@ -30,7 +30,7 @@ BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const
     data = std::vector<char>(sizeof(pose_id_t) + compressedSize * sizeof(BC4Block));
     bc4CompressedBuffer = Buffer(GL_SHADER_STORAGE_BUFFER, compressedSize, sizeof(BC4Block), nullptr, GL_DYNAMIC_DRAW);
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
         cudaBufferBc4.registerBuffer(bc4CompressedBuffer);
 
     if (!receiverURL.empty()) {
@@ -47,7 +47,7 @@ BC4DepthStreamer::~BC4DepthStreamer() {
 }
 
 void BC4DepthStreamer::close() {
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     running = false;
     dataReady = true;
     cv.notify_one();
@@ -84,7 +84,7 @@ void BC4DepthStreamer::copyFrameToCPU(pose_id_t poseID, void* cudaPtr) {
     std::memcpy(data.data(), &poseID, sizeof(pose_id_t));
 
     // Copy compressed BC4 data from GPU to CPU
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     if (cudaPtr == nullptr) {
         cudaPtr = cudaBufferBc4.getPtr();
     }
@@ -120,7 +120,7 @@ void BC4DepthStreamer::saveToFile(const std::string& filename) {
 void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
     compress();
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     void* cudaPtr = cudaBufferBc4.getPtr();
 
     {
@@ -159,7 +159,7 @@ void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
 #endif
 }
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 void BC4DepthStreamer::sendData() {
     time_t prevTime = timeutils::getTimeMicros();
 

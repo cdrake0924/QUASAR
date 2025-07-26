@@ -1,7 +1,7 @@
 #ifndef CUDA_BUFFER_H
 #define CUDA_BUFFER_H
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 
 #include <Buffer.h>
 

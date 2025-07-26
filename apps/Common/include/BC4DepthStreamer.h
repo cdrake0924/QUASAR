@@ -15,7 +15,7 @@
 #include <Codec/BC4.h>
 #include <Codec/ZSTDCodec.h>
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLBuffer.h>
 #endif
 
@@ -66,7 +66,7 @@ private:
     uint applyCodec();
     void copyFrameToCPU(pose_id_t poseID = -1, void* cudaPtr = nullptr);
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     CudaGLBuffer cudaBufferBc4;
 
     struct CudaBuffer {

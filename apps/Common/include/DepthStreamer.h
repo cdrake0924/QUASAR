@@ -9,7 +9,7 @@
 
 #include <CameraPose.h>
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLImage.h>
 #endif
 
@@ -50,7 +50,7 @@ private:
     std::vector<char> data;
     RenderTarget renderTargetCopy;
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     CudaGLImage cudaImage;
 
     struct CudaBuffer {

@@ -25,7 +25,7 @@ DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string
 {
     spdlog::info("Created DepthStreamer that sends to URL: {}", receiverURL);
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     cudaImage.registerTexture(renderTargetCopy.colorBuffer);
 
     // Start data sending thread
@@ -39,7 +39,7 @@ DepthStreamer::~DepthStreamer() {
 }
 
 void DepthStreamer::close() {
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     running = false;
 
     // Send dummy to unblock thread
@@ -53,7 +53,7 @@ void DepthStreamer::close() {
 }
 
 void DepthStreamer::sendFrame(pose_id_t poseID) {
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     bind();
     blitToRenderTarget(renderTargetCopy);
     unbind();
@@ -84,7 +84,7 @@ void DepthStreamer::sendFrame(pose_id_t poseID) {
 #endif
 }
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
 void DepthStreamer::sendData() {
     float prevTime = timeutils::getTimeMicros();
 

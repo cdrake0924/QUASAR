@@ -15,7 +15,7 @@ QuadBuffers::QuadBuffers(uint maxProxies)
     , normalSphericalsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
     , depthsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(float), nullptr, GL_DYNAMIC_COPY)
     , offsetSizeFlattenedsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     , cudaBufferNormalSphericals(normalSphericalsBuffer)
     , cudaBufferDepths(depthsBuffer)
     , cudaBufferOffsetSizeFlatteneds(offsetSizeFlattenedsBuffer)
@@ -104,7 +104,7 @@ uint QuadBuffers::saveToFile(const std::string& filename) {
 uint QuadBuffers::updateDataBuffer() {
     uint bufferOffset = 0;
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(HAS_CUDA)
     void* cudaPtr;
 
     memcpy(data.data(), &numProxies, sizeof(uint));
