@@ -339,19 +339,22 @@
     <p>Minimum requirements:</p>
     <ul>
         <li>Any simulator or server code assumes at least OpenGL 4.3. Scene viewing and client code assumes at least OpenGL 4.1 or OpenGL ES 3.2.</li>
-        <li>High-end NVIDIA GPUs and drivers with CUDA are <strong>highly</strong> reccomended, especially for streaming servers. Ubuntu machines with NVIDIA GPUs can run the scene viewer, simulators, streaming servers, and clients.</li>
+        <li>High-end NVIDIA GPUs and drivers with CUDA are <strong>highly</strong> reccomended, especially for streaming servers. Ubuntu machines with NVIDIA GPUs can run the scene viewer, simulators, streaming servers, and streaming clients. The code has been tested with <strong>CUDA 12 and up</strong>.</li>
     </ul>
     <p>To download QUASAR, clone the repository at <a href="https://github.com/quasar-gfx/QUASAR">https://github.com/quasar-gfx/QUASAR</a> using git:</p>
     <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/quasar-gfx/QUASAR</span></code></pre></div>
 
-    <p>QUASAR uses <a href="https://gstreamer.freedesktop.org/">GStreamer</a> to send video. The install instructions below will contain the necessary GStreamer packages, but you can also refer to the download instructions on their webpage: <a href="https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c">https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c</a>.</p>
+    <p>QUASAR uses <a href="https://gstreamer.freedesktop.org/">GStreamer</a> to send video. The install commands below will contain the necessary GStreamer packages, but you can also refer to the download instructions on their webpage: <a href="https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c">https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c</a>.</p>
+    <p>After following the instructions below for your OS, <strong>please make sure that GStreamer is installed</strong>. You can check by running:</p>
+    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex"></span>pkg-config --modversion gstreamer-1.0</code></pre></div>
+    <p>It should print the version number.</p>
 
     <h3 id="linux">Linux</h3>
     <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">sudo apt install cmake libglew-dev pkgconf libao-dev libmpg123-dev ffmpeg libavdevice-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio</span></code></pre></div>
     <p>We recommend using Ubuntu, as some Linux distributions might not have all the required packages available.</p>
 
     <h3 id="mac">Mac</h3>
-    <p>MacOS devices can run the scene viewer and the ATW client <strong>only</strong>. They are <strong>not</strong> recommended to run the servers or simulators, and cannot run any other clients.</p>
+    <p>MacOS devices can run the scene viewer and the ATW client <strong>only</strong>. They are <strong>not</strong> recommended to run the streaming servers or simulators, and cannot run any other clients.</p>
     <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">brew install cmake glew pkgconf ffmpeg gstreamer</span></code></pre></div>
 
     <h3 id="quest">Quest</h3>

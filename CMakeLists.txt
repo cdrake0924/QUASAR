@@ -13,14 +13,14 @@ set(RENDERER_SHADERS_DIR ${RENDERER_DIR}/shaders)
 set(EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 set(ASSETS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/assets)
 
-# set required libs
+# Set required libs
 set(RENDERER_LIBS )
 
 if (UNIX)
     set(RENDERER_LIBS ${RENDERER_LIBS} ${CMAKE_DL_LIBS})
 endif()
 
-# add third party libraries
+# Add third party libraries
 # glad
 if (NOT ANDROID)
     add_library(glad ${EXTERNAL_DIR}/glad/glad.c)
@@ -39,10 +39,11 @@ endif()
 
 # imgui
 if (NOT ANDROID)
+    # make imgui use bundled glfw
     add_subdirectory(${EXTERNAL_DIR}/imgui/tnt)
-    if (LINUX)
-        target_compile_options(imgui INTERFACE -Wdeprecated-enum-enum-conversion)
-    endif()
+    target_link_libraries(imgui PUBLIC glfw)
+    target_include_directories(imgui PUBLIC ${EXTERNAL_DIR}/glfw/include)
+    target_compile_options(imgui INTERFACE -Wno-deprecated-enum-enum-conversion)
     set(RENDERER_LIBS ${RENDERER_LIBS} imgui)
 endif()
 
@@ -74,17 +75,17 @@ set(ZSTD_BUILD_TESTS OFF)
 add_subdirectory(${EXTERNAL_DIR}/zstd/build/cmake)
 set(RENDERER_LIBS ${RENDERER_LIBS} libzstd_static)
 
-# add and link renderer library
+# Add and link renderer library
 add_subdirectory(${RENDERER_DIR})
 target_include_directories(renderer PUBLIC ${EXTERNAL_DIR})
 target_link_libraries(renderer PUBLIC ${RENDERER_LIBS})
 
-# create target library
+# Create target library
 add_library(${TARGET} INTERFACE)
 target_include_directories(${TARGET} INTERFACE ${EXTERNAL_DIR})
 target_link_libraries(${TARGET} INTERFACE renderer)
 
-# add apps
+# Add apps
 if (QUASAR_BUILD_APPS)
     add_subdirectory(apps)
 
