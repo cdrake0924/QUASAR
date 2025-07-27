@@ -39,11 +39,10 @@ endif()
 
 # imgui
 if (NOT ANDROID)
-    # make imgui use bundled glfw
     add_subdirectory(${EXTERNAL_DIR}/imgui/tnt)
+    # use bundled glfw
     target_link_libraries(imgui PUBLIC glfw)
     target_include_directories(imgui PUBLIC ${EXTERNAL_DIR}/glfw/include)
-    target_compile_options(imgui INTERFACE -Wno-deprecated-enum-enum-conversion)
     set(RENDERER_LIBS ${RENDERER_LIBS} imgui)
 endif()
 

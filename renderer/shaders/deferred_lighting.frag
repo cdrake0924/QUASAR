@@ -97,5 +97,5 @@ void main() {
 
     radianceOut = radianceOut + ambient;
 
-    FragColor = vec4(radianceOut, 1.0); // set alpha to 1.0 for now
+    FragColor = vec4(radianceOut, alpha);
 }
