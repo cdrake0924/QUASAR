@@ -1,18 +1,18 @@
 layout(location = 0) in vec2 aPos;
-layout(location = 1) in vec2 aTexCoords;
+layout(location = 1) in vec2 aTexCoord;
 
 #ifdef ANDROID
 layout(num_views = 2) in;
 #endif
 
-out vec2 TexCoords;
+out vec2 TexCoord;
 
 #ifdef ANDROID
 flat out float IsLeftEye;
 #endif
 
 void main() {
-    TexCoords = aTexCoords;
+    TexCoord = aTexCoord;
 #ifdef ANDROID
     IsLeftEye = (float(gl_ViewID_OVR) < 0.5) ? 1.0 : 0.0;
 #endif

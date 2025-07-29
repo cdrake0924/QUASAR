@@ -9,7 +9,7 @@ struct Vertex {
     vec3 position;
     vec3 color;
     vec3 normal;
-    vec2 texCoords;
+    vec2 texCoord;
     vec3 tangent;
     vec3 bitangent;
 };
@@ -58,7 +58,7 @@ void main() {
     uint shaderIndex = uint(gl_GlobalInvocationID.y * size.x + gl_GlobalInvocationID.x);
     verticesDepth[shaderIndex].position = viewToWorld(viewInverse, pixelCoordsViewCenter);
     verticesDepth[shaderIndex].color = vec3(1.0, 1.0, 1.0);
-    verticesDepth[shaderIndex].texCoords = viewToScreen(projection, pixelCoordsViewCenter);
+    verticesDepth[shaderIndex].texCoord = viewToScreen(projection, pixelCoordsViewCenter);
 
     if (pixelCoord.x < size.x - surfelSize && pixelCoord.y < size.y - surfelSize) {
         /************************

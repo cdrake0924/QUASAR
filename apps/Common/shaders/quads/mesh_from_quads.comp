@@ -5,7 +5,7 @@ layout(local_size_x = THREADS_PER_LOCALGROUP, local_size_y = THREADS_PER_LOCALGR
 
 struct Vertex {
     vec3 position;
-    vec3 texCoords3D;
+    vec3 texCoord3D;
 };
 
 layout(std430, binding = 0) buffer MeshBufferSizes {
@@ -224,10 +224,10 @@ void storeSurfel(in Quad quad, in Quad2D uvsSrc, in QuadMapData quadMapData) {
         uvqs[i] = uvqs[i] * ((vertDistanceToCenter[i] + vertDistanceToCenter[i2]) / vertDistanceToCenter[i2]);
     }
 
-    vertices[vertexIdxBottomLeft].texCoords3D  = uvqs[0];
-    vertices[vertexIdxBottomRight].texCoords3D = uvqs[1];
-    vertices[vertexIdxTopRight].texCoords3D    = uvqs[2];
-    vertices[vertexIdxTopLeft].texCoords3D     = uvqs[3];
+    vertices[vertexIdxBottomLeft].texCoord3D  = uvqs[0];
+    vertices[vertexIdxBottomRight].texCoord3D = uvqs[1];
+    vertices[vertexIdxTopRight].texCoord3D    = uvqs[2];
+    vertices[vertexIdxTopLeft].texCoord3D     = uvqs[3];
 
     uint indexIdxBase = atomicAdd(numIndices, INDICES_IN_A_QUAD);
 

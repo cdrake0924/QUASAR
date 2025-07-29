@@ -14,7 +14,7 @@ class FullScreenQuad {
 private:
     struct FSQuadVertex {
         glm::vec2 position;
-        glm::vec2 texCoords;
+        glm::vec2 texCoord;
     };
 
 public:
@@ -46,7 +46,7 @@ public:
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(FSQuadVertex), (void*)offsetof(FSQuadVertex, position));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FSQuadVertex), (void*)offsetof(FSQuadVertex, texCoords));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FSQuadVertex), (void*)offsetof(FSQuadVertex, texCoord));
 
         glBindVertexArray(0);
     }

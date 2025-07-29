@@ -8,7 +8,7 @@ layout(location = 2) out uvec4 FragIDs;
 
 in VertexData {
     flat uint drawID;
-    vec2 TexCoords;
+    vec2 TexCoord;
     vec3 FragPosView;
     vec3 FragPosWorld;
     vec3 Color;
@@ -95,15 +95,15 @@ vec3 getNormal() {
     if (any(isnan(B))) {
         vec3 q1 = dFdx(fsIn.FragPosWorld);
         vec3 q2 = dFdy(fsIn.FragPosWorld);
-        vec2 st1 = dFdx(fsIn.TexCoords);
-        vec2 st2 = dFdy(fsIn.TexCoords);
+        vec2 st1 = dFdx(fsIn.TexCoord);
+        vec2 st2 = dFdy(fsIn.TexCoord);
 
         T = normalize(q1 * st2.t - q2 * st1.t);
         B = -normalize(cross(N, T));
     }
 
 	mat3 TBN = mat3(T, B, N);
-	vec3 tangentNormal = texture(material.normalMap, fsIn.TexCoords).xyz * 2.0 - 1.0;
+	vec3 tangentNormal = texture(material.normalMap, fsIn.TexCoord).xyz * 2.0 - 1.0;
 	return normalize(TBN * tangentNormal);
 }
 
@@ -182,7 +182,7 @@ void main() {
 
     vec4 baseColor;
     if (material.hasBaseColorMap) {
-        baseColor = texture(material.baseColorMap, fsIn.TexCoords) * material.baseColorFactor;
+        baseColor = texture(material.baseColorMap, fsIn.TexCoord) * material.baseColorFactor;
     }
     else {
         baseColor = material.baseColorFactor;
@@ -198,13 +198,13 @@ void main() {
     // Metallic and roughness properties
     float metallic, roughness;
     if (material.metalRoughnessCombined) {
-        vec4 mrSample = texture(material.metallicMap, fsIn.TexCoords);
+        vec4 mrSample = texture(material.metallicMap, fsIn.TexCoord);
         metallic = (!material.hasMetallicMap) ? material.metallic : mrSample.b;
         roughness = (!material.hasRoughnessMap) ? material.roughness : mrSample.g;
     }
     else {
-        metallic = (!material.hasMetallicMap) ? material.metallic : texture(material.metallicMap, fsIn.TexCoords).r;
-        roughness = (!material.hasRoughnessMap) ? material.roughness : texture(material.roughnessMap, fsIn.TexCoords).r;
+        metallic = (!material.hasMetallicMap) ? material.metallic : texture(material.metallicMap, fsIn.TexCoord).r;
+        roughness = (!material.hasRoughnessMap) ? material.roughness : texture(material.roughnessMap, fsIn.TexCoord).r;
     }
     metallic = material.metallicFactor * metallic;
     roughness = material.roughnessFactor * roughness;
@@ -242,13 +242,13 @@ void main() {
 
     // Apply emissive component
     if (material.hasEmissiveMap) {
-        vec3 emissive = texture(material.emissiveMap, fsIn.TexCoords).rgb;
+        vec3 emissive = texture(material.emissiveMap, fsIn.TexCoord).rgb;
         radianceOut += material.emissiveFactor * emissive;
     }
 
     // Apply ambient occlusion
     if (material.hasAOMap) {
-        float ao = texture(material.aoMap, fsIn.TexCoords).r;
+        float ao = texture(material.aoMap, fsIn.TexCoord).r;
         ambient *= ao;
     }
 

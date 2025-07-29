@@ -1,6 +1,6 @@
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
@@ -22,7 +22,7 @@ vec3 randomColor(uint id) {
 }
 
 void main() {
-    uvec3 ids = texture(idBuffer, TexCoords).rgb;
+    uvec3 ids = texture(idBuffer, TexCoord).rgb;
     uint id = showObjectIDs ? ids.r : ids.g;
 
     vec3 col = randomColor(id);

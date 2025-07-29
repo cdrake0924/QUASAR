@@ -3,7 +3,7 @@
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aColor;
 layout(location = 2) in vec3 aNormal;
-layout(location = 3) in vec2 aTexCoords;
+layout(location = 3) in vec2 aTexCoord;
 layout(location = 4) in vec3 aTangent;
 layout(location = 5) in vec3 aBitangent;
 
@@ -13,7 +13,7 @@ layout(num_views = 2) in;
 
 out VertexData {
     flat uint drawID;
-    vec2 TexCoords;
+    vec2 TexCoord;
     vec3 FragPosView;
     vec3 FragPosWorld;
     vec3 Color;
@@ -43,7 +43,7 @@ void main() {
     vec4 viewPos = viewMatrix * worldPos;
 
     vsOut.drawID = drawID;
-    vsOut.TexCoords = aTexCoords;
+    vsOut.TexCoord = aTexCoord;
     vsOut.FragPosView = viewPos.xyz;
     vsOut.FragPosWorld = worldPos.xyz;
     vsOut.Color = aColor;

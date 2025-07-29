@@ -2,7 +2,7 @@
 
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
@@ -16,8 +16,8 @@ uniform bool toneMap = true;
 uniform float exposure = 1.0;
 
 void main() {
-    vec3 color = texture(screenColor, TexCoords).rgb;
-    float ambient = texture(ssao, TexCoords).r;
+    vec3 color = texture(screenColor, TexCoord).rgb;
+    float ambient = texture(ssao, TexCoord).r;
     color *= ambient;
 
     FragColor = vec4(color, 1.0);

@@ -2,7 +2,7 @@
 
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
@@ -14,7 +14,7 @@ uniform bool toneMap;
 uniform float exposure;
 
 void main() {
-    vec3 color = texture(screenColor, TexCoords).rgb;
+    vec3 color = texture(screenColor, TexCoord).rgb;
     if (toneMap) {
         color = applyToneMapExponential(color, exposure);
         color = linearToSRGB(color);

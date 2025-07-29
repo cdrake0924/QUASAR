@@ -221,7 +221,7 @@ Mesh* Model::processMesh(aiMesh* mesh, const aiScene* scene, LitMaterial* materi
             else {
                 vec.y = mesh->mTextureCoords[0][i].y;
             }
-            vertex.texCoords = vec;
+            vertex.texCoord = vec;
         }
 
         if (mesh->HasTangentsAndBitangents()) {

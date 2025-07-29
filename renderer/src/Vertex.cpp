@@ -2,21 +2,20 @@
 
 using namespace quasar;
 
-uint32_t Vertex::nextID = 0;
-
-Vertex::Vertex(glm::vec3 position)
+Vertex::Vertex(const glm::vec3& position)
     : position(position)
 {}
-Vertex::Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords)
-    : position(position), normal(normal), texCoords(texCoords)
+Vertex::Vertex(const glm::vec3& position, const glm::vec3& normal, const glm::vec2& texCoord)
+    : position(position), normal(normal), texCoord(texCoord)
 {}
-Vertex::Vertex(glm::vec3 position, glm::vec3 color, glm::vec3 normal)
+Vertex::Vertex(const glm::vec3& position, const glm::vec3& color, const glm::vec3& normal)
     : position(position), color(color), normal(normal)
 {}
-Vertex::Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords, glm::vec3 tangent, glm::vec3 bitangent)
-    : position(position), normal(normal), texCoords(texCoords), tangent(tangent), bitangent(bitangent)
+Vertex::Vertex(const glm::vec3& position, const glm::vec3& normal, const glm::vec2& texCoord, const glm::vec3& tangent, const glm::vec3& bitangent)
+    : position(position), normal(normal), texCoord(texCoord), tangent(tangent), bitangent(bitangent)
 {}
-Vertex::Vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 texCoords, glm::vec3 tangent)
-    : position(position), normal(normal), texCoords(texCoords), tangent(tangent)
-{    bitangent = glm::cross(normal, tangent);
+Vertex::Vertex(const glm::vec3& position, const glm::vec3& normal, const glm::vec2& texCoord, const glm::vec3& tangent)
+    : position(position), normal(normal), texCoord(texCoord), tangent(tangent)
+{
+    bitangent = glm::cross(normal, tangent);
 }

@@ -3,7 +3,7 @@
 
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
@@ -19,18 +19,18 @@ uniform float depthThreshold;
 uniform int searchRadius = 3;
 
 void main() {
-    vec3 color = texture(screenColor, TexCoords).rgb;
-    float centerDepth = texture(screenDepth, TexCoords).r;
+    vec3 color = texture(screenColor, TexCoord).rgb;
+    float centerDepth = texture(screenDepth, TexCoord).r;
 
     if (centerDepth >= MAX_DEPTH) {
         vec2 textureSize = vec2(textureSize(screenColor, 0));
 
         bool isSkyBox = true;
         for (int i = 1; i <= searchRadius; i++) {
-            float topDepth = texture(screenDepth, TexCoords + vec2(0.0, i / textureSize.y)).r;
-            float bottomDepth = texture(screenDepth, TexCoords - vec2(0.0, i / textureSize.y)).r;
-            float leftDepth = texture(screenDepth, TexCoords - vec2(i / textureSize.x, 0.0)).r;
-            float rightDepth = texture(screenDepth, TexCoords + vec2(i / textureSize.x, 0.0)).r;
+            float topDepth = texture(screenDepth, TexCoord + vec2(0.0, i / textureSize.y)).r;
+            float bottomDepth = texture(screenDepth, TexCoord - vec2(0.0, i / textureSize.y)).r;
+            float leftDepth = texture(screenDepth, TexCoord - vec2(i / textureSize.x, 0.0)).r;
+            float rightDepth = texture(screenDepth, TexCoord + vec2(i / textureSize.x, 0.0)).r;
 
             bool bothSidesUnder =
                 ((abs(topDepth - bottomDepth) <= depthThreshold) &&
@@ -55,11 +55,11 @@ void main() {
 
             for (int x = -searchRadius; x <= searchRadius; x++) {
                 for (int y = -searchRadius; y <= searchRadius; y++) {
-                    vec2 texCoords = TexCoords + vec2(x, y) / textureSize;
-                    float sampleDepth = texture(screenDepth, texCoords).r;
+                    vec2 texCoord = TexCoord + vec2(x, y) / textureSize;
+                    float sampleDepth = texture(screenDepth, texCoord).r;
                     if (sampleDepth < MAX_DEPTH) {
                         float weight = 1.0 / (1.0 + abs(centerDepth - sampleDepth));
-                        sumColor += texture(screenColor, texCoords).rgb * weight;
+                        sumColor += texture(screenColor, texCoord).rgb * weight;
                         sumWeight += weight;
                     }
                 }

@@ -1,6 +1,6 @@
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
@@ -17,6 +17,6 @@ float LinearizeDepth(float depth) {
 }
 
 void main() {
-    float depth = LinearizeDepth(texture(screenDepth, TexCoords).r) / far;
+    float depth = LinearizeDepth(texture(screenDepth, TexCoord).r) / far;
     FragColor = vec4(vec3(depth), 1.0);
 }

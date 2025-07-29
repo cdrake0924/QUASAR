@@ -35,8 +35,8 @@ public:
                 vertex.normal[1] = cosPhi;
                 vertex.normal[2] = sinPhi * sinTheta;
 
-                vertex.texCoords[0] = static_cast<float>(j) / ySegments;
-                vertex.texCoords[1] = static_cast<float>(i) / xSegments;
+                vertex.texCoord[0] = static_cast<float>(j) / ySegments;
+                vertex.texCoord[1] = static_cast<float>(i) / xSegments;
 
                 // Compute tangent (approximation)
                 vertex.tangent[0] = -radius * sinTheta;

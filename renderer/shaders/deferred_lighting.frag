@@ -4,7 +4,7 @@
 
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D gAlbedo; // 0
 uniform sampler2D gPBR; // 1
@@ -39,12 +39,12 @@ uniform samplerCube pointLightShadowMaps3; // 13
 #endif
 
 void main() {
-    vec4 albedo_er = texture(gAlbedo, TexCoords);
-    vec4 mra_eg = texture(gPBR, TexCoords);
-    vec2 alpha_eb = texture(gAlpha, TexCoords).rg;
-    vec3 fragNormal = texture(gNormal, TexCoords).rgb;
-    vec4 fragPosWorld_ibl = texture(gPosition, TexCoords);
-    vec4 fragPosLightSpace = texture(gLightPosition, TexCoords);
+    vec4 albedo_er = texture(gAlbedo, TexCoord);
+    vec4 mra_eg = texture(gPBR, TexCoord);
+    vec2 alpha_eb = texture(gAlpha, TexCoord).rg;
+    vec3 fragNormal = texture(gNormal, TexCoord).rgb;
+    vec4 fragPosWorld_ibl = texture(gPosition, TexCoord);
+    vec4 fragPosLightSpace = texture(gLightPosition, TexCoord);
 
     vec3 albedo = albedo_er.rgb;
     float alpha = alpha_eb.r;

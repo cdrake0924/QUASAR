@@ -1,7 +1,7 @@
 #include "tone_map.glsl"
 
 out vec4 FragColor;
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 
@@ -31,13 +31,13 @@ vec3 performToneMapping(vec3 color) {
 
 // Adapted from: https://github.com/KTStephano/StratusGFX/blob/master/Source/Shaders/fxaa_smoothing.fs
 void main() {
-    vec3 color = texture(screenColor, TexCoords).rgb;
+    vec3 color = texture(screenColor, TexCoord).rgb;
     float lumaCenter = computeLuminance(color);
 
-    float lumaRight  = computeLuminance(textureOffset(screenColor, TexCoords, ivec2( 1,  0)).rgb);
-    float lumaLeft   = computeLuminance(textureOffset(screenColor, TexCoords, ivec2(-1,  0)).rgb);
-    float lumaTop    = computeLuminance(textureOffset(screenColor, TexCoords, ivec2( 0,  1)).rgb);
-    float lumaBot    = computeLuminance(textureOffset(screenColor, TexCoords, ivec2( 0, -1)).rgb);
+    float lumaRight  = computeLuminance(textureOffset(screenColor, TexCoord, ivec2( 1,  0)).rgb);
+    float lumaLeft   = computeLuminance(textureOffset(screenColor, TexCoord, ivec2(-1,  0)).rgb);
+    float lumaTop    = computeLuminance(textureOffset(screenColor, TexCoord, ivec2( 0,  1)).rgb);
+    float lumaBot    = computeLuminance(textureOffset(screenColor, TexCoord, ivec2( 0, -1)).rgb);
 
     float lumaMax = max(max(max(max(lumaCenter, lumaRight), lumaLeft), lumaTop), lumaBot);
     float lumaMin = min(min(min(min(lumaCenter, lumaRight), lumaLeft), lumaTop), lumaBot);
@@ -50,10 +50,10 @@ void main() {
         return;
     }
 
-    float lumaTopRight = computeLuminance(textureOffset(screenColor, TexCoords, ivec2( 1,  1)).rgb);
-    float lumaBotRight = computeLuminance(textureOffset(screenColor, TexCoords, ivec2( 1, -1)).rgb);
-    float lumaTopLeft  = computeLuminance(textureOffset(screenColor, TexCoords, ivec2(-1,  1)).rgb);
-    float lumaBotLeft  = computeLuminance(textureOffset(screenColor, TexCoords, ivec2(-1, -1)).rgb);
+    float lumaTopRight = computeLuminance(textureOffset(screenColor, TexCoord, ivec2( 1,  1)).rgb);
+    float lumaBotRight = computeLuminance(textureOffset(screenColor, TexCoord, ivec2( 1, -1)).rgb);
+    float lumaTopLeft  = computeLuminance(textureOffset(screenColor, TexCoord, ivec2(-1,  1)).rgb);
+    float lumaBotLeft  = computeLuminance(textureOffset(screenColor, TexCoord, ivec2(-1, -1)).rgb);
 
     float average = (2.0 * (lumaRight + lumaLeft + lumaTop + lumaBot) +
                      lumaTopRight + lumaBotRight + lumaTopLeft + lumaBotLeft) / 12.0;
@@ -94,7 +94,7 @@ void main() {
         gradient = positiveGradient;
     }
 
-    vec2 uv = TexCoords;
+    vec2 uv = TexCoord;
     vec2 uvEdge = uv;
     vec2 edgeStep;
 

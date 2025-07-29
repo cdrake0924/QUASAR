@@ -1,6 +1,6 @@
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
@@ -11,5 +11,5 @@ uniform usampler2D idBuffer;
 uniform sampler2D tex;
 
 void main() {
-    FragColor = vec4(texture(tex, TexCoords).rgb, 1.0);
+    FragColor = vec4(texture(tex, TexCoord).rgb, 1.0);
 }

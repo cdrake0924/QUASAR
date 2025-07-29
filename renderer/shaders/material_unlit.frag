@@ -6,7 +6,7 @@ layout(location = 2) out uvec4 FragIDs;
 
 in VertexData {
     flat uint drawID;
-    vec2 TexCoords;
+    vec2 TexCoord;
     vec3 FragPosView;
     vec3 FragPosWorld;
     vec3 Color;
@@ -115,7 +115,7 @@ void main() {
 
     vec4 baseColor;
     if (material.hasBaseColorMap) {
-        baseColor = texture(material.baseColorMap, fsIn.TexCoords) * material.baseColorFactor;
+        baseColor = texture(material.baseColorMap, fsIn.TexCoord) * material.baseColorFactor;
     }
     else {
         baseColor = material.baseColor * material.baseColorFactor;
