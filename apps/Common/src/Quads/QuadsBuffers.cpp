@@ -12,9 +12,24 @@ using namespace quasar;
 QuadBuffers::QuadBuffers(uint maxProxies)
     : maxProxies(maxProxies)
     , numProxies(maxProxies)
-    , normalSphericalsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
-    , depthsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(float), nullptr, GL_DYNAMIC_COPY)
-    , offsetSizeFlattenedsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(uint), nullptr, GL_DYNAMIC_COPY)
+    , normalSphericalsBuffer({
+        .target = GL_SHADER_STORAGE_BUFFER,
+        .dataSize = sizeof(uint32_t),
+        .numElems = maxProxies,
+        .usage = GL_DYNAMIC_COPY,
+    })
+    , depthsBuffer({
+        .target = GL_SHADER_STORAGE_BUFFER,
+        .dataSize = sizeof(float),
+        .numElems = maxProxies,
+        .usage = GL_DYNAMIC_COPY,
+    })
+    , offsetSizeFlattenedsBuffer({
+        .target = GL_SHADER_STORAGE_BUFFER,
+        .dataSize = sizeof(uint32_t),
+        .numElems = maxProxies,
+        .usage = GL_DYNAMIC_COPY,
+    })
 #if defined(HAS_CUDA)
     , cudaBufferNormalSphericals(normalSphericalsBuffer)
     , cudaBufferDepths(depthsBuffer)

@@ -259,7 +259,7 @@ int main(int argc, char** argv) {
 
         ImGui::NewFrame();
 
-        uint flags = 0;
+        ImGuiWindowFlags flags = 0;
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Exit", "ESC")) {

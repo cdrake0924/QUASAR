@@ -123,7 +123,7 @@ vec3 unpackSphericalToNormal(uint packedNormal) {
     float theta = (thetaSnorm + 1.0) * 0.5 * PI;
     float phi = phiSnorm * PI;
 
-    // Ceconstruct normal from spherical coords
+    // Reconstruct normal from spherical coords
     float y = cos(theta);
     float r = sin(theta);
     float x = r * cos(phi);

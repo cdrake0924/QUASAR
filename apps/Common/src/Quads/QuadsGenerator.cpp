@@ -13,7 +13,12 @@ QuadsGenerator::QuadsGenerator(glm::uvec2& remoteWindowSize)
     : remoteWindowSize(remoteWindowSize)
     , depthOffsetBufferSize(2u * remoteWindowSize) // 4 offsets per pixel
     , maxProxies(remoteWindowSize.x * remoteWindowSize.y)
-    , sizesBuffer(GL_SHADER_STORAGE_BUFFER, 1, sizeof(BufferSizes), nullptr, GL_DYNAMIC_COPY)
+    , sizesBuffer({
+        .target = GL_SHADER_STORAGE_BUFFER,
+        .dataSize = sizeof(BufferSizes),
+        .numElems = 1,
+        .usage = GL_DYNAMIC_COPY,
+    })
     , genQuadMapShader({
         .computeCodeData = SHADER_COMMON_GEN_QUADMAP_COMP,
         .computeCodeSize = SHADER_COMMON_GEN_QUADMAP_COMP_len,

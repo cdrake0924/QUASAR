@@ -2,7 +2,7 @@
 
 using namespace quasar;
 
-uint Node::nextID = 0;
+uint32_t Node::nextID = 0;
 
 Node::Node() {
     ID = nextID++;

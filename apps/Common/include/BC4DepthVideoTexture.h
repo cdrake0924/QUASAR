@@ -18,6 +18,8 @@ namespace quasar {
 
 class BC4DepthVideoTexture : public Texture, public DataReceiverTCP {
 public:
+    uint width, height;
+
     Buffer bc4CompressedBuffer;
 
     struct ReceiverStats {
@@ -54,7 +56,7 @@ private:
         std::vector<char> buffer;
     };
     std::deque<FrameData> depthFrames;
-    size_t compressedSize;
+    uint compressedSize;
 
     ZSTDCodec codec;
 

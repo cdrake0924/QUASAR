@@ -7,15 +7,18 @@ using namespace quasar;
 
 BC4DepthVideoTexture::BC4DepthVideoTexture(const TextureDataCreateParams& params, std::string streamerURL)
     : DataReceiverTCP(streamerURL, false)
+    , width((params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE) // Round up to nearest multiple of BC4_BLOCK_SIZE
+    , height((params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE)
+    , compressedSize((width / BC4_BLOCK_SIZE) * (height / BC4_BLOCK_SIZE))
     , Texture(params)
 {
-    // Round up to nearest multiple of BC4_BLOCK_SIZE
-    width = (params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE;
-    height = (params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE;
     resize(width, height);
-
-    compressedSize = (width / BC4_BLOCK_SIZE) * (height / BC4_BLOCK_SIZE);
-    bc4CompressedBuffer = Buffer(GL_SHADER_STORAGE_BUFFER, compressedSize, sizeof(BC4Block), nullptr, GL_DYNAMIC_DRAW);
+    bc4CompressedBuffer = Buffer({
+        .target = GL_SHADER_STORAGE_BUFFER,
+        .dataSize = sizeof(BC4Block),
+        .numElems = compressedSize,
+        .usage = GL_DYNAMIC_DRAW,
+    });
 }
 
 pose_id_t BC4DepthVideoTexture::getLatestPoseID() {

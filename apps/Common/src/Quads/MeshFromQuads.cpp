@@ -8,12 +8,37 @@ MeshFromQuads::MeshFromQuads(glm::uvec2& remoteWindowSize, uint maxNumProxies)
         : remoteWindowSize(remoteWindowSize)
         , depthOffsetBufferSize(2u * remoteWindowSize) // 4 offsets per pixel
         , maxProxies(maxNumProxies)
-        , meshSizesBuffer(GL_SHADER_STORAGE_BUFFER, 1, sizeof(BufferSizes), nullptr, GL_DYNAMIC_COPY)
-        , prevNumProxiesBuffer(GL_SHADER_STORAGE_BUFFER, 1, sizeof(uint), nullptr, GL_DYNAMIC_DRAW)
-        , currNumProxiesBuffer(GL_SHADER_STORAGE_BUFFER, 1, sizeof(uint), nullptr, GL_DYNAMIC_DRAW)
+        , meshSizesBuffer({
+            .target = GL_SHADER_STORAGE_BUFFER,
+            .dataSize = sizeof(BufferSizes),
+            .numElems = 1,
+            .usage = GL_DYNAMIC_COPY,
+        })
+        , prevNumProxiesBuffer({
+            .target = GL_SHADER_STORAGE_BUFFER,
+            .dataSize = sizeof(uint),
+            .numElems = 1,
+            .usage = GL_DYNAMIC_DRAW,
+        })
+        , currNumProxiesBuffer({
+            .target = GL_SHADER_STORAGE_BUFFER,
+            .dataSize = sizeof(uint),
+            .numElems = 1,
+            .usage = GL_DYNAMIC_DRAW,
+        })
         , currentQuadBuffers(maxProxies)
-        , quadIndicesBuffer(GL_SHADER_STORAGE_BUFFER, remoteWindowSize.x * remoteWindowSize.y, sizeof(uint), nullptr, GL_DYNAMIC_DRAW)
-        , quadCreatedFlagsBuffer(GL_SHADER_STORAGE_BUFFER, maxProxies, sizeof(int), nullptr, GL_DYNAMIC_DRAW)
+        , quadIndicesBuffer({
+            .target = GL_SHADER_STORAGE_BUFFER,
+            .dataSize = sizeof(uint),
+            .numElems = remoteWindowSize.x * remoteWindowSize.y,
+            .usage = GL_DYNAMIC_DRAW,
+        })
+        , quadCreatedFlagsBuffer({
+            .target = GL_SHADER_STORAGE_BUFFER,
+            .dataSize = sizeof(int),
+            .numElems = maxProxies,
+            .usage = GL_DYNAMIC_DRAW,
+        })
         , appendQuadsShader({
             .computeCodeData = SHADER_COMMON_APPEND_QUADS_COMP,
             .computeCodeSize = SHADER_COMMON_APPEND_QUADS_COMP_len,

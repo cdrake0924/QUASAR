@@ -1,37 +1,39 @@
 #include <spdlog/spdlog.h>
 
+#include <Utils/FileIO.h>
 #include <BC4DepthStreamer.h>
 
 #include <shaders_common.h>
-
-#include <Utils/FileIO.h>
 
 #define THREADS_PER_LOCALGROUP 16
 
 using namespace quasar;
 
 BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const std::string& receiverURL)
-    : RenderTarget(params)
-    , receiverURL(receiverURL)
+    : receiverURL(receiverURL)
     , streamer(receiverURL)
+    , width((params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE) // Round up to nearest multiple of BC4_BLOCK_SIZE
+    , height((params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE)
+    , compressedSize((width / BC4_BLOCK_SIZE) * (height / BC4_BLOCK_SIZE))
+    , data(sizeof(pose_id_t) + compressedSize * sizeof(BC4Block))
     , bc4CompressionShader({
         .computeCodeData = SHADER_COMMON_BC4_COMPRESS_COMP,
         .computeCodeSize = SHADER_COMMON_BC4_COMPRESS_COMP_len,
         .defines = {
             "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
     }})
+    , RenderTarget(params)
 {
-    // Round up to nearest multiple of BC4_BLOCK_SIZE
-    width = (params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE;
-    height = (params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE;
     resize(width, height);
 
-    compressedSize = (width / BC4_BLOCK_SIZE) * (height / BC4_BLOCK_SIZE);
-    data = std::vector<char>(sizeof(pose_id_t) + compressedSize * sizeof(BC4Block));
-    bc4CompressedBuffer = Buffer(GL_SHADER_STORAGE_BUFFER, compressedSize, sizeof(BC4Block), nullptr, GL_DYNAMIC_DRAW);
-
+    bc4CompressedBuffer = Buffer({
+        .target = GL_SHADER_STORAGE_BUFFER,
+        .dataSize = sizeof(BC4Block),
+        .numElems = compressedSize,
+        .usage = GL_DYNAMIC_DRAW,
+    });
 #if defined(HAS_CUDA)
-        cudaBufferBc4.registerBuffer(bc4CompressedBuffer);
+    cudaBufferBc4.registerBuffer(bc4CompressedBuffer);
 
     if (!receiverURL.empty()) {
         running = true;

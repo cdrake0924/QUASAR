@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
-    int serverFPSIndex = !cameraPathFileIn ? 0 : 5; // default to 30fps
+    int serverFPSIndex = !cameraPathFileIn ? 0 : 5; // default to 30 FPS
     double rerenderInterval = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
     float networkLatency = !cameraPathFileIn ? 0.0f : args::get(networkLatencyIn);
     float networkJitter = !cameraPathFileIn ? 0.0f : args::get(networkJitterIn);
@@ -228,7 +228,7 @@ int main(int argc, char** argv) {
 
         ImGui::NewFrame();
 
-        uint flags = 0;
+        ImGuiWindowFlags flags = 0;
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Exit", "ESC")) {
@@ -397,7 +397,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            if (ImGui::DragFloat("View Sphere Diameter", &viewSphereDiameter, 0.025f, 0.1f, 1.5f)) {
+            if (ImGui::DragFloat("View Sphere Diameter", &viewSphereDiameter, 0.025f, 0.1f, 2.0f)) {
                 preventCopyingLocalPose = true;
                 generateRefFrame = true;
                 runAnimations = false;

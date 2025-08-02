@@ -2,4 +2,4 @@
 
 using namespace quasar;
 
-uint Entity::nextID = 0;
+uint32_t Entity::nextID = 0;

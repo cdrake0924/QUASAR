@@ -23,6 +23,8 @@ namespace quasar {
 
 class BC4DepthStreamer : public RenderTarget {
 public:
+    uint width, height;
+
     Buffer bc4CompressedBuffer;
 
     std::string receiverURL;

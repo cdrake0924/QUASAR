@@ -62,7 +62,12 @@ Scene::Scene()
         .fragmentCodeData = SHADER_BUILTIN_BRDF_FRAG,
         .fragmentCodeSize = SHADER_BUILTIN_BRDF_FRAG_len,
     }),
-    pointLightUBO(GL_UNIFORM_BUFFER, 1, sizeof(GPUPointLightBlock), nullptr, GL_DYNAMIC_DRAW)
+    pointLightUBO({
+        .target = GL_UNIFORM_BUFFER,
+        .dataSize = sizeof(GPUPointLightBlock),
+        .numElems = 1,
+        .usage = GL_DYNAMIC_DRAW,
+    })
 {}
 
 void Scene::addChildNode(Node* node) {

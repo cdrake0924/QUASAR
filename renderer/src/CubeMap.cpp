@@ -16,7 +16,10 @@ const glm::mat4 CubeMap::captureViews[] = {
 };
 
 CubeMap::CubeMap()
-    : vertexBuffer(GL_ARRAY_BUFFER, sizeof(CubeMapVertex))
+    : vertexBuffer({
+        .target = GL_ARRAY_BUFFER,
+        .dataSize = sizeof(CubeMapVertex),
+    })
 {
     target = GL_TEXTURE_CUBE_MAP;
 }
@@ -24,6 +27,10 @@ CubeMap::CubeMap()
 CubeMap::CubeMap(const CubeMapCreateParams& params)
     : type(params.type)
     , wrapR(params.wrapR)
+    , vertexBuffer({
+        .target = GL_ARRAY_BUFFER,
+        .dataSize = sizeof(CubeMapVertex),
+    })
     , Texture({
         .width = params.width,
         .height = params.height,
@@ -33,7 +40,6 @@ CubeMap::CubeMap(const CubeMapCreateParams& params)
         .minFilter = params.minFilter,
         .magFilter = params.magFilter,
     })
-    , vertexBuffer(GL_ARRAY_BUFFER, sizeof(CubeMapVertex))
 {
     target = GL_TEXTURE_CUBE_MAP;
     if (params.rightFaceTexturePath != "" && params.leftFaceTexturePath != "" &&

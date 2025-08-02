@@ -5,8 +5,14 @@
 using namespace quasar;
 
 Mesh::Mesh()
-    : vertexBuffer(GL_ARRAY_BUFFER, sizeof(Vertex))
-    , indexBuffer(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint))
+    : vertexBuffer({
+        .target = GL_ARRAY_BUFFER,
+        .dataSize = sizeof(Vertex),
+    })
+    , indexBuffer({
+        .target = GL_ELEMENT_ARRAY_BUFFER,
+        .dataSize = sizeof(uint),
+    })
 {
     setArrayBufferAttributes(Vertex::getVertexInputAttributes(), sizeof(Vertex));
 }
@@ -15,10 +21,22 @@ Mesh::Mesh(const MeshDataCreateParams& params)
     : material(params.material)
     , IBL(params.IBL)
     , usage(params.usage)
-    , vertexBuffer(GL_ARRAY_BUFFER, sizeof(Vertex), params.usage)
-    , indexBuffer(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint), params.usage)
+    , vertexBuffer({
+        .target = GL_ARRAY_BUFFER,
+        .dataSize = sizeof(Vertex),
+        .usage = params.usage,
+    })
+    , indexBuffer({
+        .target = GL_ELEMENT_ARRAY_BUFFER,
+        .dataSize = sizeof(uint),
+        .usage = params.usage,
+    })
     , indirectDraw(params.indirectDraw)
-    , indirectBuffer(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawElementsIndirectCommand), params.usage)
+    , indirectBuffer({
+        .target = GL_DRAW_INDIRECT_BUFFER,
+        .dataSize = sizeof(DrawElementsIndirectCommand),
+        .usage = params.usage,
+    })
     , vertexSize(params.vertexSize)
     , attributes(params.attributes)
 {
@@ -37,10 +55,22 @@ Mesh::Mesh(const MeshSizeCreateParams& params)
     : material(params.material)
     , IBL(params.IBL)
     , usage(params.usage)
-    , vertexBuffer(GL_ARRAY_BUFFER, sizeof(Vertex), params.usage)
-    , indexBuffer(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint), params.usage)
+    , vertexBuffer({
+        .target = GL_ARRAY_BUFFER,
+        .dataSize = sizeof(Vertex),
+        .usage = params.usage,
+    })
+    , indexBuffer({
+        .target = GL_ELEMENT_ARRAY_BUFFER,
+        .dataSize = sizeof(uint),
+        .usage = params.usage,
+    })
     , indirectDraw(params.indirectDraw)
-    , indirectBuffer(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawElementsIndirectCommand), params.usage)
+    , indirectBuffer({
+        .target = GL_DRAW_INDIRECT_BUFFER,
+        .dataSize = sizeof(DrawElementsIndirectCommand),
+        .usage = params.usage,
+    })
     , vertexSize(params.vertexSize)
     , attributes(params.attributes)
 {

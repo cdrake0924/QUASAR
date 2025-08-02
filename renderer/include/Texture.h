@@ -25,7 +25,7 @@ struct TextureDataCreateParams {
     GLint alignment = 4;
     bool multiSampled = false;
     uint numSamples = 4;
-    unsigned char* data = nullptr;
+    const unsigned char* data = nullptr;
 };
 
 struct TextureFileCreateParams {
