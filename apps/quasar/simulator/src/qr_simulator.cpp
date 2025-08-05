@@ -9,8 +9,6 @@
 #include <Renderers/DeferredRenderer.h>
 #include <Renderers/DepthPeelingRenderer.h>
 
-#include <HoleFiller.h>
-
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
@@ -21,6 +19,7 @@
 #include <Quads/FrameGenerator.h>
 
 #include <QRSimulator.h>
+#include <HoleFiller.h>
 
 #include <PoseSendRecvSimulator.h>
 

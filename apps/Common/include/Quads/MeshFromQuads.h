@@ -47,8 +47,6 @@ public:
     glm::uvec2 depthOffsetBufferSize;
     uint maxProxies;
 
-    QuadBuffers currentQuadBuffers;
-
     MeshFromQuads(glm::uvec2& remoteWindowSize, uint maxNumProxies = MAX_NUM_PROXIES);
     ~MeshFromQuads() = default;
 
@@ -70,6 +68,8 @@ public:
     BufferSizes getBufferSizes();
 
 private:
+    QuadBuffers currentQuadBuffers;
+
     Buffer meshSizesBuffer;
     Buffer prevNumProxiesBuffer;
     Buffer currNumProxiesBuffer;

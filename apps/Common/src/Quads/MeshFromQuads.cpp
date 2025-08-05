@@ -129,11 +129,12 @@ void MeshFromQuads::fillQuadIndices(const glm::uvec2& gBufferSize) {
 }
 
 void MeshFromQuads::createMeshFromProxies(
-        const glm::uvec2& gBufferSize,
-        uint numProxies,
-        const DepthOffsets& depthOffsets,
-        const PerspectiveCamera& remoteCamera,
-        const Mesh& mesh) {
+    const glm::uvec2& gBufferSize,
+    uint numProxies,
+    const DepthOffsets& depthOffsets,
+    const PerspectiveCamera& remoteCamera,
+    const Mesh& mesh)
+{
     createMeshFromQuadsShader.startTiming();
 
     createMeshFromQuadsShader.bind();

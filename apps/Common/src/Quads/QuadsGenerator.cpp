@@ -5,7 +5,7 @@
 
 #define THREADS_PER_LOCALGROUP 2 // 2x2 = 4 threads per pixel
 
-#define MAX_PROXY_SIZE (2048)
+#define MAX_PROXY_SIZE 2048
 
 using namespace quasar;
 
@@ -71,10 +71,10 @@ QuadsGenerator::BufferSizes QuadsGenerator::getBufferSizes() {
 }
 
 void QuadsGenerator::generateInitialQuadMap(
-        const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
-        const glm::vec2& gBufferSize,
-        const PerspectiveCamera& remoteCamera
-    ) {
+    const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
+    const glm::vec2& gBufferSize,
+    const PerspectiveCamera& remoteCamera)
+{
     /*
     ============================
     FIRST PASS: Generate quads from G-Buffer
@@ -251,9 +251,9 @@ void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
 }
 
 void QuadsGenerator::createProxies(
-        const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
-        const PerspectiveCamera& remoteCamera
-    ) {
+    const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
+    const PerspectiveCamera& remoteCamera)
+{
     const glm::vec2 gBufferSize = glm::vec2(colorBuffer.width, colorBuffer.height);
     generateInitialQuadMap(colorBuffer, normalsBuffer, depthBuffer, gBufferSize, remoteCamera);
     simplifyQuadMaps(remoteCamera, gBufferSize);
@@ -261,16 +261,16 @@ void QuadsGenerator::createProxies(
 }
 
 void QuadsGenerator::createProxiesFromRT(
-        const FrameRenderTarget& frameRT,
-        const PerspectiveCamera& remoteCamera
-    ) {
+    const FrameRenderTarget& frameRT,
+    const PerspectiveCamera& remoteCamera)
+{
     createProxies(frameRT.colorBuffer, frameRT.normalsBuffer, frameRT.depthStencilBuffer, remoteCamera);
 }
 
 void QuadsGenerator::createProxiesFromTextures(
-        const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
-        const PerspectiveCamera& remoteCamera
-    ) {
+    const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
+    const PerspectiveCamera& remoteCamera)
+{
     createProxies(colorBuffer, normalsBuffer, depthBuffer, remoteCamera);
 }
 

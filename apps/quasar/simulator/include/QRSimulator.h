@@ -4,6 +4,8 @@
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 
+#include <DepthMesh.h>
+
 #include <Quads/QuadsGenerator.h>
 #include <Quads/MeshFromQuads.h>
 #include <Quads/QuadMaterial.h>
@@ -52,7 +54,7 @@ public:
     std::vector<Node> nodesHidLayer;
     std::vector<Node> wireframesHidLayer;
 
-    std::vector<Mesh> depthMeshsHidLayer;
+    std::vector<DepthMesh> depthMeshsHidLayer;
     std::vector<Node> depthNodesHidLayer;
 
     // Wide fov
@@ -60,7 +62,7 @@ public:
 
     std::vector<FrameRenderTarget> copyRTs;
 
-    Mesh depthMesh;
+    DepthMesh depthMesh;
     Node depthNode;
 
     uint maxLayers;
@@ -103,13 +105,6 @@ public:
         , quads(maxLayers)
         , depthOffsets(maxLayers)
         , maxVerticesDepth(quadsGenerator.remoteWindowSize.x * quadsGenerator.remoteWindowSize.y)
-        , meshFromDepthShader({
-            .computeCodeData = SHADER_COMMON_MESH_FROM_DEPTH_COMP,
-            .computeCodeSize = SHADER_COMMON_MESH_FROM_DEPTH_COMP_len,
-            .defines = {
-                "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-            }
-        })
         , refFrameRT({
             .width = quadsGenerator.remoteWindowSize.x,
             .height = quadsGenerator.remoteWindowSize.y,
@@ -143,6 +138,7 @@ public:
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
         })
+        , depthMesh(quadsGenerator.remoteWindowSize, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
         , meshScenes(2)
     {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -196,7 +192,7 @@ public:
         // We can use less vertices and indicies for the mask since it will be sparse
         meshParams.maxVertices /= 4;
         meshParams.maxIndices /= 4;
-        meshParams.material = new QuadMaterial({ .baseColorTexture = &maskFrameRT.colorBuffer ,});
+        meshParams.material = new QuadMaterial({ .baseColorTexture = &maskFrameRT.colorBuffer });
         maskFrameMesh = Mesh(meshParams);
         maskFrameNode.setEntity(&maskFrameMesh);
         maskFrameNode.frustumCulled = false;
@@ -208,11 +204,6 @@ public:
         maskFrameWireframeNodesLocal.overrideMaterial = &maskWireframeMaterial;
 
         // Setup depth mesh
-        MeshSizeCreateParams depthMeshParams = {
-            .maxVertices = maxVerticesDepth,
-            .usage = GL_DYNAMIC_DRAW,
-        };
-        depthMesh = Mesh(depthMeshParams);
         depthNode.setEntity(&depthMesh);
         depthNode.frustumCulled = false;
         depthNode.visible = false;
@@ -237,7 +228,7 @@ public:
         }
 
         for (int layer = 0; layer < numHidLayers; layer++) {
-            meshParams.material = new QuadMaterial({ .baseColorTexture = &frameRTsHidLayer[layer].colorBuffer ,});
+            meshParams.material = new QuadMaterial({ .baseColorTexture = &frameRTsHidLayer[layer].colorBuffer });
             // We can use less vertices and indicies for the hidden layers since they will be sparse
             meshParams.maxVertices = maxVertices / 4;
             meshParams.maxIndices = maxIndices / 4;
@@ -251,10 +242,9 @@ public:
             wireframesHidLayer.emplace_back(&meshesHidLayer[layer]);
             wireframesHidLayer[layer].frustumCulled = false;
             wireframesHidLayer[layer].wireframe = true;
-            wireframesHidLayer[layer].overrideMaterial = new QuadMaterial({ .baseColor = color ,});
+            wireframesHidLayer[layer].overrideMaterial = new QuadMaterial({ .baseColor = color });
 
-            depthMeshParams.material = new UnlitMaterial({ .baseColor = color ,});
-            depthMeshsHidLayer.emplace_back(depthMeshParams);
+            depthMeshsHidLayer.emplace_back(quadsGenerator.remoteWindowSize, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
 
             depthNodesHidLayer.emplace_back(&depthMeshsHidLayer[layer]);
             depthNodesHidLayer[layer].frustumCulled = false;
@@ -452,35 +442,8 @@ public:
 
             // For debugging: Generate point cloud from depth map
             if (showDepth) {
-                const glm::vec2 frameSize = glm::vec2(frameToUse.width, frameToUse.height);
-
-                startTime = timeutils::getTimeMicros();
-
-                meshFromDepthShader.bind();
-                {
-                    meshFromDepthShader.setTexture(frameToUse.depthStencilBuffer, 0);
-                }
-                {
-                    meshFromDepthShader.setVec2("depthMapSize", frameSize);
-                }
-                {
-                    meshFromDepthShader.setMat4("layer", remoteCameraToUse.getViewMatrix());
-                    meshFromDepthShader.setMat4("projection", remoteCameraToUse.getProjectionMatrix());
-                    meshFromDepthShader.setMat4("viewInverse", remoteCameraToUse.getViewMatrixInverse());
-                    meshFromDepthShader.setMat4("projectionInverse", remoteCameraToUse.getProjectionMatrixInverse());
-
-                    meshFromDepthShader.setFloat("near", remoteCameraToUse.getNear());
-                    meshFromDepthShader.setFloat("far", remoteCameraToUse.getFar());
-                }
-                {
-                    meshFromDepthShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, meshToUseDepth.vertexBuffer);
-                    meshFromDepthShader.clearBuffer(GL_SHADER_STORAGE_BUFFER, 1);
-                }
-                meshFromDepthShader.dispatch((frameSize.x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
-                                             (frameSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
-                meshFromDepthShader.memoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
-
-                stats.totalGenDepthTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+                meshToUseDepth.update(remoteCameraToUse, frameToUse);
+                stats.totalGenDepthTime += meshToUseDepth.stats.genDepthTime;
             }
         }
     }
@@ -522,7 +485,6 @@ private:
     // Shaders
     ToneMapper toneMapper;
     ShowNormalsEffect showNormalsEffect;
-    ComputeShader meshFromDepthShader;
 
     PerspectiveCamera remoteCameraPrev;
 
@@ -530,9 +492,8 @@ private:
     std::vector<Scene> meshScenes;
     Scene sceneWideFov;
 
-    QuadMaterial wireframeMaterial = QuadMaterial({.baseColor = colors[0],});
-    QuadMaterial maskWireframeMaterial = QuadMaterial({.baseColor = colors[colors.size()-1],});
-    UnlitMaterial depthMaterial = UnlitMaterial({.baseColor = colors[2],});
+    QuadMaterial wireframeMaterial = QuadMaterial({. baseColor = colors[0] });
+    QuadMaterial maskWireframeMaterial = QuadMaterial({. baseColor = colors[colors.size()-1] });
 };
 
 } // namespace quasar

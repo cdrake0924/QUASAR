@@ -11,12 +11,12 @@ FrameGenerator::FrameGenerator(DeferredRenderer& remoteRenderer, Scene& remoteSc
 {}
 
 uint FrameGenerator::generateRefFrame(
-        const FrameRenderTarget& frameRT,
-        const PerspectiveCamera& remoteCamera,
-        const Mesh& mesh,
-        std::vector<char>& quads, std::vector<char>& depthOffsets,
-        uint& numProxies, uint& numDepthOffsets,
-        bool compress)
+    const FrameRenderTarget& frameRT,
+    const PerspectiveCamera& remoteCamera,
+    const Mesh& mesh,
+    std::vector<char>& quads, std::vector<char>& depthOffsets,
+    uint& numProxies, uint& numDepthOffsets,
+    bool compress)
 {
     const glm::vec2 gBufferSize = glm::vec2(frameRT.width, frameRT.height);
     uint outputSize = 0;
@@ -59,13 +59,13 @@ uint FrameGenerator::generateRefFrame(
 }
 
 uint FrameGenerator::generateResFrame(
-        Scene& currScene, Scene& prevScene,
-        FrameRenderTarget& frameRT, FrameRenderTarget& maskFrameRT,
-        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-        const Mesh& currMesh, const Mesh& maskMesh,
-        std::vector<char>& quads, std::vector<char>& depthOffsets,
-        uint& numProxies, uint& numDepthOffsets,
-        bool compress)
+    Scene& currScene, Scene& prevScene,
+    FrameRenderTarget& frameRT, FrameRenderTarget& maskFrameRT,
+    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
+    const Mesh& currMesh, const Mesh& maskMesh,
+    std::vector<char>& quads, std::vector<char>& depthOffsets,
+    uint& numProxies, uint& numDepthOffsets,
+    bool compress)
 {
     const glm::vec2 gBufferSize = glm::vec2(frameRT.width, frameRT.height);
     uint outputSize = 0;

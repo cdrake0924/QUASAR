@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
         nodeWireframes[view]->frustumCulled = false;
         nodeWireframes[view]->wireframe = true;
         nodeWireframes[view]->visible = false;
-        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] ,});
+        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
         scene.addChildNode(nodeWireframes[view]);
     }
 

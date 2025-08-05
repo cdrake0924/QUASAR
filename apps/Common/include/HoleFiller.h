@@ -3,8 +3,6 @@
 
 #include <PostProcessing/PostProcessingEffect.h>
 
-#include <shaders_common.h>
-
 namespace quasar {
 
 class HoleFiller : public PostProcessingEffect {
