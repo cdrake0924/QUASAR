@@ -68,7 +68,8 @@ public:
 
         uint totalProxies = 0;
         uint totalDepthOffsets = 0;
-        double compressedSizeBytes = 0;
+        double quadsSize = 0;
+        double depthOffsetsSize = 0;
     } stats;
 
     QuadsSimulator(QuadFrame& quadFrame, const PerspectiveCamera& remoteCamera, FrameGenerator& frameGenerator)
@@ -217,12 +218,15 @@ public:
         uint numProxies = 0, numDepthOffsets = 0;
         auto& quadsGenerator = frameGenerator.quadsGenerator;
         quadsGenerator.params.expandEdges = false;
-        stats.compressedSizeBytes = frameGenerator.generateRefFrame(
+        auto [quadsSize, depthOffsetsSize] = frameGenerator.generateRefFrame(
             refFrameRT,
             remoteCameraToUse,
             refFrameMeshes[currMeshIndex],
             numProxies, numDepthOffsets
         );
+        stats.quadsSize = quadsSize;
+        stats.depthOffsetsSize = depthOffsetsSize;
+
         stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
         stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
         stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
@@ -244,13 +248,15 @@ public:
         */
         if (generateResFrame) {
             quadsGenerator.params.expandEdges = true;
-            stats.compressedSizeBytes = frameGenerator.generateResFrame(
+            auto [quadsSize, depthOffsetsSize] = frameGenerator.generateResFrame(
                 meshScenes[currMeshIndex], meshScenes[prevMeshIndex],
                 maskTempRT, maskFrameRT,
                 remoteCamera, remoteCameraPrev,
                 refFrameMeshes[currMeshIndex], maskFrameMesh,
                 numProxies, numDepthOffsets
             );
+            stats.quadsSize = quadsSize;
+            stats.depthOffsetsSize = depthOffsetsSize;
 
             stats.totalRenderTime += frameGenerator.stats.timeToRenderMaskMs;
 

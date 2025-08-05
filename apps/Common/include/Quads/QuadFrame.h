@@ -54,7 +54,9 @@ public:
         quadBuffers.resize(numProxies);
     }
 
-    std::pair<uint, uint> copyToMemory(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) const {
+    std::pair<uint, uint> copyToMemory(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
+        copyToMemory();
+
         outputQuads.resize(compressedQuads.size());
         outputDepthOffsets.resize(compressedDepthOffsets.size());
 

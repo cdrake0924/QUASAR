@@ -64,7 +64,8 @@ public:
 
         uint totalProxies = 0;
         uint totalDepthOffsets = 0;
-        double compressedSizeBytes = 0;
+        double quadsSize = 0;
+        double depthOffsetsSize = 0;
     } stats;
 
     QSSimulator(QuadFrame& quadFrame, uint maxViews, FrameGenerator& frameGenerator)
@@ -211,13 +212,14 @@ public:
             stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             uint numProxies = 0, numDepthOffsets = 0;
-            stats.compressedSizeBytes += frameGenerator.generateRefFrame(
+            auto [quadsSize, depthOffsetsSize] = frameGenerator.generateRefFrame(
                 gBufferToUse, remoteCameraToUse,
                 meshToUse,
                 numProxies, numDepthOffsets
             );
             // QS has data structures that are 103 bits
-            stats.compressedSizeBytes *= (103.0) / (8*sizeof(QuadMapDataPacked));
+            stats.quadsSize += quadsSize * (103.0) / (8*sizeof(QuadMapDataPacked));
+            stats.depthOffsetsSize += depthOffsetsSize;
 
             // Copy quads and depth offsets to local vectors
             quadFrame.copyToMemory(quads[view], depthOffsets[view]);

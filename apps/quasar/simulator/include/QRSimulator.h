@@ -85,7 +85,8 @@ public:
 
         uint totalProxies = 0;
         uint totalDepthOffsets = 0;
-        double compressedSizeBytes = 0;
+        double quadsSize = 0;
+        double depthOffsetsSize = 0;
     } stats;
 
     QRSimulator(QuadFrame& quadFrame, uint maxLayers, const PerspectiveCamera& remoteCamera, FrameGenerator& frameGenerator)
@@ -365,13 +366,14 @@ public:
                 quadsGenerator.params.depthThreshold = 1e-3f;
             }
             quadsGenerator.params.expandEdges = false;
-            uint numBytesIFrame = frameGenerator.generateRefFrame(
+            auto [quadsSize, depthOffsetsSize] = frameGenerator.generateRefFrame(
                 frameToUse, remoteCameraToUse,
                 meshToUse,
                 numProxies, numDepthOffsets
             );
             if (!generateResFrame) {
-                stats.compressedSizeBytes += numBytesIFrame;
+                stats.quadsSize += quadsSize;
+                stats.depthOffsetsSize += depthOffsetsSize;
             }
             quadsGenerator.params = oldParams;
 
@@ -400,13 +402,15 @@ public:
             if (layer == 0) {
                 if (generateResFrame) {
                     quadsGenerator.params.expandEdges = true;
-                    stats.compressedSizeBytes += frameGenerator.generateResFrame(
+                    auto [quadsSize, depthOffsetsSize] = frameGenerator.generateResFrame(
                         meshScenes[currMeshIndex], meshScenes[prevMeshIndex],
                         maskTempRT, maskFrameRT,
                         remoteCameraCenter, remoteCameraPrev,
                         refFrameMeshes[currMeshIndex], maskFrameMesh,
                         numProxies, numDepthOffsets
                     );
+                    stats.quadsSize += quadsSize;
+                    stats.depthOffsetsSize += depthOffsetsSize;
 
                     stats.totalRenderTime += frameGenerator.stats.timeToRenderMaskMs;
 

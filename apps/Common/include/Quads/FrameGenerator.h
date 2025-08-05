@@ -29,13 +29,13 @@ public:
         double timeToCompress = 0.0f;
     } stats;
 
-    uint generateRefFrame(
+    std::pair<uint, uint> generateRefFrame(
         const FrameRenderTarget& frameRT,
         const PerspectiveCamera& remoteCamera,
         const Mesh& mesh,
         uint& numProxies, uint& numDepthOffsets);
 
-    uint generateResFrame(
+    std::pair<uint, uint> generateResFrame(
         Scene& currScene, Scene& prevScene,
         FrameRenderTarget& frameRT, FrameRenderTarget& maskFrameRT,
         const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
