@@ -82,11 +82,7 @@ public:
         double totalCreateVertIndTime = 0.0;
         double totalGenDepthTime = 0.0;
         double totalCompressTime = 0.0;
-
-        uint totalProxies = 0;
-        uint totalDepthOffsets = 0;
-        double quadsSize = 0;
-        double depthOffsetsSize = 0;
+        QuadFrame::Sizes sizes;
     } stats;
 
     QRSimulator(QuadFrame& quadFrame, uint maxLayers, const PerspectiveCamera& remoteCamera, FrameGenerator& frameGenerator)
@@ -275,10 +271,11 @@ public:
     }
 
     void generateFrame(
-            const PerspectiveCamera& remoteCameraCenter, const PerspectiveCamera& remoteCameraWideFov, Scene& remoteScene,
-            DeferredRenderer& remoteRenderer,
-            DepthPeelingRenderer& remoteRendererDP,
-            bool generateResFrame = false, bool showNormals = false, bool showDepth = false) {
+        const PerspectiveCamera& remoteCameraCenter, const PerspectiveCamera& remoteCameraWideFov, Scene& remoteScene,
+        DeferredRenderer& remoteRenderer,
+        DepthPeelingRenderer& remoteRendererDP,
+        bool generateResFrame = false, bool showNormals = false, bool showDepth = false)
+    {
         // Reset stats
         stats = { 0 };
 
@@ -352,7 +349,6 @@ public:
             Generate Reference Frame
             ============================
             */
-            uint numProxies = 0, numDepthOffsets = 0;
             auto& quadsGenerator = frameGenerator.quadsGenerator;
             auto oldParams = quadsGenerator.params;
             if (layer == maxLayers - 1) {
@@ -366,14 +362,13 @@ public:
                 quadsGenerator.params.depthThreshold = 1e-3f;
             }
             quadsGenerator.params.expandEdges = false;
-            auto [quadsSize, depthOffsetsSize] = frameGenerator.generateRefFrame(
+            auto sizes = frameGenerator.generateRefFrame(
                 frameToUse, remoteCameraToUse,
-                meshToUse,
-                numProxies, numDepthOffsets
+                meshToUse
             );
             if (!generateResFrame) {
-                stats.quadsSize += quadsSize;
-                stats.depthOffsetsSize += depthOffsetsSize;
+                stats.sizes.quadsSize += sizes.quadsSize;
+                stats.sizes.depthOffsetsSize += sizes.depthOffsetsSize;
             }
             quadsGenerator.params = oldParams;
 
@@ -402,15 +397,14 @@ public:
             if (layer == 0) {
                 if (generateResFrame) {
                     quadsGenerator.params.expandEdges = true;
-                    auto [quadsSize, depthOffsetsSize] = frameGenerator.generateResFrame(
+                    sizes = frameGenerator.generateResFrame(
                         meshScenes[currMeshIndex], meshScenes[prevMeshIndex],
                         maskTempRT, maskFrameRT,
                         remoteCameraCenter, remoteCameraPrev,
-                        refFrameMeshes[currMeshIndex], maskFrameMesh,
-                        numProxies, numDepthOffsets
+                        refFrameMeshes[currMeshIndex], maskFrameMesh
                     );
-                    stats.quadsSize += quadsSize;
-                    stats.depthOffsetsSize += depthOffsetsSize;
+                    stats.sizes.quadsSize += sizes.quadsSize;
+                    stats.sizes.depthOffsetsSize += sizes.depthOffsetsSize;
 
                     stats.totalRenderTime += frameGenerator.stats.timeToRenderMaskMs;
 
@@ -436,10 +430,10 @@ public:
                     remoteCameraPrev.setViewMatrix(remoteCameraCenter.getViewMatrix());
                 }
             }
-            proxiesPerQuadSet[layer] = numProxies;
-            depthOffsetsPerQuadSet[layer] = numDepthOffsets;
-            stats.totalProxies += numProxies;
-            stats.totalDepthOffsets += numDepthOffsets;
+            stats.sizes.numQuads += sizes.numQuads;
+            stats.sizes.numDepthOffsets += sizes.numDepthOffsets;
+            proxiesPerQuadSet[layer] = sizes.numQuads;
+            depthOffsetsPerQuadSet[layer] = sizes.numDepthOffsets;
 
             // For debugging: Generate point cloud from depth map
             if (showDepth) {

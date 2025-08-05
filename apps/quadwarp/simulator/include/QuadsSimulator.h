@@ -65,11 +65,7 @@ public:
         double totalCreateVertIndTime = 0.0;
         double totalGenDepthTime = 0.0;
         double totalCompressTime = 0.0;
-
-        uint totalProxies = 0;
-        uint totalDepthOffsets = 0;
-        double quadsSize = 0;
-        double depthOffsetsSize = 0;
+        QuadFrame::Sizes sizes;
     } stats;
 
     QuadsSimulator(QuadFrame& quadFrame, const PerspectiveCamera& remoteCamera, FrameGenerator& frameGenerator)
@@ -189,9 +185,10 @@ public:
     }
 
     void generateFrame(
-            const PerspectiveCamera& remoteCamera, Scene& remoteScene,
-            DeferredRenderer& remoteRenderer,
-            bool generateResFrame = false, bool showNormals = false, bool showDepth = false) {
+        const PerspectiveCamera& remoteCamera, Scene& remoteScene,
+        DeferredRenderer& remoteRenderer,
+        bool generateResFrame = false, bool showNormals = false, bool showDepth = false)
+    {
         double startTime = timeutils::getTimeMicros();
 
         auto& remoteCameraToUse = generateResFrame ? remoteCameraPrev : remoteCamera;
@@ -215,17 +212,13 @@ public:
         Generate Reference Frame
         ============================
         */
-        uint numProxies = 0, numDepthOffsets = 0;
         auto& quadsGenerator = frameGenerator.quadsGenerator;
         quadsGenerator.params.expandEdges = false;
-        auto [quadsSize, depthOffsetsSize] = frameGenerator.generateRefFrame(
+        auto sizes = frameGenerator.generateRefFrame(
             refFrameRT,
             remoteCameraToUse,
-            refFrameMeshes[currMeshIndex],
-            numProxies, numDepthOffsets
+            refFrameMeshes[currMeshIndex]
         );
-        stats.quadsSize = quadsSize;
-        stats.depthOffsetsSize = depthOffsetsSize;
 
         stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
         stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
@@ -248,15 +241,12 @@ public:
         */
         if (generateResFrame) {
             quadsGenerator.params.expandEdges = true;
-            auto [quadsSize, depthOffsetsSize] = frameGenerator.generateResFrame(
+            sizes = frameGenerator.generateResFrame(
                 meshScenes[currMeshIndex], meshScenes[prevMeshIndex],
                 maskTempRT, maskFrameRT,
                 remoteCamera, remoteCameraPrev,
-                refFrameMeshes[currMeshIndex], maskFrameMesh,
-                numProxies, numDepthOffsets
+                refFrameMeshes[currMeshIndex], maskFrameMesh
             );
-            stats.quadsSize = quadsSize;
-            stats.depthOffsetsSize = depthOffsetsSize;
 
             stats.totalRenderTime += frameGenerator.stats.timeToRenderMaskMs;
 
@@ -272,8 +262,7 @@ public:
 
             stats.totalCompressTime += frameGenerator.stats.timeToCompress;
         }
-        stats.totalProxies += numProxies;
-        stats.totalDepthOffsets += numDepthOffsets;
+        stats.sizes = sizes;
 
         maskFrameNode.visible = generateResFrame;
         currMeshIndex = (currMeshIndex + 1) % 2;
@@ -299,7 +288,7 @@ public:
         quadsFile.write(quadFrame.getQuads().data(), quadFrame.getQuads().size());
         quadsFile.close();
         spdlog::info("Saved {} quads ({:.3f}MB) in {:.3f}ms",
-                      stats.totalProxies, static_cast<double>(quadFrame.getQuads().size()) / BYTES_PER_MEGABYTE,
+                      stats.sizes.numQuads, static_cast<double>(quadFrame.getQuads().size()) / BYTES_PER_MEGABYTE,
                         timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
 
         // Save depth offsets
@@ -309,7 +298,7 @@ public:
         depthOffsetsFile.write(quadFrame.getDepthOffsets().data(), quadFrame.getDepthOffsets().size());
         depthOffsetsFile.close();
         spdlog::info("Saved {} depth offsets ({:.3f}MB) in {:.3f}ms",
-                     stats.totalDepthOffsets, static_cast<double>(quadFrame.getDepthOffsets().size()) / BYTES_PER_MEGABYTE,
+                     stats.sizes.numDepthOffsets, static_cast<double>(quadFrame.getDepthOffsets().size()) / BYTES_PER_MEGABYTE,
                         timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
 
         // Save color buffer

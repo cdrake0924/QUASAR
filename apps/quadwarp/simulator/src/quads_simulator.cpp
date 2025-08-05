@@ -237,11 +237,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quad Proxies: %d (%.3f MB)",
-                               quadsSimulator.stats.totalProxies,
-                               quadsSimulator.stats.quadsSize / BYTES_PER_MEGABYTE);
+                               quadsSimulator.stats.sizes.numQuads,
+                               quadsSimulator.stats.sizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %d (%.3f MB)",
-                               quadsSimulator.stats.totalDepthOffsets,
-                               quadsSimulator.stats.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quadsSimulator.stats.sizes.numDepthOffsets,
+                               quadsSimulator.stats.sizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -563,8 +563,9 @@ int main(int argc, char** argv) {
             spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadsSimulator.stats.totalCreateVertIndTime);
             spdlog::info("Compress Time: {:.3f}ms", quadsSimulator.stats.totalCompressTime);
             if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadsSimulator.stats.totalGenDepthTime);
-            spdlog::info("Frame Size: {:.3f}MB", (quadsSimulator.stats.quadsSize + quadsSimulator.stats.depthOffsetsSize) / BYTES_PER_MEGABYTE);
-            spdlog::info("Num Proxies: {}Proxies", quadsSimulator.stats.totalProxies);
+            spdlog::info("Frame Size: {:.3f}MB", (quadsSimulator.stats.sizes.quadsSize +
+                                                  quadsSimulator.stats.sizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
+            spdlog::info("Num Proxies: {}Proxies", quadsSimulator.stats.sizes.numQuads);
 
             // Save to file if requested
             if (saveToFile) {

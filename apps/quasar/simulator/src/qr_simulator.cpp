@@ -273,11 +273,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quad Proxies: %d (%.3f MB)",
-                               quasar.stats.totalProxies,
-                               quasar.stats.quadsSize / BYTES_PER_MEGABYTE);
+                               quasar.stats.sizes.numQuads,
+                               quasar.stats.sizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %d (%.3f MB)",
-                               quasar.stats.totalDepthOffsets,
-                               quasar.stats.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quasar.stats.sizes.numDepthOffsets,
+                               quasar.stats.sizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -656,8 +656,9 @@ int main(int argc, char** argv) {
             spdlog::info("  Create Vert/Ind Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateVertIndTime);
             spdlog::info("Compress Time ({}): {:.3f}ms", frameType, quasar.stats.totalCompressTime);
             if (showDepth) spdlog::info("Gen Depth Time ({}): {:.3f}ms", frameType, quasar.stats.totalGenDepthTime);
-            spdlog::info("Frame Size: {:.3f}MB", (quasar.stats.quadsSize + quasar.stats.depthOffsetsSize) / BYTES_PER_MEGABYTE);
-            spdlog::info("Num Proxies: {}Proxies", quasar.stats.totalProxies);
+            spdlog::info("Frame Size: {:.3f}MB", (quasar.stats.sizes.quadsSize +
+                                                  quasar.stats.sizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
+            spdlog::info("Num Proxies: {}Proxies", quasar.stats.sizes.numQuads);
 
             // Save to file if requested
             if (saveToFile) {

@@ -61,11 +61,7 @@ public:
         double totalCreateVertIndTime = 0.0;
         double totalGenDepthTime = 0.0;
         double totalCompressTime = 0.0;
-
-        uint totalProxies = 0;
-        uint totalDepthOffsets = 0;
-        double quadsSize = 0;
-        double depthOffsetsSize = 0;
+        QuadFrame::Sizes sizes;
     } stats;
 
     QSSimulator(QuadFrame& quadFrame, uint maxViews, FrameGenerator& frameGenerator)
@@ -161,9 +157,10 @@ public:
     }
 
     void generateFrame(
-            const std::vector<PerspectiveCamera> remoteCameras, Scene& remoteScene,
-            DeferredRenderer& remoteRenderer,
-            bool showNormals = false, bool showDepth = false) {
+        const std::vector<PerspectiveCamera> remoteCameras, Scene& remoteScene,
+        DeferredRenderer& remoteRenderer,
+        bool showNormals = false, bool showDepth = false)
+    {
         // Reset stats
         stats = { 0 };
 
@@ -211,15 +208,18 @@ public:
             }
             stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-            uint numProxies = 0, numDepthOffsets = 0;
-            auto [quadsSize, depthOffsetsSize] = frameGenerator.generateRefFrame(
+            auto sizes = frameGenerator.generateRefFrame(
                 gBufferToUse, remoteCameraToUse,
-                meshToUse,
-                numProxies, numDepthOffsets
+                meshToUse
             );
             // QS has data structures that are 103 bits
-            stats.quadsSize += quadsSize * (103.0) / (8*sizeof(QuadMapDataPacked));
-            stats.depthOffsetsSize += depthOffsetsSize;
+            stats.sizes.quadsSize += sizes.quadsSize * (103.0) / (8*sizeof(QuadMapDataPacked));
+            stats.sizes.depthOffsetsSize += sizes.depthOffsetsSize;
+            stats.sizes.numQuads += sizes.numQuads;
+            stats.sizes.numDepthOffsets += sizes.numDepthOffsets;
+
+            proxiesPerQuadSet[view] = sizes.numQuads;
+            depthOffsetsPerQuadSet[view] = sizes.numDepthOffsets;
 
             // Copy quads and depth offsets to local vectors
             quadFrame.copyToMemory(quads[view], depthOffsets[view]);
@@ -235,11 +235,6 @@ public:
             stats.totalCreateMeshTime += frameGenerator.stats.timeToCreateMeshMs;
 
             stats.totalCompressTime += frameGenerator.stats.timeToCompress;
-
-            proxiesPerQuadSet[view] = numProxies;
-            depthOffsetsPerQuadSet[view] = numDepthOffsets;
-            stats.totalProxies += numProxies;
-            stats.totalDepthOffsets += numDepthOffsets;
 
             // For debugging: Generate point cloud from depth map
             if (showDepth) {

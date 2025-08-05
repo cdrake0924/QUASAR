@@ -105,8 +105,7 @@ int main(int argc, char** argv) {
     Mesh* mesh;
 
     uint totalTriangles = 0;
-    uint totalProxies = 0;
-    uint totalDepthOffsets = 0;
+    QuadFrame::Sizes totalSizes;
 
     double startTime = window->getTime();
     double loadFromFilesTime = 0.0;
@@ -114,15 +113,11 @@ int main(int argc, char** argv) {
 
     Path quadsFile = (dataPath / "quads").withExtension(".bin.zstd");
     Path offsetsFile = (dataPath / "depthOffsets").withExtension(".bin.zstd");
-    auto [totalBytesProxies, totalBytesDepthOffsets] = quadFrame.loadFromFiles(quadsFile, offsetsFile);
-    uint numProxies = quadFrame.getNumQuads();
-    uint numDepthOffsets = quadFrame.getNumDepthOffsets();
-    totalProxies = numProxies;
-    totalDepthOffsets = numDepthOffsets;
+    auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
 
     mesh = new Mesh({
-        .maxVertices = numProxies * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
-        .maxIndices = numProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
+        .maxVertices = sizes.numQuads * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
+        .maxIndices = sizes.numQuads * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
         .vertexSize = sizeof(QuadVertex),
         .attributes = QuadVertex::getVertexInputAttributes(),
         .material = new QuadMaterial({ .baseColorTexture = &colorTexture ,}),
@@ -139,6 +134,7 @@ int main(int argc, char** argv) {
     auto meshBufferSizes = meshFromQuads.getBufferSizes();
 
     totalTriangles = meshBufferSizes.numIndices / 3;
+    totalSizes += sizes;
 
     Node node(mesh);
     node.frustumCulled = false;
@@ -208,10 +204,12 @@ int main(int argc, char** argv) {
             else
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
-            float proxySizeMB = static_cast<float>(totalBytesProxies) / BYTES_PER_MEGABYTE;
-            float depthOffsetSizeMB = static_cast<float>(totalBytesDepthOffsets) / BYTES_PER_MEGABYTE;
-            ImGui::TextColored(ImVec4(0,1,1,1), "Total Quad Proxies: %d (%.3f MB)", totalProxies, proxySizeMB);
-            ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %d (%.3f MB)", totalDepthOffsets, depthOffsetSizeMB);
+            ImGui::TextColored(ImVec4(0,1,1,1), "Total Quad Proxies: %d (%.3f MB)",
+                               totalSizes.numQuads,
+                               totalSizes.quadsSize / BYTES_PER_MEGABYTE);
+            ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %d (%.3f MB)",
+                               totalSizes.numDepthOffsets,
+                               totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 

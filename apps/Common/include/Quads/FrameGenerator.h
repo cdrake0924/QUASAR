@@ -29,18 +29,16 @@ public:
         double timeToCompress = 0.0f;
     } stats;
 
-    std::pair<uint, uint> generateRefFrame(
+    QuadFrame::Sizes generateRefFrame(
         const FrameRenderTarget& frameRT,
         const PerspectiveCamera& remoteCamera,
-        const Mesh& mesh,
-        uint& numProxies, uint& numDepthOffsets);
+        const Mesh& mesh);
 
-    std::pair<uint, uint> generateResFrame(
+    QuadFrame::Sizes generateResFrame(
         Scene& currScene, Scene& prevScene,
         FrameRenderTarget& frameRT, FrameRenderTarget& maskFrameRT,
         const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-        const Mesh& currMesh, const Mesh& maskMesh,
-        uint& numProxies, uint& numDepthOffsets);
+        const Mesh& currMesh, const Mesh& maskMesh);
 
     std::pair<MeshFromQuads::BufferSizes, MeshFromQuads::BufferSizes> getBufferSizes() const {
         return { meshFromQuads.getBufferSizes(), meshFromQuadsMask.getBufferSizes() };

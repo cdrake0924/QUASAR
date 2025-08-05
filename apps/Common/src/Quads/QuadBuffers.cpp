@@ -89,26 +89,27 @@ uint QuadBuffers::updateDataBuffer() {
 #endif
 
 uint QuadBuffers::loadFromMemory(const std::vector<char>& inputData) {
-    data = inputData;
-
     uint bufferOffset = 0;
 
-    numProxies = *reinterpret_cast<const uint*>(data.data());
+    numProxies = *reinterpret_cast<const uint*>(inputData.data());
     bufferOffset += sizeof(uint);
 
-    auto normalSphericalsPtr = reinterpret_cast<const uint*>(data.data() + bufferOffset);
+    auto normalSphericalsPtr = reinterpret_cast<const uint*>(inputData.data() + bufferOffset);
     normalSphericalsBuffer.bind();
     normalSphericalsBuffer.setData(numProxies, normalSphericalsPtr);
     bufferOffset += numProxies * sizeof(uint);
 
-    auto depthsPtr = reinterpret_cast<const float*>(data.data() + bufferOffset);
+    auto depthsPtr = reinterpret_cast<const float*>(inputData.data() + bufferOffset);
     depthsBuffer.bind();
     depthsBuffer.setData(numProxies, depthsPtr);
     bufferOffset += numProxies * sizeof(float);
 
-    auto metadatasPtr = reinterpret_cast<const uint*>(data.data() + bufferOffset);
+    auto metadatasPtr = reinterpret_cast<const uint*>(inputData.data() + bufferOffset);
     metadatasBuffer.bind();
     metadatasBuffer.setData(numProxies, metadatasPtr);
+
+    data = inputData;
+    resize(numProxies);
 
     return numProxies;
 }
