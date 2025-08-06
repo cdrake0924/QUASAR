@@ -111,7 +111,7 @@ public:
         })
         , depthMesh(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
         , meshScenes(2)
-        , maskFrameMesh(quadFrame, maskFrameRT.colorBuffer, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
+        , maskFrameMesh(quadFrame, maskFrameRT.colorTexture, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
     {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -122,7 +122,7 @@ public:
         refFrameWireframesLocal.reserve(2);
 
         for (int i = 0; i < 2; i++) {
-            refFrameMeshes.emplace_back(quadFrame, refFrameRT.colorBuffer);
+            refFrameMeshes.emplace_back(quadFrame, refFrameRT.colorTexture);
 
             refFrameNodes.emplace_back(&refFrameMeshes[i]);
             refFrameNodes[i].frustumCulled = false;
@@ -175,14 +175,13 @@ public:
         DeferredRenderer& remoteRenderer,
         bool generateResFrame = false, bool showNormals = false, bool showDepth = false)
     {
-        double startTime = timeutils::getTimeMicros();
-
         auto& remoteCameraToUse = generateResFrame ? remoteCameraPrev : remoteCamera;
 
         // Reset stats
         stats = { 0 };
 
-        // Render all objects in remoteScene normally
+        // Render remote scene normally
+        double startTime = timeutils::getTimeMicros();
         remoteRenderer.drawObjects(remoteScene, remoteCameraToUse);
         if (!showNormals) {
             remoteRenderer.copyToFrameRT(refFrameRT);

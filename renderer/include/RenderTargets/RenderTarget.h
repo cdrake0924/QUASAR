@@ -7,12 +7,12 @@ namespace quasar {
 
 class RenderTarget : public RenderTargetBase {
 public:
-    Texture colorBuffer;
-    Texture depthStencilBuffer;
+    Texture colorTexture;
+    Texture depthStencilTexture;
 
     RenderTarget(const RenderTargetCreateParams& params)
         : RenderTargetBase(params)
-        , colorBuffer({
+        , colorTexture({
             .width = width,
             .height = height,
             .internalFormat = params.internalFormat,
@@ -24,7 +24,7 @@ public:
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
         })
-        , depthStencilBuffer({
+        , depthStencilTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_DEPTH32F_STENCIL8,
@@ -39,8 +39,8 @@ public:
         })
     {
         framebuffer.bind();
-        framebuffer.attachTexture(colorBuffer, GL_COLOR_ATTACHMENT0);
-        framebuffer.attachTexture(depthStencilBuffer, GL_DEPTH_STENCIL_ATTACHMENT);
+        framebuffer.attachTexture(colorTexture, GL_COLOR_ATTACHMENT0);
+        framebuffer.attachTexture(depthStencilTexture, GL_DEPTH_STENCIL_ATTACHMENT);
 
         if (!framebuffer.checkStatus()) {
             throw std::runtime_error("Framebuffer is not complete!");
@@ -69,31 +69,31 @@ public:
         this->width = width;
         this->height = height;
 
-        colorBuffer.resize(width, height);
-        depthStencilBuffer.resize(width, height);
+        colorTexture.resize(width, height);
+        depthStencilTexture.resize(width, height);
     }
 
     void readPixels(unsigned char* data, bool readAsFloat = false) {
         bind();
-        colorBuffer.readPixels(data, readAsFloat);
+        colorTexture.readPixels(data, readAsFloat);
         unbind();
     }
 
     void saveColorAsPNG(const std::string& path) {
         bind();
-        colorBuffer.saveAsPNG(path);
+        colorTexture.saveAsPNG(path);
         unbind();
     }
 
     void saveColorAsJPG(const std::string& path, int quality = 95) {
         bind();
-        colorBuffer.saveAsJPG(path, quality);
+        colorTexture.saveAsJPG(path, quality);
         unbind();
     }
 
     void saveColorAsHDR(const std::string& path) {
         bind();
-        colorBuffer.saveAsHDR(path);
+        colorTexture.saveAsHDR(path);
         unbind();
     }
 };

@@ -156,7 +156,7 @@ int main(int argc, char** argv) {
     Mesh mesh = Mesh({
         .maxVertices = maxVertices,
         .maxIndices = maxIndices,
-        .material = new UnlitMaterial({ .baseColorTexture = &renderTarget.colorBuffer ,}),
+        .material = new UnlitMaterial({ .baseColorTexture = &renderTarget.colorTexture ,}),
         .usage = GL_DYNAMIC_DRAW
     });
     Node node = Node(&mesh);
@@ -460,7 +460,7 @@ int main(int argc, char** argv) {
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("Remote Frame", 0, flags);
-            ImGui::Image((void*)(intptr_t)(renderTarget.colorBuffer), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Image((void*)(intptr_t)(renderTarget.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
     });

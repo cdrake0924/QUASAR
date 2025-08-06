@@ -89,8 +89,6 @@ void Mesh::setArrayBufferAttributes(const VertexInputAttributes& attributes, uin
     glGenVertexArrays(1, &vertexArrayBuffer);
     glBindVertexArray(vertexArrayBuffer);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-
     if (attributes.size() == 0) {
         spdlog::warn("No vertex attributes provided!");
     }

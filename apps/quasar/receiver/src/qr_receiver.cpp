@@ -116,6 +116,11 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
+    uint totalTriangles = 0;
+    QuadFrame::Sizes totalSizes;
+    double loadFromFilesTime = 0.0;
+    double createMeshTime = 0.0;
+
     std::vector<Texture> colorTextures; colorTextures.reserve(maxLayers);
     TextureFileCreateParams params = {
         .wrapS = GL_REPEAT,
@@ -124,8 +129,8 @@ int main(int argc, char** argv) {
         .magFilter = GL_NEAREST,
         .flipVertically = true,
     };
-    for (int view = 0; view < maxLayers; view++) {
-        Path colorFileName = dataPath.appendToName("color" + std::to_string(view));
+    for (int layer = 0; layer < maxLayers; layer++) {
+        Path colorFileName = dataPath.appendToName("color" + std::to_string(layer));
         params.path = colorFileName.withExtension(".jpg");
         colorTextures.emplace_back(params);
     }
@@ -136,51 +141,44 @@ int main(int argc, char** argv) {
     std::vector<Node> nodes; nodes.reserve(maxLayers);
     std::vector<Node> nodeWireframes; nodeWireframes.reserve(maxLayers);
 
-    uint totalTriangles = 0;
-    QuadFrame::Sizes totalSizes;
-
-    double startTime = window->getTime();
-    double loadFromFilesTime = 0.0;
-    double createMeshTime = 0.0;
-
-    for (int view = 0; view < maxLayers; view++) {
-        startTime = window->getTime();
-        Path quadsFile = (dataPath / "quads").appendToName(std::to_string(view)).withExtension(".bin.zstd");
-        Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(view)).withExtension(".bin.zstd");
+    for (int layer = 0; layer < maxLayers; layer++) {
+        // Load quads and depth offsets from files
+        double startTime = window->getTime();
+        Path quadsFile = (dataPath / "quads").appendToName(std::to_string(layer)).withExtension(".bin.zstd");
+        Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(layer)).withExtension(".bin.zstd");
         auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
         loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
 
-        meshes.emplace_back(quadFrame, colorTextures[view]);
+        meshes.emplace_back(quadFrame, colorTextures[layer]);
 
-        const glm::uvec2& gBufferSize = glm::uvec2(colorTextures[view].width, colorTextures[view].height);
-        auto& cameraToUse = (!disableWideFov && view == maxLayers - 1) ? remoteCameraWideFov : remoteCamera;
-        meshes[view].appendQuads(quadFrame, gBufferSize);
-        meshes[view].createMeshFromProxies(quadFrame, gBufferSize, cameraToUse);
-        createMeshTime += meshes[view].stats.timeToCreateMeshMs;
+        // Create mesh
+        const glm::uvec2& gBufferSize = glm::uvec2(colorTextures[layer].width, colorTextures[layer].height);
+        auto& cameraToUse = (!disableWideFov && layer == maxLayers - 1) ? remoteCameraWideFov : remoteCamera;
+        meshes[layer].appendQuads(quadFrame, gBufferSize);
+        meshes[layer].createMeshFromProxies(quadFrame, gBufferSize, cameraToUse);
+        createMeshTime += meshes[layer].stats.timeToCreateMeshMs;
 
-        auto meshBufferSizes = meshes[view].getBufferSizes();
+        // Create node and wireframe node
+        nodes.emplace_back(&meshes[layer]);
+        nodes[layer].frustumCulled = false;
+        scene.addChildNode(&nodes[layer]);
+
+        nodeWireframes.emplace_back(&meshes[layer]);
+        nodeWireframes[layer].frustumCulled = false;
+        nodeWireframes[layer].wireframe = true;
+        nodeWireframes[layer].visible = false;
+        nodeWireframes[layer].overrideMaterial = new QuadMaterial({ .baseColor = colors[layer % colors.size()] });
+        scene.addChildNode(&nodeWireframes[layer]);
+
+        auto meshBufferSizes = meshes[layer].getBufferSizes();
         totalTriangles += meshBufferSizes.numIndices / 3;
         totalSizes += sizes;
-    }
-
-    for (int view = 0; view < maxLayers; view++) {
-        nodes.emplace_back(&meshes[view]);
-        nodes[view].frustumCulled = false;
-        scene.addChildNode(&nodes[view]);
-
-        nodeWireframes.emplace_back(&meshes[view]);
-        nodeWireframes[view].frustumCulled = false;
-        nodeWireframes[view].wireframe = true;
-        nodeWireframes[view].visible = false;
-        nodeWireframes[view].overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
-        scene.addChildNode(&nodeWireframes[view]);
     }
 
     bool* showLayers = new bool[maxLayers];
     for (int i = 0; i < maxLayers; ++i) {
         showLayers[i] = true;
     }
-
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;

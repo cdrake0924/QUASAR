@@ -157,7 +157,8 @@ void Buffer::getData(void* data) const {
     if (mappedBuffer) {
         std::memcpy(data, mappedBuffer, numElems * dataSize);
         glUnmapBuffer(target);
-    } else {
+    }
+    else {
         spdlog::error("Could not map buffer data.");
     }
 #endif

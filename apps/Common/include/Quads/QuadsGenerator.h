@@ -42,7 +42,7 @@ public:
 
     BufferSizes getBufferSizes();
     void createProxiesFromRT(const FrameRenderTarget& frameRT, const PerspectiveCamera& remoteCamera);
-    void createProxiesFromTextures(const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer, const PerspectiveCamera& remoteCamera);
+    void createProxiesFromTextures(const Texture& colorTexture, const Texture& normalsTexture, const Texture& depthBuffer, const PerspectiveCamera& remoteCamera);
 
 private:
     QuadFrame& quadFrame;
@@ -55,10 +55,10 @@ private:
     ComputeShader simplifyQuadMapShader;
     ComputeShader gatherQuadsShader;
 
-    void generateInitialQuadMap(const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera);
+    void generateInitialQuadMap(const Texture& colorTexture, const Texture& normalsTexture, const Texture& depthBuffer, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera);
     void simplifyQuadMaps(const PerspectiveCamera& remoteCamera, const glm::vec2& gBufferSize);
     void gatherOutputQuads(const glm::vec2& gBufferSize);
-    void createProxies(const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer, const PerspectiveCamera& remoteCamera);
+    void createProxies(const Texture& colorTexture, const Texture& normalsTexture, const Texture& depthBuffer, const PerspectiveCamera& remoteCamera);
 };
 
 } // namespace quasar

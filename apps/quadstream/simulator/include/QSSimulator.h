@@ -117,7 +117,7 @@ public:
             copyRTs.emplace_back(rtParams);
 
             // We can use less vertices and indicies for the additional views since they will be sparser
-            refFrameMeshes.emplace_back(quadFrame, refFrameRTs[view].colorBuffer, MAX_NUM_PROXIES / (view == 0 || view != maxViews - 1 ? 1 : 4));
+            refFrameMeshes.emplace_back(quadFrame, refFrameRTs[view].colorTexture, MAX_NUM_PROXIES / (view == 0 || view != maxViews - 1 ? 1 : 4));
             refFrameNodesLocal.emplace_back(&refFrameMeshes[view]);
             refFrameNodesLocal[view].frustumCulled = false;
 
@@ -129,7 +129,6 @@ public:
             refFrameWireframesLocal[view].overrideMaterial = new QuadMaterial({ .baseColor = color });
 
             depthMeshes.emplace_back(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-
             depthNodes.emplace_back(&depthMeshes[view]);
             depthNodes[view].frustumCulled = false;
             depthNodes[view].primativeType = GL_POINTS;

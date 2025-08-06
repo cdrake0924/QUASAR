@@ -68,7 +68,7 @@ QuadsGenerator::BufferSizes QuadsGenerator::getBufferSizes() {
 }
 
 void QuadsGenerator::generateInitialQuadMap(
-    const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
+    const Texture& colorTexture, const Texture& normalsTexture, const Texture& depthBuffer,
     const glm::vec2& gBufferSize,
     const PerspectiveCamera& remoteCamera)
 {
@@ -92,7 +92,7 @@ void QuadsGenerator::generateInitialQuadMap(
         genQuadMapShader.setVec2("quadMapSize", quadMapSizes[closestQuadMapIdx]);
     }
     {
-        genQuadMapShader.setTexture(normalsBuffer, 0);
+        genQuadMapShader.setTexture(normalsTexture, 0);
         genQuadMapShader.setTexture(depthBuffer, 1);
     }
     {
@@ -118,7 +118,7 @@ void QuadsGenerator::generateInitialQuadMap(
         genQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, quadMaps[closestQuadMapIdx].metadatasBuffer);
 
         genQuadMapShader.setImageTexture(0, quadFrame.depthOffsets.buffer, 0, GL_FALSE, 0, GL_READ_WRITE, quadFrame.depthOffsets.buffer.internalFormat);
-        genQuadMapShader.setImageTexture(1, colorBuffer, 0, GL_FALSE, 0, GL_READ_WRITE, colorBuffer.internalFormat);
+        genQuadMapShader.setImageTexture(1, colorTexture, 0, GL_FALSE, 0, GL_READ_WRITE, colorTexture.internalFormat);
     }
     genQuadMapShader.dispatch((gBufferSize.x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
                               (gBufferSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
@@ -248,11 +248,11 @@ void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
 }
 
 void QuadsGenerator::createProxies(
-    const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
+    const Texture& colorTexture, const Texture& normalsTexture, const Texture& depthBuffer,
     const PerspectiveCamera& remoteCamera)
 {
-    const glm::vec2 gBufferSize = glm::vec2(colorBuffer.width, colorBuffer.height);
-    generateInitialQuadMap(colorBuffer, normalsBuffer, depthBuffer, gBufferSize, remoteCamera);
+    const glm::vec2 gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
+    generateInitialQuadMap(colorTexture, normalsTexture, depthBuffer, gBufferSize, remoteCamera);
     simplifyQuadMaps(remoteCamera, gBufferSize);
     gatherOutputQuads(gBufferSize);
 
@@ -264,12 +264,12 @@ void QuadsGenerator::createProxiesFromRT(
     const FrameRenderTarget& frameRT,
     const PerspectiveCamera& remoteCamera)
 {
-    createProxies(frameRT.colorBuffer, frameRT.normalsBuffer, frameRT.depthStencilBuffer, remoteCamera);
+    createProxies(frameRT.colorTexture, frameRT.normalsTexture, frameRT.depthStencilTexture, remoteCamera);
 }
 
 void QuadsGenerator::createProxiesFromTextures(
-    const Texture& colorBuffer, const Texture& normalsBuffer, const Texture& depthBuffer,
+    const Texture& colorTexture, const Texture& normalsTexture, const Texture& depthBuffer,
     const PerspectiveCamera& remoteCamera)
 {
-    createProxies(colorBuffer, normalsBuffer, depthBuffer, remoteCamera);
+    createProxies(colorTexture, normalsTexture, depthBuffer, remoteCamera);
 }

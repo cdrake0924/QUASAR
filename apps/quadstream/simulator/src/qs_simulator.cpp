@@ -305,16 +305,13 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            if (ImGui::Checkbox("Show Normals Instead of Color", &showNormals)) {
+            ImGui::Checkbox("Show Wireframe", &showWireframe);
+            if (ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth)) {
                 preventCopyingLocalPose = true;
                 generateRemoteFrame = true;
                 runAnimations = false;
             }
-
-            ImGui::Separator();
-
-            ImGui::Checkbox("Show Wireframe", &showWireframe);
-            if (ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth)) {
+            if (ImGui::Checkbox("Show Normals Instead of Color", &showNormals)) {
                 preventCopyingLocalPose = true;
                 generateRemoteFrame = true;
                 runAnimations = false;
@@ -417,7 +414,7 @@ int main(int argc, char** argv) {
                     );
 
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
-                    ImGui::Image((void*)(intptr_t)(quadstream.refFrameRTs[viewIdx].colorBuffer.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
+                    ImGui::Image((void*)(intptr_t)(quadstream.refFrameRTs[viewIdx].colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
                     ImGui::End();
                 }
             }

@@ -6,7 +6,7 @@ uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
 uniform sampler2D screenNormals;
 uniform sampler2D screenPositions;
-uniform usampler2D idBuffer;
+uniform usampler2D idTexture;
 
 uniform bool showObjectIDs = true;
 
@@ -22,7 +22,7 @@ vec3 randomColor(uint id) {
 }
 
 void main() {
-    uvec3 ids = texture(idBuffer, TexCoord).rgb;
+    uvec3 ids = texture(idTexture, TexCoord).rgb;
     uint id = showObjectIDs ? ids.r : ids.g;
 
     vec3 col = randomColor(id);

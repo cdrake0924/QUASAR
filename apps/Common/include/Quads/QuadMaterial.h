@@ -11,7 +11,7 @@ struct QuadMaterialCreateParams {
     AlphaMode alphaMode = AlphaMode::OPAQUE;
     float maskThreshold = 0.5f;
     std::string baseColorTexturePath = "";
-    Texture* baseColorTexture;
+    const Texture* baseColorTexture;
 };
 
 class QuadMaterial : public Material {

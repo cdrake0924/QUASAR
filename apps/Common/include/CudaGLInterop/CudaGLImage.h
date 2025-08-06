@@ -59,7 +59,7 @@ public:
     }
 
 private:
-    Texture* texture;
+    const Texture* texture;
 
     cudaGraphicsResource* cudaResource;
 };

@@ -46,7 +46,7 @@ public:
 
         meshFromDepthShader.bind();
         {
-            meshFromDepthShader.setTexture(rt.depthStencilBuffer, 0);
+            meshFromDepthShader.setTexture(rt.depthStencilTexture, 0);
         }
         {
             meshFromDepthShader.setVec2("depthMapSize", depthMapSize);

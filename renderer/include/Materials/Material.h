@@ -17,7 +17,7 @@ enum class AlphaMode : uint8_t {
 
 class Material {
 public:
-    std::vector<Texture*> textures;
+    std::vector<const Texture*> textures;
 
     Material() = default;
     ~Material() = default;

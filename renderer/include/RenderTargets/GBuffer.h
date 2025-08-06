@@ -9,18 +9,18 @@ namespace quasar {
 
 class GBuffer : public RenderTargetBase {
 public:
-    Texture albedoBuffer;
-    Texture pbrBuffer;
-    Texture alphaBuffer;
-    Texture positionBuffer;
-    Texture normalsBuffer;
-    Texture lightPositionBuffer;
-    Texture idBuffer;
-    Texture depthStencilBuffer;
+    Texture albedoTexture;
+    Texture pbrTexture;
+    Texture alphaTexture;
+    Texture positionTexture;
+    Texture normalsTexture;
+    Texture lightPositionTexture;
+    Texture idTexture;
+    Texture depthStencilTexture;
 
     GBuffer(const RenderTargetCreateParams& params)
         : RenderTargetBase(params)
-        , albedoBuffer({
+        , albedoTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_RGBA8,
@@ -33,7 +33,7 @@ public:
             .multiSampled = params.multiSampled,
             .numSamples = params.numSamples,
         })
-        , pbrBuffer({
+        , pbrTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_RGBA8,
@@ -46,7 +46,7 @@ public:
             .multiSampled = params.multiSampled,
             .numSamples = params.numSamples,
         })
-        , alphaBuffer({
+        , alphaTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_RG8,
@@ -59,7 +59,7 @@ public:
             .multiSampled = params.multiSampled,
             .numSamples = params.numSamples,
         })
-        , normalsBuffer({
+        , normalsTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_RGB16F,
@@ -72,7 +72,7 @@ public:
             .multiSampled = params.multiSampled,
             .numSamples = params.numSamples,
         })
-        , positionBuffer({
+        , positionTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_RGBA16F,
@@ -85,7 +85,7 @@ public:
             .multiSampled = params.multiSampled,
             .numSamples = params.numSamples,
         })
-        , lightPositionBuffer({
+        , lightPositionTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_RGBA16F,
@@ -98,7 +98,7 @@ public:
             .multiSampled = params.multiSampled,
             .numSamples = params.numSamples,
         })
-        , idBuffer({
+        , idTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_RGB32UI,
@@ -111,7 +111,7 @@ public:
             .multiSampled = params.multiSampled,
             .numSamples = params.numSamples,
         })
-        , depthStencilBuffer({
+        , depthStencilTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_DEPTH32F_STENCIL8,
@@ -126,14 +126,14 @@ public:
         })
     {
         framebuffer.bind();
-        framebuffer.attachTexture(albedoBuffer, GL_COLOR_ATTACHMENT0);
-        framebuffer.attachTexture(pbrBuffer, GL_COLOR_ATTACHMENT1);
-        framebuffer.attachTexture(alphaBuffer, GL_COLOR_ATTACHMENT2);
-        framebuffer.attachTexture(normalsBuffer, GL_COLOR_ATTACHMENT3);
-        framebuffer.attachTexture(positionBuffer, GL_COLOR_ATTACHMENT4);
-        framebuffer.attachTexture(lightPositionBuffer, GL_COLOR_ATTACHMENT5);
-        framebuffer.attachTexture(idBuffer, GL_COLOR_ATTACHMENT6);
-        framebuffer.attachTexture(depthStencilBuffer, GL_DEPTH_STENCIL_ATTACHMENT);
+        framebuffer.attachTexture(albedoTexture, GL_COLOR_ATTACHMENT0);
+        framebuffer.attachTexture(pbrTexture, GL_COLOR_ATTACHMENT1);
+        framebuffer.attachTexture(alphaTexture, GL_COLOR_ATTACHMENT2);
+        framebuffer.attachTexture(normalsTexture, GL_COLOR_ATTACHMENT3);
+        framebuffer.attachTexture(positionTexture, GL_COLOR_ATTACHMENT4);
+        framebuffer.attachTexture(lightPositionTexture, GL_COLOR_ATTACHMENT5);
+        framebuffer.attachTexture(idTexture, GL_COLOR_ATTACHMENT6);
+        framebuffer.attachTexture(depthStencilTexture, GL_DEPTH_STENCIL_ATTACHMENT);
 
         uint attachments[7] = {
             GL_COLOR_ATTACHMENT0,
@@ -224,31 +224,31 @@ public:
     void resize(uint width, uint height) override {
         RenderTargetBase::resize(width, height);
 
-        albedoBuffer.resize(width, height);
-        pbrBuffer.resize(width, height);
-        alphaBuffer.resize(width, height);
-        positionBuffer.resize(width, height);
-        normalsBuffer.resize(width, height);
-        lightPositionBuffer.resize(width, height);
-        idBuffer.resize(width, height);
-        depthStencilBuffer.resize(width, height);
+        albedoTexture.resize(width, height);
+        pbrTexture.resize(width, height);
+        alphaTexture.resize(width, height);
+        positionTexture.resize(width, height);
+        normalsTexture.resize(width, height);
+        lightPositionTexture.resize(width, height);
+        idTexture.resize(width, height);
+        depthStencilTexture.resize(width, height);
     }
 
     void readPixels(unsigned char *data, bool readAsFloat = false) {
         bind();
-        albedoBuffer.readPixels(data, readAsFloat);
+        albedoTexture.readPixels(data, readAsFloat);
         unbind();
     }
 
     void saveColorAsPNG(const std::string& path) {
         bind();
-        albedoBuffer.saveAsPNG(path);
+        albedoTexture.saveAsPNG(path);
         unbind();
     }
 
     void saveColorAsHDR(const std::string& path) {
         bind();
-        albedoBuffer.saveAsHDR(path);
+        albedoTexture.saveAsHDR(path);
         unbind();
     }
 };

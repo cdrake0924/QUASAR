@@ -11,7 +11,7 @@
 
 using namespace quasar;
 
-QuadMesh::QuadMesh(const QuadFrame& quadFrame, Texture& colorBuffer, uint maxNumProxies)
+QuadMesh::QuadMesh(const QuadFrame& quadFrame, Texture& colorTexture, uint maxNumProxies)
     : maxProxies(maxNumProxies)
     , currentQuadBuffers(maxProxies)
     , meshSizesBuffer({
@@ -70,7 +70,7 @@ QuadMesh::QuadMesh(const QuadFrame& quadFrame, Texture& colorBuffer, uint maxNum
         .maxIndices = maxNumProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
         .vertexSize = sizeof(QuadVertex),
         .attributes = QuadVertex::getVertexInputAttributes(),
-        .material = new QuadMaterial({ .baseColorTexture = &colorBuffer }),
+        .material = new QuadMaterial({ .baseColorTexture = &colorTexture }),
         .usage = GL_DYNAMIC_DRAW,
         .indirectDraw = true
     })

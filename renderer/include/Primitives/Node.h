@@ -30,7 +30,7 @@ public:
     bool wireframe = false;
     float wireframeLineWidth = 1.0f;
 
-    Material* overrideMaterial = nullptr;
+    const Material* overrideMaterial = nullptr;
 
     std::vector<int> meshIndices;
 

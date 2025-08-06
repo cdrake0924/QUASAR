@@ -19,20 +19,20 @@ VideoStreamer::VideoStreamer(
     , videoHeight(params.height)
     , RenderTarget(params)
 #if defined(HAS_CUDA)
-    , cudaGLImage(colorBuffer)
+    , cudaGLImage(colorTexture)
 #endif
 {
     renderTargetCopy = new RenderTarget({
         .width = width,
         .height = height,
-        .internalFormat = colorBuffer.internalFormat,
-        .format = colorBuffer.format,
-        .type = colorBuffer.type,
-        .wrapS = colorBuffer.wrapS,
-        .wrapT = colorBuffer.wrapT,
-        .minFilter = colorBuffer.minFilter,
-        .magFilter = colorBuffer.magFilter,
-        .multiSampled = colorBuffer.multiSampled,
+        .internalFormat = colorTexture.internalFormat,
+        .format = colorTexture.format,
+        .type = colorTexture.type,
+        .wrapS = colorTexture.wrapS,
+        .wrapT = colorTexture.wrapT,
+        .minFilter = colorTexture.minFilter,
+        .magFilter = colorTexture.magFilter,
+        .multiSampled = colorTexture.multiSampled,
     });
 
     rgbaVideoFrameData.resize(videoWidth * videoHeight * 4);

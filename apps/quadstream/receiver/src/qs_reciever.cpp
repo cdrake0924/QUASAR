@@ -146,6 +146,12 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
+    uint totalTriangles = 0;
+    QuadFrame::Sizes totalSizes;
+
+    double loadFromFilesTime = 0.0;
+    double createMeshTime = 0.0;
+
     std::vector<Texture> colorTextures; colorTextures.reserve(maxViews);
     TextureFileCreateParams params = {
         .wrapS = GL_REPEAT,
@@ -166,15 +172,9 @@ int main(int argc, char** argv) {
     std::vector<Node> nodes; nodes.reserve(maxViews);
     std::vector<Node> nodeWireframes; nodeWireframes.reserve(maxViews);
 
-    uint totalTriangles = 0;
-    QuadFrame::Sizes totalSizes;
-
-    double startTime = window->getTime();
-    double loadFromFilesTime = 0.0;
-    double createMeshTime = 0.0;
-
     for (int view = 0; view < maxViews; view++) {
-        startTime = window->getTime();
+        // Load quads and depth offsets from files
+        double startTime = window->getTime();
         Path quadsFile = (dataPath / "quads").appendToName(std::to_string(view)).withExtension(".bin.zstd");
         Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(view)).withExtension(".bin.zstd");
         auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
@@ -182,17 +182,13 @@ int main(int argc, char** argv) {
 
         meshes.emplace_back(quadFrame, colorTextures[view]);
 
+        // Create mesh
         const glm::vec2& gBufferSize = glm::vec2(colorTextures[view].width, colorTextures[view].height);
         meshes[view].appendQuads(quadFrame, gBufferSize);
         meshes[view].createMeshFromProxies(quadFrame, gBufferSize, remoteCameras[view]);
         createMeshTime += meshes[view].stats.timeToCreateMeshMs;
 
-        auto meshBufferSizes = meshes[view].getBufferSizes();
-        totalTriangles += meshBufferSizes.numIndices / 3;
-        totalSizes += sizes;
-    }
-
-    for (int view = 0; view < maxViews; view++) {
+        // Create node and wireframe node
         nodes.emplace_back(&meshes[view]);
         nodes[view].frustumCulled = false;
         scene.addChildNode(&nodes[view]);
@@ -203,13 +199,16 @@ int main(int argc, char** argv) {
         nodeWireframes[view].visible = false;
         nodeWireframes[view].overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
         scene.addChildNode(&nodeWireframes[view]);
+
+        auto meshBufferSizes = meshes[view].getBufferSizes();
+        totalTriangles += meshBufferSizes.numIndices / 3;
+        totalSizes += sizes;
     }
 
     bool* showViews = new bool[maxViews];
     for (int i = 0; i < maxViews; ++i) {
         showViews[i] = true;
     }
-
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;

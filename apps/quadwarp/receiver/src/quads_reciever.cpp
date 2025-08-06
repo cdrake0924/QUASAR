@@ -88,6 +88,11 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
+    uint totalTriangles = 0;
+    QuadFrame::Sizes totalSizes;
+    double loadFromFilesTime = 0.0;
+    double createMeshTime = 0.0;
+
     std::string colorFileName = dataPath / "color.jpg";
     Texture colorTexture = Texture({
         .wrapS = GL_REPEAT,
@@ -101,18 +106,14 @@ int main(int argc, char** argv) {
     QuadFrame quadFrame(windowSize);
     QuadMesh quadMesh(quadFrame, colorTexture);
 
-    uint totalTriangles = 0;
-    QuadFrame::Sizes totalSizes;
-
-    double loadFromFilesTime = 0.0;
-    double createMeshTime = 0.0;
-
+    // Load quads and depth offsets from files
     double startTime = window->getTime();
     Path quadsFile = (dataPath / "quads").withExtension(".bin.zstd");
     Path offsetsFile = (dataPath / "depthOffsets").withExtension(".bin.zstd");
     auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
     loadFromFilesTime = timeutils::secondsToMillis(window->getTime() - startTime);
 
+    // Create mesh
     const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
     quadMesh.appendQuads(quadFrame, gBufferSize);
     quadMesh.createMeshFromProxies(quadFrame, gBufferSize, remoteCamera);
@@ -122,6 +123,7 @@ int main(int argc, char** argv) {
     totalTriangles = meshBufferSizes.numIndices / 3;
     totalSizes += sizes;
 
+    // Create node and wireframe node
     Node node(&quadMesh);
     node.frustumCulled = false;
     scene.addChildNode(&node);

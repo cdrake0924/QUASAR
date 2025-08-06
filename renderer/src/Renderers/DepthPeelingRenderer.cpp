@@ -53,11 +53,11 @@ void DepthPeelingRenderer::endRendering() {
 void DepthPeelingRenderer::setScreenShaderUniforms(const Shader& screenShader) {
     // Set FrameRenderTarget texture uniforms
     screenShader.bind();
-    screenShader.setTexture("screenColor", outputRT.colorBuffer, 0);
-    screenShader.setTexture("screenDepth", outputRT.depthStencilBuffer, 1);
-    screenShader.setTexture("screenNormals", frameRT.normalsBuffer, 2);
-    screenShader.setTexture("screenPositions", frameRT.positionBuffer, 3);
-    screenShader.setTexture("idBuffer", frameRT.idBuffer, 4);
+    screenShader.setTexture("screenColor", outputRT.colorTexture, 0);
+    screenShader.setTexture("screenDepth", outputRT.depthStencilTexture, 1);
+    screenShader.setTexture("screenNormals", frameRT.normalsTexture, 2);
+    screenShader.setTexture("screenPositions", frameRT.positionTexture, 3);
+    screenShader.setTexture("idTexture", frameRT.idTexture, 4);
 }
 
 RenderStats DepthPeelingRenderer::drawScene(Scene& scene, const Camera& camera, uint32_t clearMask) {
@@ -73,7 +73,7 @@ RenderStats DepthPeelingRenderer::drawScene(Scene& scene, const Camera& camera, 
         // Disable blending
         pipeline.blendState.blendEnabled = false; pipeline.apply();
 
-        Texture* prevIDMap = (i >= 1) ? &peelingLayers[i-1].idBuffer : nullptr;
+        const Texture* prevIDMap = (i >= 1) ? &peelingLayers[i-1].idTexture : nullptr;
 
         // Set layer index in shaders
         if (LitMaterial::shader != nullptr) {
@@ -199,7 +199,7 @@ RenderStats DepthPeelingRenderer::compositeLayers() {
 
     compositeLayersShader.bind();
     for (int i = 0; i < maxLayers; i++) {
-        compositeLayersShader.setTexture("peelingLayers[" + std::to_string(i) + "]", peelingLayers[i].colorBuffer, i);
+        compositeLayersShader.setTexture("peelingLayers[" + std::to_string(i) + "]", peelingLayers[i].colorTexture, i);
     }
 
     outputRT.bind();

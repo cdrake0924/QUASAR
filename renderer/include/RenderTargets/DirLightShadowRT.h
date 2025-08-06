@@ -7,7 +7,7 @@ namespace quasar {
 
 class DirLightShadowRT : public RenderTargetBase {
 public:
-    Texture colorBuffer;
+    Texture colorTexture;
     Texture depthBuffer;
 
     DirLightShadowRT(const RenderTargetCreateParams& params)

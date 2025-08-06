@@ -33,7 +33,7 @@ public:
 
     uint maxProxies;
 
-    QuadMesh(const QuadFrame& quadFrame, Texture& colorBuffer, uint maxNumProxies = MAX_NUM_PROXIES);
+    QuadMesh(const QuadFrame& quadFrame, Texture& colorTexture, uint maxNumProxies = MAX_NUM_PROXIES);
     ~QuadMesh() = default;
 
     void appendQuads(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, bool isRefFrame = true);

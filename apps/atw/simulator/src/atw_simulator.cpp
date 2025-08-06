@@ -443,7 +443,7 @@ int main(int argc, char** argv) {
             atwShader.setMat4("remoteView", remoteCamera.getViewMatrix());
         }
         {
-            atwShader.setTexture("videoTexture", renderTarget.colorBuffer, 5);
+            atwShader.setTexture("videoTexture", renderTarget.colorTexture, 5);
         }
         renderStats = remoteRenderer.drawToRenderTarget(atwShader, renderer.frameRT);
 

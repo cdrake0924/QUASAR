@@ -147,7 +147,7 @@ void Model::processAnimations(const aiScene* scene) {
     }
 }
 
-void Model::processNode(aiNode* aiNode, const aiScene* scene, Node* node, LitMaterial* material) {
+void Model::processNode(aiNode* aiNode, const aiScene* scene, Node* node, const LitMaterial* material) {
     const glm::mat4& transform = glm::transpose(reinterpret_cast<glm::mat4&>(aiNode->mTransformation));
 
     node->setName(aiNode->mName.C_Str());
@@ -166,7 +166,7 @@ void Model::processNode(aiNode* aiNode, const aiScene* scene, Node* node, LitMat
     }
 }
 
-Mesh* Model::processMesh(aiMesh* mesh, const aiScene* scene, LitMaterial* material) {
+Mesh* Model::processMesh(aiMesh* mesh, const aiScene* scene, const LitMaterial* material) {
     std::vector<Vertex> vertices;
     std::vector<uint> indices;
 

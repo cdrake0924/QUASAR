@@ -21,12 +21,12 @@ struct LitMaterialCreateParams {
     std::string roughnessTexturePath = "";
     std::string aoTexturePath = "";
     std::string emissiveTexturePath = "";
-    Texture* albedoTexture;
-    Texture* normalTexture;
-    Texture* metallicTexture;
-    Texture* roughnessTexture;
-    Texture* aoTexture;
-    Texture* emissiveTexture;
+    const Texture* albedoTexture;
+    const Texture* normalTexture;
+    const Texture* metallicTexture;
+    const Texture* roughnessTexture;
+    const Texture* aoTexture;
+    const Texture* emissiveTexture;
     bool metalRoughnessCombined = false;
 };
 

@@ -13,20 +13,20 @@ DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string
     , renderTargetCopy({
         .width = width,
         .height = height,
-        .internalFormat = colorBuffer.internalFormat,
-        .format = colorBuffer.format,
-        .type = colorBuffer.type,
-        .wrapS = colorBuffer.wrapS,
-        .wrapT = colorBuffer.wrapT,
-        .minFilter = colorBuffer.minFilter,
-        .magFilter = colorBuffer.magFilter,
-        .multiSampled = colorBuffer.multiSampled,
+        .internalFormat = colorTexture.internalFormat,
+        .format = colorTexture.format,
+        .type = colorTexture.type,
+        .wrapS = colorTexture.wrapS,
+        .wrapT = colorTexture.wrapT,
+        .minFilter = colorTexture.minFilter,
+        .magFilter = colorTexture.magFilter,
+        .multiSampled = colorTexture.multiSampled,
     })
 {
     spdlog::info("Created DepthStreamer that sends to URL: {}", receiverURL);
 
 #if defined(HAS_CUDA)
-    cudaImage.registerTexture(renderTargetCopy.colorBuffer);
+    cudaImage.registerTexture(renderTargetCopy.colorTexture);
 
     // Start data sending thread
     running = true;

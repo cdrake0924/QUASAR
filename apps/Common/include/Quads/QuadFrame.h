@@ -145,8 +145,8 @@ public:
     }
 
 private:
-    bool copiedToCPU = false;
     bool compress = true;
+    bool copiedToCPU = false;
 
     glm::uvec2 frameSize;
 

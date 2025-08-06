@@ -22,7 +22,7 @@ struct MeshDataCreateParams {
     size_t indicesSize = 0;
     uint vertexSize = sizeof(Vertex);
     VertexInputAttributes attributes = Vertex::getVertexInputAttributes();
-    Material* material;
+    const Material* material;
     float IBL = 1.0;
     GLenum usage = GL_STATIC_DRAW;
     bool indirectDraw = false;
@@ -33,7 +33,7 @@ struct MeshSizeCreateParams {
     uint maxIndices = 0;
     uint vertexSize = sizeof(Vertex);
     VertexInputAttributes attributes = Vertex::getVertexInputAttributes();
-    Material* material;
+    const Material* material;
     float IBL = 1.0;
     GLenum usage = GL_STATIC_DRAW;
     bool indirectDraw = false;
@@ -56,7 +56,7 @@ public:
     uint vertexSize;
     VertexInputAttributes attributes;
 
-    Material* material;
+    const Material* material;
 
     float IBL = 1.0;
 

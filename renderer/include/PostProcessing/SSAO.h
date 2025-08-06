@@ -103,12 +103,12 @@ public:
 
         // Blur ssao
         ssaoBlurShader.bind();
-        ssaoBlurShader.setTexture("ssaoInput", ssaoRenderTarget.colorBuffer, 5);
+        ssaoBlurShader.setTexture("ssaoInput", ssaoRenderTarget.colorTexture, 5);
         stats += renderer.drawToRenderTarget(ssaoBlurShader, ssaoBlurRenderTarget);
 
         // Final ssao
         ssaoFinalShader.bind();
-        ssaoFinalShader.setTexture("ssao", ssaoBlurRenderTarget.colorBuffer, 5);
+        ssaoFinalShader.setTexture("ssao", ssaoBlurRenderTarget.colorTexture, 5);
         stats += renderer.drawToScreen(ssaoFinalShader);
 
         return stats;
@@ -130,13 +130,13 @@ public:
 
         // Blur ssao
         ssaoBlurShader.bind();
-        ssaoBlurShader.setTexture("ssaoInput", ssaoRenderTarget.colorBuffer, 5);
+        ssaoBlurShader.setTexture("ssaoInput", ssaoRenderTarget.colorTexture, 5);
         renderer.setScreenShaderUniforms(ssaoBlurShader);
         stats += renderer.drawToRenderTarget(ssaoBlurShader, ssaoBlurRenderTarget);
 
         // Final ssao
         ssaoFinalShader.bind();
-        ssaoFinalShader.setTexture("ssao", ssaoBlurRenderTarget.colorBuffer, 5);
+        ssaoFinalShader.setTexture("ssao", ssaoBlurRenderTarget.colorTexture, 5);
         renderer.setScreenShaderUniforms(ssaoFinalShader);
         stats += renderer.drawToRenderTarget(ssaoFinalShader, rt);
 
@@ -154,7 +154,7 @@ private:
     RenderTarget ssaoBlurRenderTarget;
     RenderTarget ssaoRenderTarget;
 
-    Texture* noiseTexture;
+    const Texture* noiseTexture;
 
     std::uniform_real_distribution<GLfloat> randomFloats;
     std::default_random_engine generator;

@@ -6,7 +6,7 @@ uniform sampler2D screenColor;
 uniform sampler2D screenDepth;
 uniform sampler2D screenNormals;
 uniform sampler2D screenPositions;
-uniform usampler2D idBuffer;
+uniform usampler2D idTexture;
 
 uniform float near = 0.1;
 uniform float far = 1000.0;

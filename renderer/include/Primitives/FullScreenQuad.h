@@ -15,6 +15,13 @@ private:
     struct FSQuadVertex {
         glm::vec2 position;
         glm::vec2 texCoord;
+
+        static const VertexInputAttributes getVertexInputAttributes() {
+            return {
+                {0, 2, GL_FLOAT, GL_FALSE, offsetof(FSQuadVertex, position)},
+                {1, 2, GL_FLOAT, GL_FALSE, offsetof(FSQuadVertex, texCoord)},
+            };
+        }
     };
 
 public:
@@ -39,18 +46,23 @@ public:
             { {-1.0f, -1.0f}, {0.0f, 0.0f} },
             { { 1.0f, -1.0f}, {1.0f, 0.0f} }
         };
-
-        glGenVertexArrays(1, &vertexArrayBuffer);
-
-        glBindVertexArray(vertexArrayBuffer);
-
         vertexBuffer.bind();
         vertexBuffer.setData(quadVertices.size(), quadVertices.data());
 
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(FSQuadVertex), (void*)offsetof(FSQuadVertex, position));
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FSQuadVertex), (void*)offsetof(FSQuadVertex, texCoord));
+        setArrayBufferAttributes(FSQuadVertex::getVertexInputAttributes(), sizeof(FSQuadVertex));
+    }
+
+    void setArrayBufferAttributes(const VertexInputAttributes& attributes, uint vertexSize) {
+        glGenVertexArrays(1, &vertexArrayBuffer);
+        glBindVertexArray(vertexArrayBuffer);
+
+        if (attributes.size() == 0) {
+            spdlog::warn("No vertex attributes provided!");
+        }
+        for (const auto& attribute : attributes) {
+            glEnableVertexAttribArray(attribute.index);
+            glVertexAttribPointer(attribute.index, attribute.size, attribute.type, attribute.normalized, vertexSize, (void*)attribute.pointer);
+        }
 
         glBindVertexArray(0);
     }

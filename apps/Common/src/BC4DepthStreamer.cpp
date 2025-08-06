@@ -66,7 +66,7 @@ void BC4DepthStreamer::close() {
 
 uint BC4DepthStreamer::compress(bool compress) {
     bc4CompressionShader.bind();
-    bc4CompressionShader.setTexture(colorBuffer, 0);
+    bc4CompressionShader.setTexture(colorTexture, 0);
 
     glm::uvec2 depthMapSize = glm::uvec2(width, height);
 

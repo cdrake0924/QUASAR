@@ -22,7 +22,7 @@ Recorder::Recorder(
     , outputPath(outputPath)
     , outputFormats({"MP4", "PNG", "JPG"})
 #if defined(HAS_CUDA)
-    , cudaImage(colorBuffer)
+    , cudaImage(colorTexture)
 #endif
 {
     setOutputPath(outputPath);

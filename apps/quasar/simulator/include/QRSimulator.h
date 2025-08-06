@@ -125,7 +125,7 @@ public:
         })
         , depthMesh(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
         , meshScenes(2)
-        , maskFrameMesh(quadFrame, maskFrameRT.colorBuffer, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
+        , maskFrameMesh(quadFrame, maskFrameRT.colorTexture, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
     {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -152,7 +152,7 @@ public:
 
         // Setup visible layer for reference frame
         for (int i = 0; i < 2; i++) {
-            refFrameMeshes.emplace_back(quadFrame, refFrameRT.colorBuffer);
+            refFrameMeshes.emplace_back(quadFrame, refFrameRT.colorTexture);
 
             refFrameNodes.emplace_back(&refFrameMeshes[i]);
             refFrameNodes[i].frustumCulled = false;
@@ -204,7 +204,7 @@ public:
 
         for (int layer = 0; layer < numHidLayers; layer++) {
             // We can use less vertices and indicies for the hidden layers since they will be sparse
-            meshesHidLayer.emplace_back(quadFrame, frameRTsHidLayer[layer].colorBuffer, MAX_NUM_PROXIES / 4);
+            meshesHidLayer.emplace_back(quadFrame, frameRTsHidLayer[layer].colorTexture, MAX_NUM_PROXIES / 4);
 
             nodesHidLayer.emplace_back(&meshesHidLayer[layer]);
             nodesHidLayer[layer].frustumCulled = false;
@@ -217,7 +217,6 @@ public:
             wireframesHidLayer[layer].overrideMaterial = new QuadMaterial({ .baseColor = color });
 
             depthMeshsHidLayer.emplace_back(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-
             depthNodesHidLayer.emplace_back(&depthMeshsHidLayer[layer]);
             depthNodesHidLayer[layer].frustumCulled = false;
             depthNodesHidLayer[layer].primativeType = GL_POINTS;
@@ -237,11 +236,8 @@ public:
     ~QRSimulator() = default;
 
     uint getNumTriangles() const {
-        uint numTriangles = 0;
-        for (const auto& mesh : refFrameMeshes) {
-            auto size = mesh.getBufferSizes();
-            numTriangles += size.numIndices / 3; // Each triangle has 3 indices
-        }
+        auto refMeshSizes = refFrameMeshes[currMeshIndex].getBufferSizes();
+        uint numTriangles = refMeshSizes.numIndices / 3; // Each triangle has 3 indices
         for (const auto& mesh : meshesHidLayer) {
             auto size = mesh.getBufferSizes();
             numTriangles += size.numIndices / 3; // Each triangle has 3 indices
@@ -274,8 +270,8 @@ public:
         // Reset stats
         stats = { 0 };
 
-        double startTime = timeutils::getTimeMicros();
         // Render remote scene with multiple layers
+        double startTime = timeutils::getTimeMicros();
         remoteRendererDP.drawObjects(remoteScene, remoteCameraCenter);
         stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
@@ -304,7 +300,7 @@ public:
                 // Copy to render target
                 if (!showNormals) {
                     remoteRendererDP.peelingLayers[hiddenIndex+1].blitToFrameRT(frameToUse);
-                    toneMapper.setUniforms(remoteRendererDP.peelingLayers[hiddenIndex+1]);
+                    toneMapper.setUniforms(frameToUse);
                     toneMapper.drawToRenderTarget(remoteRendererDP, copyRTs[layer], false);
                 }
                 else {

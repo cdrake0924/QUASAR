@@ -28,12 +28,12 @@ DeferredLightingMaterial::~DeferredLightingMaterial() {
 }
 
 void DeferredLightingMaterial::bindGBuffer(const GBuffer& gBuffer) const {
-    shader->setTexture("gAlbedo", gBuffer.albedoBuffer, 0);
-    shader->setTexture("gPBR", gBuffer.pbrBuffer, 1);
-    shader->setTexture("gAlpha", gBuffer.alphaBuffer, 2);
-    shader->setTexture("gNormal", gBuffer.normalsBuffer, 3);
-    shader->setTexture("gPosition", gBuffer.positionBuffer, 4);
-    shader->setTexture("gLightPosition", gBuffer.lightPositionBuffer, 5);
+    shader->setTexture("gAlbedo", gBuffer.albedoTexture, 0);
+    shader->setTexture("gPBR", gBuffer.pbrTexture, 1);
+    shader->setTexture("gAlpha", gBuffer.alphaTexture, 2);
+    shader->setTexture("gNormal", gBuffer.normalsTexture, 3);
+    shader->setTexture("gPosition", gBuffer.positionTexture, 4);
+    shader->setTexture("gLightPosition", gBuffer.lightPositionTexture, 5);
 }
 
 void DeferredLightingMaterial::bindCamera(const Camera& camera) const {

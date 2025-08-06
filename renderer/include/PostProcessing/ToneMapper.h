@@ -37,7 +37,7 @@ public:
 
     void setUniforms(FrameRenderTarget& rt) {
         shader.bind();
-        shader.setTexture("screenColor", rt.colorBuffer, 0);
+        shader.setTexture("screenColor", rt.colorTexture, 0);
     }
 
     RenderStats drawToRenderTarget(OpenGLRenderer& renderer, RenderTargetBase& rt, bool setUniforms) {
