@@ -72,6 +72,7 @@ public:
 
 #ifdef GL_CORE
     Sizes copyToMemory() {
+#if defined(HAS_CUDA)
         if (copiedToCPU) {
             return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
                      static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
@@ -103,6 +104,10 @@ public:
 
         return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
                  static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
+#else
+        return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
+                    static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
+#endif
     }
 
     Sizes copyToMemory(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {

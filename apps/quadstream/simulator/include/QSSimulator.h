@@ -5,8 +5,6 @@
 #include <PostProcessing/ShowNormalsEffect.h>
 
 #include <DepthMesh.h>
-
-#include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
 namespace quasar {
@@ -27,13 +25,13 @@ public:
     };
 
     // Reference frame -- QS only has one frame
-    std::vector<FrameRenderTarget> serverFrameRTs;
-    std::vector<Mesh> serverFrameMeshes;
-    std::vector<Node> serverFrameNodesRemote;
+    std::vector<FrameRenderTarget> refFrameRTs;
+    std::vector<QuadMesh> refFrameMeshes;
+    std::vector<Node> refFrameNodesRemote;
 
     // Local objects
-    std::vector<Node> serverFrameNodesLocal;
-    std::vector<Node> serverFrameWireframesLocal;
+    std::vector<Node> refFrameNodesLocal;
+    std::vector<Node> refFrameWireframesLocal;
 
     std::vector<DepthMesh> depthMeshes;
     std::vector<Node> depthNodes;
@@ -75,13 +73,13 @@ public:
         proxiesPerQuadSet.reserve(maxViews);
         depthOffsetsPerQuadSet.reserve(maxViews);
 
-        serverFrameRTs.reserve(maxViews);
+        refFrameRTs.reserve(maxViews);
         copyRTs.reserve(maxViews);
-        serverFrameMeshes.reserve(maxViews);
+        refFrameMeshes.reserve(maxViews);
         depthMeshes.reserve(maxViews);
-        serverFrameNodesLocal.reserve(maxViews);
-        serverFrameNodesRemote.reserve(maxViews);
-        serverFrameWireframesLocal.reserve(maxViews);
+        refFrameNodesLocal.reserve(maxViews);
+        refFrameNodesRemote.reserve(maxViews);
+        refFrameWireframesLocal.reserve(maxViews);
         depthNodes.reserve(maxViews);
 
         // Match QuadStream's params:
@@ -115,24 +113,20 @@ public:
             if (view == maxViews - 1) {
                 rtParams.width = 1280; rtParams.height = 720;
             }
-            serverFrameRTs.emplace_back(rtParams);
+            refFrameRTs.emplace_back(rtParams);
             copyRTs.emplace_back(rtParams);
 
-            meshParams.material = new QuadMaterial({ .baseColorTexture = &serverFrameRTs[view].colorBuffer });
-            // We can use less vertices and indicies for the additional views since they will be sparse
-            meshParams.maxVertices = maxVertices / (view == 0 || view != maxViews - 1 ? 1 : 4);
-            meshParams.maxIndices = maxIndices / (view == 0 || view != maxViews - 1 ? 1 : 4);
-            serverFrameMeshes.emplace_back(meshParams);
-
-            serverFrameNodesLocal.emplace_back(&serverFrameMeshes[view]);
-            serverFrameNodesLocal[view].frustumCulled = false;
+            // We can use less vertices and indicies for the additional views since they will be sparser
+            refFrameMeshes.emplace_back(quadFrame, refFrameRTs[view].colorBuffer, MAX_NUM_PROXIES / (view == 0 || view != maxViews - 1 ? 1 : 4));
+            refFrameNodesLocal.emplace_back(&refFrameMeshes[view]);
+            refFrameNodesLocal[view].frustumCulled = false;
 
             const glm::vec4& color = colors[view % colors.size()];
 
-            serverFrameWireframesLocal.emplace_back(&serverFrameMeshes[view]);
-            serverFrameWireframesLocal[view].frustumCulled = false;
-            serverFrameWireframesLocal[view].wireframe = true;
-            serverFrameWireframesLocal[view].overrideMaterial = new QuadMaterial({ .baseColor = color });
+            refFrameWireframesLocal.emplace_back(&refFrameMeshes[view]);
+            refFrameWireframesLocal[view].frustumCulled = false;
+            refFrameWireframesLocal[view].wireframe = true;
+            refFrameWireframesLocal[view].overrideMaterial = new QuadMaterial({ .baseColor = color });
 
             depthMeshes.emplace_back(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
 
@@ -140,18 +134,27 @@ public:
             depthNodes[view].frustumCulled = false;
             depthNodes[view].primativeType = GL_POINTS;
 
-            serverFrameNodesRemote.emplace_back(&serverFrameMeshes[view]);
-            serverFrameNodesRemote[view].frustumCulled = false;
-            serverFrameNodesRemote[view].visible = (view == 0);
-            meshScene.addChildNode(&serverFrameNodesRemote[view]);
+            refFrameNodesRemote.emplace_back(&refFrameMeshes[view]);
+            refFrameNodesRemote[view].frustumCulled = false;
+            refFrameNodesRemote[view].visible = (view == 0);
+            meshScene.addChildNode(&refFrameNodesRemote[view]);
         }
     }
     ~QSSimulator() = default;
 
+    uint getNumTriangles() const {
+        uint numTriangles = 0;
+        for (const auto& mesh : refFrameMeshes) {
+            auto size = mesh.getBufferSizes();
+            numTriangles += size.numIndices / 3; // Each triangle has 3 indices
+        }
+        return numTriangles;
+    }
+
     void addMeshesToScene(Scene& localScene) {
         for (int view = 0; view < maxViews; view++) {
-            localScene.addChildNode(&serverFrameNodesLocal[view]);
-            localScene.addChildNode(&serverFrameWireframesLocal[view]);
+            localScene.addChildNode(&refFrameNodesLocal[view]);
+            localScene.addChildNode(&refFrameWireframesLocal[view]);
             localScene.addChildNode(&depthNodes[view]);
         }
     }
@@ -167,9 +170,9 @@ public:
         for (int view = 0; view < maxViews; view++) {
             auto& remoteCameraToUse = remoteCameras[view];
 
-            auto& gBufferToUse = serverFrameRTs[view];
+            auto& gBufferToUse = refFrameRTs[view];
 
-            auto& meshToUse = serverFrameMeshes[view];
+            auto& meshToUse = refFrameMeshes[view];
             auto& meshToUseDepth = depthMeshes[view];
 
             double startTime = timeutils::getTimeMicros();
@@ -181,11 +184,11 @@ public:
             }
             // Other view
             else {
-                // Make all previous serverFrameMeshes visible and everything else invisible
+                // Make all previous refFrameMeshes visible and everything else invisible
                 for (int prevView = 1; prevView < maxViews; prevView++) {
                     meshScene.rootNode.children[prevView]->visible = (prevView < view);
                 }
-                // Draw old serverFrameMeshes at new remoteCamera view, filling stencil buffer with 1
+                // Draw old refFrameMeshes at new remoteCamera view, filling stencil buffer with 1
                 remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
                 remoteRenderer.pipeline.writeMaskState.disableColorWrites();
                 remoteRenderer.drawObjectsNoLighting(meshScene, remoteCameraToUse);

@@ -7,14 +7,12 @@ FrameGenerator::FrameGenerator(QuadFrame& quadFrame, DeferredRenderer& remoteRen
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
     , quadsGenerator(quadFrame)
-    , meshFromQuads(quadFrame)
-    , meshFromQuadsMask(quadFrame, meshFromQuads.maxProxies / 4) // Mask mesh can have fewer proxies
 {}
 
 QuadFrame::Sizes FrameGenerator::generateRefFrame(
     const FrameRenderTarget& frameRT,
     const PerspectiveCamera& remoteCamera,
-    const Mesh& mesh)
+    QuadMesh& mesh)
 {
     const glm::vec2 gBufferSize = glm::vec2(frameRT.width, frameRT.height);
 
@@ -33,12 +31,12 @@ QuadFrame::Sizes FrameGenerator::generateRefFrame(
     // Create mesh from the proxies
     startTime = timeutils::getTimeMicros();
     {
-        meshFromQuads.appendQuads(quadFrame, gBufferSize);
-        meshFromQuads.createMeshFromProxies(quadFrame, gBufferSize, remoteCamera, mesh);
+        mesh.appendQuads(quadFrame, gBufferSize);
+        mesh.createMeshFromProxies(quadFrame, gBufferSize, remoteCamera);
     }
-    stats.timeToAppendQuadsMs = meshFromQuads.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs = meshFromQuads.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs = meshFromQuads.stats.timeToCreateMeshMs;
+    stats.timeToAppendQuadsMs = mesh.stats.timeToAppendQuadsMs;
+    stats.timeToFillQuadIndicesMs = mesh.stats.timeToGatherQuadsMs;
+    stats.timeToCreateVertIndMs = mesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     return sizes;
@@ -48,7 +46,7 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
     Scene& currScene, Scene& prevScene,
     FrameRenderTarget& frameRT, FrameRenderTarget& maskFrameRT,
     const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-    const Mesh& currMesh, const Mesh& maskMesh)
+    QuadMesh& currMesh, QuadMesh& maskMesh)
 {
     const glm::vec2 gBufferSize = glm::vec2(frameRT.width, frameRT.height);
     QuadFrame::Sizes outputSizes;
@@ -104,12 +102,12 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
 
         startTime = timeutils::getTimeMicros();
         {
-            meshFromQuads.appendQuads(quadFrame, gBufferSize, false);
-            meshFromQuads.createMeshFromProxies(quadFrame, gBufferSize, prevRemoteCamera, currMesh);
+            currMesh.appendQuads(quadFrame, gBufferSize, false);
+            currMesh.createMeshFromProxies(quadFrame, gBufferSize, prevRemoteCamera);
         }
-        stats.timeToAppendQuadsMs = meshFromQuads.stats.timeToAppendQuadsMs;
-        stats.timeToFillQuadIndicesMs = meshFromQuads.stats.timeToGatherQuadsMs;
-        stats.timeToCreateVertIndMs = meshFromQuads.stats.timeToCreateMeshMs;
+        stats.timeToAppendQuadsMs = currMesh.stats.timeToAppendQuadsMs;
+        stats.timeToFillQuadIndicesMs = currMesh.stats.timeToGatherQuadsMs;
+        stats.timeToCreateVertIndMs = currMesh.stats.timeToCreateMeshMs;
         stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     }
 
@@ -128,12 +126,12 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
 
         startTime = timeutils::getTimeMicros();
         {
-            meshFromQuadsMask.appendQuads(quadFrame, gBufferSize);
-            meshFromQuadsMask.createMeshFromProxies(quadFrame, gBufferSize, currRemoteCamera, maskMesh);
+            maskMesh.appendQuads(quadFrame, gBufferSize);
+            maskMesh.createMeshFromProxies(quadFrame, gBufferSize, currRemoteCamera);
         }
-        stats.timeToAppendQuadsMs += meshFromQuadsMask.stats.timeToAppendQuadsMs;
-        stats.timeToFillQuadIndicesMs += meshFromQuadsMask.stats.timeToGatherQuadsMs;
-        stats.timeToCreateVertIndMs += meshFromQuadsMask.stats.timeToCreateMeshMs;
+        stats.timeToAppendQuadsMs += maskMesh.stats.timeToAppendQuadsMs;
+        stats.timeToFillQuadIndicesMs += maskMesh.stats.timeToGatherQuadsMs;
+        stats.timeToCreateVertIndMs += maskMesh.stats.timeToCreateMeshMs;
         stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     }
 

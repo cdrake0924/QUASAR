@@ -14,7 +14,7 @@
 #include <CameraAnimator.h>
 
 #include <Quads/QuadsGenerator.h>
-#include <Quads/MeshFromQuads.h>
+#include <Quads/QuadMesh.h>
 #include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
@@ -188,8 +188,6 @@ int main(int argc, char** argv) {
 
     RenderStats renderStats;
     bool recording = false;
-    std::vector<uint> numVertices(maxViews);
-    std::vector<uint> numIndicies(maxViews);
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = !saveImages;
@@ -204,16 +202,6 @@ int main(int argc, char** argv) {
         static char recordingDirBase[256] = "recordings";
 
         static bool showSkyBox = true;
-
-        for (int view = 0; view < maxViews; view++) {
-            if (!showLayers[view]) {
-                continue;
-            }
-
-            auto [meshBufferSizes, meshBufferSizesMask] = frameGenerator.getBufferSizes();
-            numVertices[view] = meshBufferSizes.numVertices;
-            numIndicies[view] = meshBufferSizes.numIndices;
-        }
 
         ImGui::NewFrame();
 
@@ -254,10 +242,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            uint totalTriangles = 0;
-            for (int view = 0; view < maxViews; view++) {
-                totalTriangles += numIndicies[view] / 3;
-            }
+            uint totalTriangles = quasar.getNumTriangles();
             if (totalTriangles < 100000)
                 ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", totalTriangles);
             else if (totalTriangles < 500000)

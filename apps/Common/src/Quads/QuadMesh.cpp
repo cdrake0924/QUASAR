@@ -1,11 +1,17 @@
-#include <Quads/MeshFromQuads.h>
+#include <Quads/QuadMesh.h>
 #include <Utils/TimeUtils.h>
 
 #include <shaders_common.h>
 
+#ifndef __ANDROID__
+#define THREADS_PER_LOCALGROUP 16
+#else
+#define THREADS_PER_LOCALGROUP 32
+#endif
+
 using namespace quasar;
 
-MeshFromQuads::MeshFromQuads(const QuadFrame& quadFrame, uint maxNumProxies)
+QuadMesh::QuadMesh(const QuadFrame& quadFrame, Texture& colorBuffer, uint maxNumProxies)
     : maxProxies(maxNumProxies)
     , currentQuadBuffers(maxProxies)
     , meshSizesBuffer({
@@ -52,16 +58,25 @@ MeshFromQuads::MeshFromQuads(const QuadFrame& quadFrame, uint maxNumProxies)
             "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
         }
     })
-    , createMeshFromQuadsShader({
+    , createQuadMeshShader({
         .computeCodeData = SHADER_COMMON_MESH_FROM_QUADS_COMP,
         .computeCodeSize = SHADER_COMMON_MESH_FROM_QUADS_COMP_len,
         .defines = {
             "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
         }
     })
+    , Mesh({
+        .maxVertices = maxNumProxies * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
+        .maxIndices = maxNumProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
+        .vertexSize = sizeof(QuadVertex),
+        .attributes = QuadVertex::getVertexInputAttributes(),
+        .material = new QuadMaterial({ .baseColorTexture = &colorBuffer }),
+        .usage = GL_DYNAMIC_DRAW,
+        .indirectDraw = true
+    })
 {}
 
-MeshFromQuads::BufferSizes MeshFromQuads::getBufferSizes() const {
+QuadMesh::BufferSizes QuadMesh::getBufferSizes() const {
     BufferSizes bufferSizes;
 
     meshSizesBuffer.bind();
@@ -69,7 +84,7 @@ MeshFromQuads::BufferSizes MeshFromQuads::getBufferSizes() const {
     return bufferSizes;
 }
 
-void MeshFromQuads::appendQuads(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, bool isRefFrame) {
+void QuadMesh::appendQuads(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, bool isRefFrame) {
     appendQuadsShader.startTiming();
 
     appendQuadsShader.bind();
@@ -98,7 +113,7 @@ void MeshFromQuads::appendQuads(const QuadFrame& quadFrame, const glm::vec2& gBu
     fillQuadIndices(quadFrame, gBufferSize);
 }
 
-void MeshFromQuads::fillQuadIndices(const QuadFrame& quadFrame, const glm::vec2& gBufferSize) {
+void QuadMesh::fillQuadIndices(const QuadFrame& quadFrame, const glm::vec2& gBufferSize) {
     fillQuadIndicesShader.startTiming();
 
     fillQuadIndicesShader.bind();
@@ -123,43 +138,43 @@ void MeshFromQuads::fillQuadIndices(const QuadFrame& quadFrame, const glm::vec2&
     stats.timeToGatherQuadsMs = fillQuadIndicesShader.getElapsedTime();
 }
 
-void MeshFromQuads::createMeshFromProxies(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera, const Mesh& mesh) {
-    createMeshFromQuadsShader.startTiming();
+void QuadMesh::createMeshFromProxies(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera) {
+    createQuadMeshShader.startTiming();
 
-    createMeshFromQuadsShader.bind();
+    createQuadMeshShader.bind();
     {
-        createMeshFromQuadsShader.setVec2("gBufferSize", gBufferSize);
+        createQuadMeshShader.setVec2("gBufferSize", gBufferSize);
     }
     {
-        createMeshFromQuadsShader.setMat4("view", remoteCamera.getViewMatrix());
-        createMeshFromQuadsShader.setMat4("projection", remoteCamera.getProjectionMatrix());
-        createMeshFromQuadsShader.setMat4("viewInverse", remoteCamera.getViewMatrixInverse());
-        createMeshFromQuadsShader.setMat4("projectionInverse", remoteCamera.getProjectionMatrixInverse());
-        createMeshFromQuadsShader.setFloat("near", remoteCamera.getNear());
-        createMeshFromQuadsShader.setFloat("far", remoteCamera.getFar());
+        createQuadMeshShader.setMat4("view", remoteCamera.getViewMatrix());
+        createQuadMeshShader.setMat4("projection", remoteCamera.getProjectionMatrix());
+        createQuadMeshShader.setMat4("viewInverse", remoteCamera.getViewMatrixInverse());
+        createQuadMeshShader.setMat4("projectionInverse", remoteCamera.getProjectionMatrixInverse());
+        createQuadMeshShader.setFloat("near", remoteCamera.getNear());
+        createQuadMeshShader.setFloat("far", remoteCamera.getFar());
     }
     {
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, meshSizesBuffer);
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadCreatedFlagsBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, meshSizesBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadCreatedFlagsBuffer);
 
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, mesh.vertexBuffer);
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, mesh.indexBuffer);
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, mesh.indirectBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, indexBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, indirectBuffer);
 
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.normalSphericalsBuffer);
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.depthsBuffer);
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, currentQuadBuffers.metadatasBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.normalSphericalsBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.depthsBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, currentQuadBuffers.metadatasBuffer);
 
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 8, quadIndicesMap);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 8, quadIndicesMap);
 
-        createMeshFromQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 9, currNumProxiesBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 9, currNumProxiesBuffer);
 
-        createMeshFromQuadsShader.setImageTexture(0, quadFrame.depthOffsets.buffer, 0, GL_FALSE, 0, GL_READ_ONLY, quadFrame.depthOffsets.buffer.internalFormat);
+        createQuadMeshShader.setImageTexture(0, quadFrame.depthOffsets.buffer, 0, GL_FALSE, 0, GL_READ_ONLY, quadFrame.depthOffsets.buffer.internalFormat);
     }
-    createMeshFromQuadsShader.dispatch((quadFrame.getSize().x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
+    createQuadMeshShader.dispatch((quadFrame.getSize().x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
                                        (quadFrame.getSize().y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
-    createMeshFromQuadsShader.memoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
+    createQuadMeshShader.memoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
 
-    createMeshFromQuadsShader.endTiming();
-    stats.timeToCreateMeshMs = createMeshFromQuadsShader.getElapsedTime();
+    createQuadMeshShader.endTiming();
+    stats.timeToCreateMeshMs = createQuadMeshShader.getElapsedTime();
 }

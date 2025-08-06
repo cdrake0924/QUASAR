@@ -181,8 +181,6 @@ int main(int argc, char** argv) {
 
         static bool showSkyBox = true;
 
-        auto [meshBufferSizes, meshBufferSizesMask] = frameGenerator.getBufferSizes();
-
         ImGui::NewFrame();
 
         ImGuiWindowFlags flags = 0;
@@ -221,7 +219,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            uint totalTriangles = (meshBufferSizes.numIndices + meshBufferSizesMask.numIndices) / 3;
+            uint totalTriangles = quadsSimulator.getNumTriangles();
             if (totalTriangles < 100000)
                 ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", totalTriangles);
             else if (totalTriangles < 500000)

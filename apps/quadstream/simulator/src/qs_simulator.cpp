@@ -201,8 +201,6 @@ int main(int argc, char** argv) {
 
     RenderStats renderStats;
     bool recording = false;
-    std::vector<uint> numVertices(maxViews);
-    std::vector<uint> numIndicies(maxViews);
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = !saveImages;
@@ -216,16 +214,6 @@ int main(int argc, char** argv) {
         static char recordingDirBase[256] = "recordings";
 
         static bool showSkyBox = true;
-
-        for (int view = 0; view < maxViews; view++) {
-            if (!showViews[view]) {
-                continue;
-            }
-
-            auto meshBufferSizes = frameGenerator.getBufferSizes();
-            numVertices[view] = meshBufferSizes.first.numVertices;
-            numIndicies[view] = meshBufferSizes.first.numIndices;
-        }
 
         ImGui::NewFrame();
 
@@ -265,10 +253,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            uint totalTriangles = 0;
-            for (int view = 0; view < maxViews; view++) {
-                totalTriangles += numIndicies[view] / 3;
-            }
+            uint totalTriangles = quadstream.getNumTriangles();
             if (totalTriangles < 100000)
                 ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", totalTriangles);
             else if (totalTriangles < 500000)
@@ -386,7 +371,7 @@ int main(int argc, char** argv) {
                 rerenderInterval = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
             }
 
-            if (ImGui::Button("Send Server Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+            if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
                 generateRemoteFrame = true;
                 runAnimations = true;
             }
@@ -432,7 +417,7 @@ int main(int argc, char** argv) {
                     );
 
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
-                    ImGui::Image((void*)(intptr_t)(quadstream.serverFrameRTs[viewIdx].colorBuffer.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
+                    ImGui::Image((void*)(intptr_t)(quadstream.refFrameRTs[viewIdx].colorBuffer.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
                     ImGui::End();
                 }
             }
@@ -459,10 +444,10 @@ int main(int argc, char** argv) {
                 for (int view = 1; view < maxViews; view++) {
                     Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
                     if (saveAsHDR) {
-                        quadstream.serverFrameRTs[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
+                        quadstream.refFrameRTs[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
-                        quadstream.serverFrameRTs[view].saveColorAsPNG(viewPath.withExtension(".png"));
+                        quadstream.refFrameRTs[view].saveColorAsPNG(viewPath.withExtension(".png"));
                     }
                 }
             }
@@ -672,8 +657,8 @@ int main(int argc, char** argv) {
         for (int view = 0; view < maxViews; view++) {
             bool showView = showViews[view];
 
-            quadstream.serverFrameNodesLocal[view].visible = showView;
-            quadstream.serverFrameWireframesLocal[view].visible = showView && showWireframe;
+            quadstream.refFrameNodesLocal[view].visible = showView;
+            quadstream.refFrameWireframesLocal[view].visible = showView && showWireframe;
             quadstream.depthNodes[view].visible = showView && showDepth;
         }
 

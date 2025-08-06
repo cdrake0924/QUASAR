@@ -6,7 +6,7 @@
 
 #include <Quads/QuadFrame.h>
 #include <Quads/QuadsGenerator.h>
-#include <Quads/MeshFromQuads.h>
+#include <Quads/QuadMesh.h>
 
 namespace quasar {
 
@@ -32,23 +32,16 @@ public:
     QuadFrame::Sizes generateRefFrame(
         const FrameRenderTarget& frameRT,
         const PerspectiveCamera& remoteCamera,
-        const Mesh& mesh);
+        QuadMesh& mesh);
 
     QuadFrame::Sizes generateResFrame(
         Scene& currScene, Scene& prevScene,
         FrameRenderTarget& frameRT, FrameRenderTarget& maskFrameRT,
         const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-        const Mesh& currMesh, const Mesh& maskMesh);
-
-    std::pair<MeshFromQuads::BufferSizes, MeshFromQuads::BufferSizes> getBufferSizes() const {
-        return { meshFromQuads.getBufferSizes(), meshFromQuadsMask.getBufferSizes() };
-    }
+        QuadMesh& currMesh, QuadMesh& maskMesh);
 
 private:
     QuadFrame& quadFrame;
-
-    MeshFromQuads meshFromQuads;
-    MeshFromQuads meshFromQuadsMask;
 
     DeferredRenderer& remoteRenderer;
     Scene& remoteScene;

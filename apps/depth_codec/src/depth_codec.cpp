@@ -256,7 +256,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            if (ImGui::Button("Send Server Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+            if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
                 generateRemoteFrame = true;
             }
 

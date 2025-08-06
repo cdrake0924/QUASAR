@@ -1,5 +1,5 @@
-#ifndef MESH_FROM_QUADS_H
-#define MESH_FROM_QUADS_H
+#ifndef QUAD_MESH_H
+#define QUAD_MESH_H
 
 #include <Texture.h>
 #include <Primitives/Mesh.h>
@@ -8,6 +8,7 @@
 
 #include <Quads/QuadFrame.h>
 #include <Quads/QuadVertex.h>
+#include <Quads/QuadMaterial.h>
 
 namespace quasar {
 
@@ -17,13 +18,7 @@ namespace quasar {
 #define INDICES_IN_A_QUAD 6
 #define NUM_SUB_QUADS 4
 
-#ifndef __ANDROID__
-#define THREADS_PER_LOCALGROUP 16
-#else
-#define THREADS_PER_LOCALGROUP 32
-#endif
-
-class MeshFromQuads {
+class QuadMesh : public Mesh {
 public:
     struct BufferSizes {
         uint numVertices;
@@ -38,11 +33,11 @@ public:
 
     uint maxProxies;
 
-    MeshFromQuads(const QuadFrame& quadFrame, uint maxNumProxies = MAX_NUM_PROXIES);
-    ~MeshFromQuads() = default;
+    QuadMesh(const QuadFrame& quadFrame, Texture& colorBuffer, uint maxNumProxies = MAX_NUM_PROXIES);
+    ~QuadMesh() = default;
 
     void appendQuads(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, bool isRefFrame = true);
-    void createMeshFromProxies(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera, const Mesh& mesh);
+    void createMeshFromProxies(const QuadFrame& quadFrame, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera);
 
     BufferSizes getBufferSizes() const;
 
@@ -58,11 +53,11 @@ private:
 
     ComputeShader appendQuadsShader;
     ComputeShader fillQuadIndicesShader;
-    ComputeShader createMeshFromQuadsShader;
+    ComputeShader createQuadMeshShader;
 
     void fillQuadIndices(const QuadFrame& quadFrame, const glm::vec2& gBufferSize);
 };
 
 } // namespace quasar
 
-#endif // MESH_FROM_QUADS_H
+#endif // QUAD_MESH_H

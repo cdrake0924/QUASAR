@@ -5,8 +5,6 @@
 #include <PostProcessing/ShowNormalsEffect.h>
 
 #include <DepthMesh.h>
-
-#include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
 namespace quasar {
@@ -28,13 +26,13 @@ public:
 
     // Reference frame
     FrameRenderTarget refFrameRT;
-    std::vector<Mesh> refFrameMeshes;
+    std::vector<QuadMesh> refFrameMeshes;
     std::vector<Node> refFrameNodes;
 
     // Mask frame (residual frame)
     FrameRenderTarget maskFrameRT;
     FrameRenderTarget maskTempRT;
-    Mesh maskFrameMesh;
+    QuadMesh maskFrameMesh;
     Node maskFrameNode;
 
     // Local objects
@@ -48,10 +46,6 @@ public:
     FrameRenderTarget copyRT;
 
     int currMeshIndex = 0, prevMeshIndex = 1;
-
-    uint maxVertices = MAX_NUM_PROXIES * NUM_SUB_QUADS * VERTICES_IN_A_QUAD;
-    uint maxIndices = MAX_NUM_PROXIES * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
-    uint maxVerticesDepth;
 
     struct Stats {
         double totalRenderTime = 0.0;
@@ -71,7 +65,6 @@ public:
     QuadsSimulator(QuadFrame& quadFrame, const PerspectiveCamera& remoteCamera, FrameGenerator& frameGenerator)
         : quadFrame(quadFrame)
         , frameGenerator(frameGenerator)
-        , maxVerticesDepth(quadFrame.getSize().x * quadFrame.getSize().y)
         , refFrameRT({
             .width = quadFrame.getSize().x,
             .height = quadFrame.getSize().y,
@@ -118,6 +111,7 @@ public:
         })
         , depthMesh(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
         , meshScenes(2)
+        , maskFrameMesh(quadFrame, maskFrameRT.colorBuffer, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
     {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -127,17 +121,8 @@ public:
         refFrameNodesLocal.reserve(2);
         refFrameWireframesLocal.reserve(2);
 
-        MeshSizeCreateParams meshParams({
-            .maxVertices = maxVertices,
-            .maxIndices = maxIndices,
-            .vertexSize = sizeof(QuadVertex),
-            .attributes = QuadVertex::getVertexInputAttributes(),
-            .material = new QuadMaterial({ .baseColorTexture = &refFrameRT.colorBuffer ,}),
-            .usage = GL_DYNAMIC_DRAW,
-            .indirectDraw = true
-        });
         for (int i = 0; i < 2; i++) {
-            refFrameMeshes.emplace_back(meshParams);
+            refFrameMeshes.emplace_back(quadFrame, refFrameRT.colorBuffer);
 
             refFrameNodes.emplace_back(&refFrameMeshes[i]);
             refFrameNodes[i].frustumCulled = false;
@@ -153,11 +138,6 @@ public:
             refFrameWireframesLocal[i].overrideMaterial = &wireframeMaterial;
         }
 
-        // We can use less vertices and indicies for the mask since it will be sparse
-        meshParams.maxVertices /= 4;
-        meshParams.maxIndices /= 4;
-        meshParams.material = new QuadMaterial({ .baseColorTexture = &maskFrameRT.colorBuffer });
-        maskFrameMesh = Mesh(meshParams);
         maskFrameNode.setEntity(&maskFrameMesh);
         maskFrameNode.frustumCulled = false;
 
@@ -173,6 +153,12 @@ public:
         depthNode.primativeType = GL_POINTS;
     }
     ~QuadsSimulator() = default;
+
+    uint getNumTriangles() const {
+        auto refMeshSizes = refFrameMeshes[currMeshIndex].getBufferSizes();
+        auto maskMeshSizes = maskFrameMesh.getBufferSizes();
+        return (refMeshSizes.numIndices + maskMeshSizes.numIndices) / 3; // Each triangle has 3 indices
+    }
 
     void addMeshesToScene(Scene& localScene) {
         for (int i = 0; i < 2; i++) {

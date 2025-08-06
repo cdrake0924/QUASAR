@@ -14,8 +14,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <Quads/MeshFromQuads.h>
-#include <Quads/QuadMaterial.h>
+#include <Quads/QuadMesh.h>
 
 using namespace quasar;
 
@@ -89,9 +88,6 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
-    QuadFrame quadFrame(windowSize);
-    MeshFromQuads meshFromQuads(quadFrame);
-
     std::string colorFileName = dataPath / "color.jpg";
     Texture colorTexture = Texture({
         .wrapS = GL_REPEAT,
@@ -102,45 +98,35 @@ int main(int argc, char** argv) {
         .path = colorFileName,
     });
 
-    Mesh* mesh;
+    QuadFrame quadFrame(windowSize);
+    QuadMesh quadMesh(quadFrame, colorTexture);
 
     uint totalTriangles = 0;
     QuadFrame::Sizes totalSizes;
 
-    double startTime = window->getTime();
     double loadFromFilesTime = 0.0;
     double createMeshTime = 0.0;
 
+    double startTime = window->getTime();
     Path quadsFile = (dataPath / "quads").withExtension(".bin.zstd");
     Path offsetsFile = (dataPath / "depthOffsets").withExtension(".bin.zstd");
     auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
-
-    mesh = new Mesh({
-        .maxVertices = sizes.numQuads * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
-        .maxIndices = sizes.numQuads * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
-        .vertexSize = sizeof(QuadVertex),
-        .attributes = QuadVertex::getVertexInputAttributes(),
-        .material = new QuadMaterial({ .baseColorTexture = &colorTexture ,}),
-        .usage = GL_DYNAMIC_DRAW,
-        .indirectDraw = true
-    });
     loadFromFilesTime = timeutils::secondsToMillis(window->getTime() - startTime);
 
-    const glm::vec2 gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
-    meshFromQuads.appendQuads(quadFrame, gBufferSize);
-    meshFromQuads.createMeshFromProxies(quadFrame, gBufferSize, remoteCamera, *mesh);
-    createMeshTime = meshFromQuads.stats.timeToCreateMeshMs;
+    const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
+    quadMesh.appendQuads(quadFrame, gBufferSize);
+    quadMesh.createMeshFromProxies(quadFrame, gBufferSize, remoteCamera);
+    createMeshTime = quadMesh.stats.timeToCreateMeshMs;
 
-    auto meshBufferSizes = meshFromQuads.getBufferSizes();
-
+    auto meshBufferSizes = quadMesh.getBufferSizes();
     totalTriangles = meshBufferSizes.numIndices / 3;
     totalSizes += sizes;
 
-    Node node(mesh);
+    Node node(&quadMesh);
     node.frustumCulled = false;
     scene.addChildNode(&node);
 
-    Node nodeWireframe(mesh);
+    Node nodeWireframe(&quadMesh);
     nodeWireframe.frustumCulled = false;
     nodeWireframe.wireframe = true;
     nodeWireframe.visible = false;

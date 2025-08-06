@@ -14,8 +14,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <Quads/MeshFromQuads.h>
-#include <Quads/QuadMaterial.h>
+#include <Quads/QuadMesh.h>
 
 using namespace quasar;
 
@@ -41,8 +40,9 @@ int main(int argc, char** argv) {
     args::Flag verbose(parser, "verbose", "Enable verbose logging", {'v', "verbose"});
     args::ValueFlag<std::string> sizeIn(parser, "size", "Resolution of renderer", {'s', "size"}, "1920x1080");
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
-    args::ValueFlag<int> maxLayersIn(parser, "layers", "Max layers", {'n', "max-layers"}, 4);
-    args::Flag disableWideFov(parser, "disable-wide-fov", "Disable wide fov view", {'W', "disable-wide-fov"});args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
+    args::ValueFlag<int> maxHiddenLayersIn(parser, "layers", "Max hidden layers", {'n', "max-hidden-layers"}, 3);
+    args::Flag disableWideFov(parser, "disable-wide-fov", "Disable wide fov view", {'W', "disable-wide-fov"});
+    args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
     args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'W', "remote-fov-wide"}, 120.0f);
     try {
@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
 
     Path dataPath = Path(args::get(dataPathIn)); dataPath.mkdirRecursive();
 
-    int maxLayers = args::get(maxLayersIn);
-    int maxViews = !disableWideFov ? maxLayers + 1 : maxLayers;
+    int maxHidLayers = args::get(maxHiddenLayersIn);
+    int maxLayers = !disableWideFov ? maxHidLayers + 2 : maxHidLayers;
 
     auto window = std::make_shared<GLFWWindow>(config);
     auto guiManager = std::make_shared<ImGuiManager>(window);
@@ -116,10 +116,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
-    QuadFrame quadFrame(windowSize);
-    MeshFromQuads meshFromQuads(quadFrame);
-
-    std::vector<Texture> colorTextures; colorTextures.reserve(maxViews);
+    std::vector<Texture> colorTextures; colorTextures.reserve(maxLayers);
     TextureFileCreateParams params = {
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,
@@ -127,15 +124,17 @@ int main(int argc, char** argv) {
         .magFilter = GL_NEAREST,
         .flipVertically = true,
     };
-    for (int view = 0; view < maxViews; view++) {
+    for (int view = 0; view < maxLayers; view++) {
         Path colorFileName = dataPath.appendToName("color" + std::to_string(view));
         params.path = colorFileName.withExtension(".jpg");
         colorTextures.emplace_back(params);
     }
 
-    std::vector<Mesh*> meshes(maxViews);
-    std::vector<Node*> nodes(maxViews);
-    std::vector<Node*> nodeWireframes(maxViews);
+    QuadFrame quadFrame(windowSize);
+
+    std::vector<QuadMesh> meshes; meshes.reserve(maxLayers);
+    std::vector<Node> nodes; nodes.reserve(maxLayers);
+    std::vector<Node> nodeWireframes; nodeWireframes.reserve(maxLayers);
 
     uint totalTriangles = 0;
     QuadFrame::Sizes totalSizes;
@@ -144,51 +143,41 @@ int main(int argc, char** argv) {
     double loadFromFilesTime = 0.0;
     double createMeshTime = 0.0;
 
-    for (int view = 0; view < maxViews; view++) {
+    for (int view = 0; view < maxLayers; view++) {
         startTime = window->getTime();
-
         Path quadsFile = (dataPath / "quads").appendToName(std::to_string(view)).withExtension(".bin.zstd");
         Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(view)).withExtension(".bin.zstd");
         auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
-
-        meshes[view] = new Mesh({
-            .maxVertices = sizes.numQuads * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
-            .maxIndices = sizes.numQuads * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
-            .vertexSize = sizeof(QuadVertex),
-            .attributes = QuadVertex::getVertexInputAttributes(),
-            .material = new QuadMaterial({ .baseColorTexture = &colorTextures[view] ,}),
-            .usage = GL_DYNAMIC_DRAW,
-            .indirectDraw = true
-        });
         loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
 
-        const glm::uvec2 gBufferSize = glm::uvec2(colorTextures[view].width, colorTextures[view].height);
-        auto& cameraToUse = (!disableWideFov && view == maxViews - 1) ? remoteCameraWideFov : remoteCamera;
-        meshFromQuads.appendQuads(quadFrame, gBufferSize);
-        meshFromQuads.createMeshFromProxies(quadFrame, gBufferSize, cameraToUse, *meshes[view]);
-        createMeshTime += meshFromQuads.stats.timeToCreateMeshMs;
+        meshes.emplace_back(quadFrame, colorTextures[view]);
 
-        auto meshBufferSizes = meshFromQuads.getBufferSizes();
+        const glm::uvec2& gBufferSize = glm::uvec2(colorTextures[view].width, colorTextures[view].height);
+        auto& cameraToUse = (!disableWideFov && view == maxLayers - 1) ? remoteCameraWideFov : remoteCamera;
+        meshes[view].appendQuads(quadFrame, gBufferSize);
+        meshes[view].createMeshFromProxies(quadFrame, gBufferSize, cameraToUse);
+        createMeshTime += meshes[view].stats.timeToCreateMeshMs;
 
+        auto meshBufferSizes = meshes[view].getBufferSizes();
         totalTriangles += meshBufferSizes.numIndices / 3;
         totalSizes += sizes;
     }
 
-    for (int view = 0; view < maxViews; view++) {
-        nodes[view] = new Node(meshes[view]);
-        nodes[view]->frustumCulled = false;
-        scene.addChildNode(nodes[view]);
+    for (int view = 0; view < maxLayers; view++) {
+        nodes.emplace_back(&meshes[view]);
+        nodes[view].frustumCulled = false;
+        scene.addChildNode(&nodes[view]);
 
-        nodeWireframes[view] = new Node(meshes[view]);
-        nodeWireframes[view]->frustumCulled = false;
-        nodeWireframes[view]->wireframe = true;
-        nodeWireframes[view]->visible = false;
-        nodeWireframes[view]->overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
-        scene.addChildNode(nodeWireframes[view]);
+        nodeWireframes.emplace_back(&meshes[view]);
+        nodeWireframes[view].frustumCulled = false;
+        nodeWireframes[view].wireframe = true;
+        nodeWireframes[view].visible = false;
+        nodeWireframes[view].overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
+        scene.addChildNode(&nodeWireframes[view]);
     }
 
-    bool* showLayers = new bool[maxViews];
-    for (int i = 0; i < maxViews; ++i) {
+    bool* showLayers = new bool[maxLayers];
+    for (int i = 0; i < maxLayers; ++i) {
         showLayers[i] = true;
     }
 
@@ -275,16 +264,16 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            bool showWireframe = nodeWireframes[0]->visible;
+            bool showWireframe = nodeWireframes[0].visible;
             ImGui::Checkbox("Show Wireframe", &showWireframe);
-            for (int i = 0; i < maxViews; i++) {
-                nodeWireframes[i]->visible = showWireframe;
+            for (int i = 0; i < maxLayers; i++) {
+                nodeWireframes[i].visible = showWireframe;
             }
 
             ImGui::Separator();
 
             const int columns = 3;
-            for (int i = 0; i < maxViews; i++) {
+            for (int i = 0; i < maxLayers; i++) {
                 ImGui::Checkbox(("Show Layer " + std::to_string(i)).c_str(), &showLayers[i]);
                 if ((i + 1) % columns != 0) {
                     ImGui::SameLine();
@@ -367,8 +356,8 @@ int main(int argc, char** argv) {
         auto scroll = window->getScrollOffset();
         camera.processScroll(scroll.y);
 
-        for (int i = 0; i < maxViews; i++) {
-            nodes[i]->visible = showLayers[i];
+        for (int i = 0; i < maxLayers; i++) {
+            nodes[i].visible = showLayers[i];
         }
 
         // Render all objects in scene

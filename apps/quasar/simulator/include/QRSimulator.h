@@ -5,8 +5,6 @@
 #include <PostProcessing/ShowNormalsEffect.h>
 
 #include <DepthMesh.h>
-
-#include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
 namespace quasar {
@@ -28,14 +26,14 @@ public:
 
     // Reference frame
     FrameRenderTarget refFrameRT;
-    std::vector<Mesh> refFrameMeshes;
+    std::vector<QuadMesh> refFrameMeshes;
     std::vector<Node> refFrameNodes;
     std::vector<Node> refFrameWireframesLocal;
 
     // Mask frame (residual frame) -- we only apply the mask to the visible layer
     FrameRenderTarget maskFrameRT;
     FrameRenderTarget maskTempRT;
-    Mesh maskFrameMesh;
+    QuadMesh maskFrameMesh;
     Node maskFrameNode;
 
     // Local objects
@@ -44,7 +42,7 @@ public:
 
     // Hidden layers
     std::vector<FrameRenderTarget> frameRTsHidLayer;
-    std::vector<Mesh> meshesHidLayer;
+    std::vector<QuadMesh> meshesHidLayer;
     std::vector<Node> nodesHidLayer;
     std::vector<Node> wireframesHidLayer;
 
@@ -127,6 +125,7 @@ public:
         })
         , depthMesh(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
         , meshScenes(2)
+        , maskFrameMesh(quadFrame, maskFrameRT.colorBuffer, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
     {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -152,17 +151,8 @@ public:
         depthNodesHidLayer.reserve(numHidLayers);
 
         // Setup visible layer for reference frame
-        MeshSizeCreateParams meshParams({
-            .maxVertices = maxVertices,
-            .maxIndices = maxIndices,
-            .vertexSize = sizeof(QuadVertex),
-            .attributes = QuadVertex::getVertexInputAttributes(),
-            .material = new QuadMaterial({ .baseColorTexture = &refFrameRT.colorBuffer ,}),
-            .usage = GL_DYNAMIC_DRAW,
-            .indirectDraw = true
-        });
         for (int i = 0; i < 2; i++) {
-            refFrameMeshes.emplace_back(meshParams);
+            refFrameMeshes.emplace_back(quadFrame, refFrameRT.colorBuffer);
 
             refFrameNodes.emplace_back(&refFrameMeshes[i]);
             refFrameNodes[i].frustumCulled = false;
@@ -179,11 +169,6 @@ public:
         }
 
         // Setup masks for residual frame
-        // We can use less vertices and indicies for the mask since it will be sparse
-        meshParams.maxVertices /= 4;
-        meshParams.maxIndices /= 4;
-        meshParams.material = new QuadMaterial({ .baseColorTexture = &maskFrameRT.colorBuffer });
-        maskFrameMesh = Mesh(meshParams);
         maskFrameNode.setEntity(&maskFrameMesh);
         maskFrameNode.frustumCulled = false;
 
@@ -218,11 +203,8 @@ public:
         }
 
         for (int layer = 0; layer < numHidLayers; layer++) {
-            meshParams.material = new QuadMaterial({ .baseColorTexture = &frameRTsHidLayer[layer].colorBuffer });
             // We can use less vertices and indicies for the hidden layers since they will be sparse
-            meshParams.maxVertices = maxVertices / 4;
-            meshParams.maxIndices = maxIndices / 4;
-            meshesHidLayer.emplace_back(meshParams);
+            meshesHidLayer.emplace_back(quadFrame, frameRTsHidLayer[layer].colorBuffer, MAX_NUM_PROXIES / 4);
 
             nodesHidLayer.emplace_back(&meshesHidLayer[layer]);
             nodesHidLayer[layer].frustumCulled = false;
@@ -253,6 +235,19 @@ public:
         sceneWideFov.addChildNode(&maskFrameNode);
     }
     ~QRSimulator() = default;
+
+    uint getNumTriangles() const {
+        uint numTriangles = 0;
+        for (const auto& mesh : refFrameMeshes) {
+            auto size = mesh.getBufferSizes();
+            numTriangles += size.numIndices / 3; // Each triangle has 3 indices
+        }
+        for (const auto& mesh : meshesHidLayer) {
+            auto size = mesh.getBufferSizes();
+            numTriangles += size.numIndices / 3; // Each triangle has 3 indices
+        }
+        return numTriangles;
+    }
 
     void addMeshesToScene(Scene& localScene) {
         for (int i = 0; i < 2; i++) {
