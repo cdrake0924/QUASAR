@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
     int serverFPSIndex = !cameraPathFileIn ? 0 : 5; // default to 30 FPS
-    double rerenderInterval = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+    double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
     float networkLatency = !cameraPathFileIn ? 0.0f : args::get(networkLatencyIn);
     float networkJitter = !cameraPathFileIn ? 0.0f : args::get(networkJitterIn);
     bool posePrediction = posePredictionIn;
@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
     PoseSendRecvSimulator poseSendRecvSimulator({
         .networkLatencyMs = networkLatency,
         .networkJitterMs = networkJitter,
-        .renderTimeMs = rerenderInterval / MILLISECONDS_IN_SECOND,
+        .renderTimeMs = rerenderIntervalMs,
         .posePrediction = posePrediction,
         .poseSmoothing = poseSmoothing,
     });
@@ -245,7 +245,7 @@ int main(int argc, char** argv) {
             ImGui::Checkbox("Pose Prediction Enabled", &poseSendRecvSimulator.posePrediction);
 
             if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
-                rerenderInterval = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+                rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
             }
 
             if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -389,7 +389,7 @@ int main(int argc, char** argv) {
         }
         totalDT += dt;
 
-        if (rerenderInterval > 0.0 && (now - lastRenderTime) >= (rerenderInterval - 1.0) / MILLISECONDS_IN_SECOND) {
+        if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
             generateRemoteFrame = true;
         }
         if (generateRemoteFrame) {

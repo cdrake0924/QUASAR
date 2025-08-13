@@ -47,6 +47,14 @@ inline time_t getTimeNanos() {
     return ns.count();
 }
 
+inline double millisToMicros(double millis) {
+    return millis * MICROSECONDS_IN_MILLISECOND;
+}
+
+inline double secondsToMicros(double seconds) {
+    return seconds * MICROSECONDS_IN_SECOND;
+}
+
 inline double nanoToMillis(double nanos) {
     return nanos / NANOSECONDS_IN_MILLISECOND;
 }
@@ -55,24 +63,16 @@ inline double microsToMillis(double micros) {
     return micros / MICROSECONDS_IN_MILLISECOND;
 }
 
+inline double secondsToMillis(double seconds) {
+    return seconds * MILLISECONDS_IN_SECOND;
+}
+
 inline double microsToSeconds(double micros) {
     return micros / MICROSECONDS_IN_SECOND;
 }
 
-inline double millisToMicros(double millis) {
-    return millis * MICROSECONDS_IN_MILLISECOND;
-}
-
 inline double millisToSeconds(double millis) {
     return millis / MILLISECONDS_IN_SECOND;
-}
-
-inline double secondsToMicros(double seconds) {
-    return seconds * MICROSECONDS_IN_SECOND;
-}
-
-inline double secondsToMillis(double seconds) {
-    return seconds * MILLISECONDS_IN_SECOND;
 }
 
 }
