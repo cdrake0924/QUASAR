@@ -1,6 +1,7 @@
 #ifndef DEPTH_OFFSETS_H
 #define DEPTH_OFFSETS_H
 
+#include <Path.h>
 #include <Texture.h>
 
 #if defined(HAS_CUDA)
@@ -19,7 +20,7 @@ public:
 
 #if defined(HAS_CUDA)
     uint copyToMemory(std::vector<char>& outputData);
-    uint saveToFile(const std::string& filename);
+    uint saveToFile(const Path& filename);
 #endif
     uint loadFromMemory(std::vector<char>& inputData);
 

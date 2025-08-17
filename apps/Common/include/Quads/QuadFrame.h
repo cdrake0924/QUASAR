@@ -86,7 +86,8 @@ public:
         if (compress) {
             uint savedQuadsSize = codec.compress(decompressedQuads.data(), compressedQuads, decompressedQuads.size());
             compressedQuads.resize(savedQuadsSize);
-        } else {
+        }
+        else {
             compressedQuads = decompressedQuads;
         }
 
@@ -96,7 +97,8 @@ public:
         if (compress) {
             uint savedDepthOffsetsSize = codec.compress(decompressedDepthOffsets.data(), compressedDepthOffsets, decompressedDepthOffsets.size());
             compressedDepthOffsets.resize(savedDepthOffsetsSize);
-        } else {
+        }
+        else {
             compressedDepthOffsets = decompressedDepthOffsets;
         }
 

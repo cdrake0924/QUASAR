@@ -12,6 +12,7 @@
 
 #include <CameraPose.h>
 
+#include <Path.h>
 #include <Codec/BC4.h>
 #include <Codec/ZSTDCodec.h>
 
@@ -53,7 +54,7 @@ public:
 
     uint compress(bool compress = false);
     void sendFrame(pose_id_t poseID);
-    void saveToFile(const std::string& filename);
+    void saveToFile(const Path& filename);
 
 private:
     int targetFrameRate = 30;

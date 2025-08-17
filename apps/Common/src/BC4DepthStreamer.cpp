@@ -106,20 +106,19 @@ void BC4DepthStreamer::copyFrameToCPU(pose_id_t poseID, void* cudaPtr) {
 }
 
 uint BC4DepthStreamer::applyCodec() {
-    size_t maxSizeBytes = data.size();
-    compressedData.resize(maxSizeBytes);
     uint compressedSize = codec.compress(data.data(), compressedData, data.size());
     compressedData.resize(compressedSize);
     return compressedSize;
 }
 
-void BC4DepthStreamer::saveToFile(const std::string& filename) {
+void BC4DepthStreamer::saveToFile(const Path& filename) {
     std::ofstream outFile(filename, std::ios::binary);
     if (outFile.is_open()) {
         outFile.write(compressedData.data(), compressedData.size());
         outFile.close();
-    } else {
-        spdlog::error("Failed to write compressed depth data to file");
+    }
+    else {
+        spdlog::error("Failed to write compressed depth data to file: {}", filename.str());
     }
 }
 
