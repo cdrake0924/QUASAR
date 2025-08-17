@@ -20,7 +20,7 @@ struct MeshDataCreateParams {
     size_t verticesSize;
     const uint* indicesData = nullptr;
     size_t indicesSize = 0;
-    uint vertexSize = sizeof(Vertex);
+    size_t vertexSize = sizeof(Vertex);
     VertexInputAttributes attributes = Vertex::getVertexInputAttributes();
     const Material* material;
     float IBL = 1.0;
@@ -29,9 +29,9 @@ struct MeshDataCreateParams {
 };
 
 struct MeshSizeCreateParams {
-    uint maxVertices;
-    uint maxIndices = 0;
-    uint vertexSize = sizeof(Vertex);
+    size_t maxVertices;
+    size_t maxIndices = 0;
+    size_t vertexSize = sizeof(Vertex);
     VertexInputAttributes attributes = Vertex::getVertexInputAttributes();
     const Material* material;
     float IBL = 1.0;
@@ -40,11 +40,11 @@ struct MeshSizeCreateParams {
 };
 
 struct DrawElementsIndirectCommand {
-    GLuint count = 0;
-    GLuint instanceCount = 1;
-    GLuint firstIndex = 0;
-    GLuint baseVertex = 0;
-    GLuint baseInstance = 0;
+    uint32_t count = 0;
+    uint32_t instanceCount = 1;
+    uint32_t firstIndex = 0;
+    uint32_t baseVertex = 0;
+    uint32_t baseInstance = 0;
 };
 
 class Mesh : public Entity {

@@ -29,7 +29,7 @@ public:
     Buffer bc4CompressedBuffer;
 
     std::string receiverURL;
-    uint compressedSize;
+    size_t compressedSize;
 
     struct Stats {
         double timeToCopyFrameMs = 0.0;
@@ -52,7 +52,7 @@ public:
         this->targetFrameRate = targetFrameRate;
     }
 
-    uint compress(bool compress = false);
+    size_t compress(bool compress = false);
     void sendFrame(pose_id_t poseID);
     void saveToFile(const Path& filename);
 
@@ -66,7 +66,7 @@ private:
 
     ComputeShader bc4CompressionShader;
 
-    uint applyCodec();
+    size_t applyCodec();
     void copyFrameToCPU(pose_id_t poseID = -1, void* cudaPtr = nullptr);
 
 #if defined(HAS_CUDA)

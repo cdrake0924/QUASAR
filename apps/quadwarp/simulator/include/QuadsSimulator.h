@@ -208,7 +208,7 @@ public:
         stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
         stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
         stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-        stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateProxiesMs;
+        stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
 
         stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
         stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToFillQuadIndicesMs;
@@ -238,7 +238,7 @@ public:
             stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
             stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
             stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-            stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateProxiesMs;
+            stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
 
             stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
             stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToGatherQuadsMs;

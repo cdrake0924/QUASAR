@@ -16,7 +16,7 @@ struct ComputeShaderDataCreateParams {
     std::string version = "320 es";
 #endif
     const char* computeCodeData = nullptr;
-    uint computeCodeSize = 0;
+    size_t computeCodeSize = 0;
     std::vector<std::string> extensions;
     std::vector<std::string> defines;
 };
@@ -53,7 +53,7 @@ public:
     }
 
     void loadFromFile(const std::string& computePath);
-    void loadFromData(const char* computeCodeData, const GLint computeCodeSize);
+    void loadFromData(const char* computeCodeData, const size_t computeCodeSize);
 
     void dispatch(GLuint numGroupsX, GLuint numGroupsY, GLuint numGroupsZ) const;
     void memoryBarrier(GLbitfield barriers) const;
@@ -63,7 +63,7 @@ public:
     double getElapsedTime() const;
 
 private:
-    void createAndCompileProgram(const char* computeCodeData, const GLint computeCodeSize);
+    void createAndCompileProgram(const char* computeCodeData, const size_t computeCodeSize);
 
 #ifdef GL_CORE
     mutable GLuint startQueryID = 0;

@@ -20,12 +20,12 @@ QuadFrame::Sizes FrameGenerator::generateRefFrame(
 
     // Create proxies from the current FrameRenderTarget
     quadsGenerator.createProxiesFromRT(frameRT, remoteCamera);
-    stats.timeToCreateProxiesMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     stats.timeToGenerateQuadsMs = quadsGenerator.stats.timeToGenerateQuadsMs;
     stats.timeToSimplifyQuadsMs = quadsGenerator.stats.timeToSimplifyQuadsMs;
     stats.timeToGatherQuadsMs = quadsGenerator.stats.timeToGatherQuadsMs;
+    stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    auto sizes = quadFrame.copyToMemory();
+    auto sizes = quadFrame.mapToCPU();
     stats.timeToCompress = quadFrame.stats.timeToCompressMs;
 
     // Create mesh from the proxies
@@ -91,9 +91,9 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
     {
         startTime = timeutils::getTimeMicros();
         quadsGenerator.createProxiesFromRT(frameRT, prevRemoteCamera);
-        stats.timeToCreateProxiesMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        auto sizes = quadFrame.copyToMemory();
+        auto sizes = quadFrame.mapToCPU();
         outputSizes.numQuads = sizes.numQuads;
         outputSizes.numDepthOffsets = sizes.numDepthOffsets;
         outputSizes.quadsSize = sizes.quadsSize;
@@ -115,9 +115,9 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
     {
         startTime = timeutils::getTimeMicros();
         quadsGenerator.createProxiesFromRT(maskFrameRT, currRemoteCamera);
-        stats.timeToCreateProxiesMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.timeToCreateQuadsMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        auto sizes = quadFrame.copyToMemory();
+        auto sizes = quadFrame.mapToCPU();
         outputSizes.numQuads += sizes.numQuads;
         outputSizes.numDepthOffsets += sizes.numDepthOffsets;
         outputSizes.quadsSize += sizes.quadsSize;

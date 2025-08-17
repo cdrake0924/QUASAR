@@ -112,7 +112,7 @@ void Recorder::captureFrame(const Camera& camera) {
     std::vector<uint8_t> renderTargetData(width * height * 4);
 
 #if defined(HAS_CUDA)
-    cudaImage.copyToArray(
+    cudaImage.copyArrayToHost(
         width * 4, height, width * 4, renderTargetData.data());
 #else
     readPixels(renderTargetData.data());

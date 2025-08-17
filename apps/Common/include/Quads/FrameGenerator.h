@@ -17,7 +17,7 @@ public:
     FrameGenerator(QuadFrame& quadFrame, DeferredRenderer& remoteRenderer, Scene& remoteScene);
 
     struct Stats {
-        double timeToCreateProxiesMs = 0.0;
+        double timeToCreateQuadsMs = 0.0;
         double timeToCreateMeshMs = 0.0;
         double timeToGenerateQuadsMs = 0.0;
         double timeToSimplifyQuadsMs = 0.0;

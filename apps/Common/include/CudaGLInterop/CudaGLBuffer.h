@@ -13,16 +13,20 @@ namespace quasar {
 class CudaGLBuffer {
 public:
     CudaGLBuffer() = default;
-    CudaGLBuffer(Buffer& buffer)
+    CudaGLBuffer(Buffer& buffer, cudaStream_t stream = nullptr)
         : buffer(&buffer)
+        , stream(stream)
     {
         cudautils::checkCudaDevice();
         registerBuffer(buffer);
     }
 
     ~CudaGLBuffer() {
-        cudaDeviceSynchronize();
-        CHECK_CUDA_ERROR(cudaGraphicsUnregisterResource(cudaResource));
+        if (ownsStream && stream) cudaStreamSynchronize(stream);
+        if (cudaResource) {
+            CHECK_CUDA_ERROR(cudaGraphicsUnregisterResource(cudaResource));
+        }
+        if (ownsStream && stream) cudaStreamDestroy(stream);
     }
 
     void registerBuffer(Buffer& buffer) {
@@ -33,12 +37,20 @@ public:
             cudaGraphicsRegisterFlagsNone));
     }
 
+    void ensureStream() {
+        if (!stream) {
+            CHECK_CUDA_ERROR(cudaStreamCreate(&stream));
+            ownsStream = true;
+        }
+    }
+
     void map() {
-        CHECK_CUDA_ERROR(cudaGraphicsMapResources(1, &cudaResource));
+        ensureStream();
+        CHECK_CUDA_ERROR(cudaGraphicsMapResources(1, &cudaResource, stream));
     }
 
     void unmap() {
-        CHECK_CUDA_ERROR(cudaGraphicsUnmapResources(1, &cudaResource));
+        CHECK_CUDA_ERROR(cudaGraphicsUnmapResources(1, &cudaResource, stream));
     }
 
     void* getPtr() {
@@ -49,13 +61,20 @@ public:
         return cudaPtr;
     }
 
-private:
-    Buffer* buffer;
+    cudaStream_t getStream() const { return stream; }
+    void setStream(cudaStream_t s) { stream = s; ownsStream = false; }
 
-    cudaGraphicsResource* cudaResource;
+private:
+    bool ownsStream = false;
+
+    const Buffer* buffer = nullptr;
+
+    cudaGraphicsResource* cudaResource = nullptr;
+    cudaStream_t stream = nullptr;
 };
-#endif
 
 } // namespace quasar
+
+#endif // defined(HAS_CUDA)
 
 #endif // CUDA_BUFFER_H

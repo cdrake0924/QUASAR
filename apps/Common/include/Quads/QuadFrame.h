@@ -1,6 +1,8 @@
 #ifndef QUAD_FRAME_H
 #define QUAD_FRAME_H
 
+#include <future>
+
 #include <Utils/FileIO.h>
 
 #include <Codec/ZSTDCodec.h>
@@ -18,8 +20,8 @@ public:
     } stats;
 
     struct Sizes {
-        uint numQuads = 0;
-        uint numDepthOffsets = 0;
+        size_t numQuads = 0;
+        size_t numDepthOffsets = 0;
         double quadsSize = 0;
         double depthOffsetsSize = 0;
 
@@ -40,10 +42,14 @@ public:
         : frameSize(frameSize)
         , compress(compressed)
         , quadBuffers(frameSize.x * frameSize.y)
-        , depthOffsets(2u * frameSize) // 4 offsets per pixel
+        , depthOffsets(2u * frameSize) // 4 sets of offsets per every pixel (2x2 subpixels)
         , decompressedQuads(sizeof(uint) + quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
         , decompressedDepthOffsets(sizeof(uint) + depthOffsets.size.x * depthOffsets.size.y * 4 * sizeof(uint16_t))
     {}
+
+    const glm::uvec2& getSize() const {
+        return frameSize;
+    }
 
     const std::vector<char>& getQuads() const {
         return compressedQuads;
@@ -61,59 +67,80 @@ public:
         return depthOffsets.size.x * depthOffsets.size.y;
     }
 
-    const glm::uvec2& getSize() const {
-        return frameSize;
-    }
-
     void setNumQuads(int numProxies) {
         copiedToCPU = false;
         quadBuffers.resize(numProxies);
     }
 
 #ifdef GL_CORE
-    Sizes copyToMemory() {
+    Sizes mapToCPU() {
 #if defined(HAS_CUDA)
+        // Already copied to CPU, no need to recopy
         if (copiedToCPU) {
-            return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
-                     static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
+            return {
+                quadBuffers.numProxies,
+                depthOffsets.size.x * depthOffsets.size.y,
+                static_cast<double>(compressedQuads.size()),
+                static_cast<double>(compressedDepthOffsets.size())
+            };
         }
 
         double startTime = timeutils::getTimeMicros();
 
-        // Copy quads
-        quadBuffers.copyToMemory(decompressedQuads);
+        // Copy to CPU
+        quadBuffers.mapToCPU(decompressedQuads);
+        depthOffsets.mapToCPU(decompressedDepthOffsets);
 
+        std::future<size_t> quadsSizeFuture;
+        std::future<size_t> offsetsSizeFuture;
+
+        // compress quads (async)
         if (compress) {
-            uint savedQuadsSize = codec.compress(decompressedQuads.data(), compressedQuads, decompressedQuads.size());
-            compressedQuads.resize(savedQuadsSize);
+            quadsSizeFuture = quadsCodec.compressAsync(
+                decompressedQuads.data(), compressedQuads, decompressedQuads.size());
         }
         else {
             compressedQuads = decompressedQuads;
         }
 
-        // Copy depth offsets
-        depthOffsets.copyToMemory(decompressedDepthOffsets);
-
+        // Compress depth offsets (async)
         if (compress) {
-            uint savedDepthOffsetsSize = codec.compress(decompressedDepthOffsets.data(), compressedDepthOffsets, decompressedDepthOffsets.size());
-            compressedDepthOffsets.resize(savedDepthOffsetsSize);
+            offsetsSizeFuture = depthOffsetsCodec.compressAsync(
+                decompressedDepthOffsets.data(), compressedDepthOffsets, decompressedDepthOffsets.size());
         }
         else {
             compressedDepthOffsets = decompressedDepthOffsets;
         }
 
+        // Wait for async results
+        if (compress) {
+            size_t savedQuadsSize = quadsSizeFuture.get();
+            compressedQuads.resize(savedQuadsSize);
+
+            size_t savedDepthOffsetsSize = offsetsSizeFuture.get();
+            compressedDepthOffsets.resize(savedDepthOffsetsSize);
+        }
         stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
-                 static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
+        copiedToCPU = true;
+        return {
+            quadBuffers.numProxies,
+            depthOffsets.size.x * depthOffsets.size.y,
+            static_cast<double>(compressedQuads.size()),
+            static_cast<double>(compressedDepthOffsets.size())
+        };
 #else
-        return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
-                    static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
+        return {
+            quadBuffers.numProxies,
+            depthOffsets.size.x * depthOffsets.size.y,
+            static_cast<double>(compressedQuads.size()),
+            static_cast<double>(compressedDepthOffsets.size())
+        };
 #endif
     }
 
-    Sizes copyToMemory(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
-        copyToMemory();
+    Sizes mapToCPU(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
+        mapToCPU();
 
         outputQuads.resize(compressedQuads.size());
         outputDepthOffsets.resize(compressedDepthOffsets.size());
@@ -121,8 +148,12 @@ public:
         std::copy(compressedQuads.begin(), compressedQuads.end(), outputQuads.begin());
         std::copy(compressedDepthOffsets.begin(), compressedDepthOffsets.end(), outputDepthOffsets.begin());
 
-        return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
-                 static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
+        return {
+            quadBuffers.numProxies,
+            depthOffsets.size.x * depthOffsets.size.y,
+            static_cast<double>(compressedQuads.size()),
+            static_cast<double>(compressedDepthOffsets.size())
+        };
     }
 #endif
 
@@ -131,19 +162,23 @@ public:
 
         // Load quads
         compressedQuads = FileIO::loadBinaryFile(quadsFilename);
-        codec.decompress(compressedQuads, decompressedQuads);
-        quadBuffers.loadFromMemory(decompressedQuads);
+        quadsCodec.decompress(compressedQuads, decompressedQuads);
+        quadBuffers.unmapFromCPU(decompressedQuads);
 
         // Load depth offsets
         compressedDepthOffsets = FileIO::loadBinaryFile(depthOffsetsFilename);
-        codec.decompress(compressedDepthOffsets, decompressedDepthOffsets);
-        depthOffsets.loadFromMemory(decompressedDepthOffsets);
+        depthOffsetsCodec.decompress(compressedDepthOffsets, decompressedDepthOffsets);
+        depthOffsets.unmapFromCPU(decompressedDepthOffsets);
 
         stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         copiedToCPU = true;
-        return { quadBuffers.numProxies, depthOffsets.size.x * depthOffsets.size.y,
-                 static_cast<double>(compressedQuads.size()), static_cast<double>(compressedDepthOffsets.size()) };
+        return {
+            quadBuffers.numProxies,
+            depthOffsets.size.x * depthOffsets.size.y,
+            static_cast<double>(compressedQuads.size()),
+            static_cast<double>(compressedDepthOffsets.size())
+        };
     }
 
 private:
@@ -152,7 +187,8 @@ private:
 
     glm::uvec2 frameSize;
 
-    ZSTDCodec codec;
+    ZSTDCodec quadsCodec;
+    ZSTDCodec depthOffsetsCodec;
 
     // CPU buffers
     std::vector<char> compressedQuads;

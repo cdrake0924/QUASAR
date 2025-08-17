@@ -266,10 +266,10 @@ int main(int argc, char** argv) {
             else
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
-            ImGui::TextColored(ImVec4(0,1,1,1), "Total Quad Proxies: %d (%.3f MB)",
+            ImGui::TextColored(ImVec4(0,1,1,1), "Total Quads: %ld (%.3f MB)",
                                totalSizes.numQuads,
                                totalSizes.quadsSize / BYTES_PER_MEGABYTE);
-            ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %d (%.3f MB)",
+            ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %ld (%.3f MB)",
                                totalSizes.numDepthOffsets,
                                totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 

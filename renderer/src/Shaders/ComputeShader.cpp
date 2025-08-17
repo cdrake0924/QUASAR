@@ -71,16 +71,16 @@ void ComputeShader::loadFromFile(const std::string& computePath) {
     std::string computeCode = FileIO::loadTextFile(computePath);
 
     const char* cShaderCode = computeCode.c_str();
-    uint computeCodeSize = computeCode.size();
+    size_t computeCodeSize = computeCode.size();
 
     loadFromData(cShaderCode, computeCodeSize);
 }
 
-void ComputeShader::loadFromData(const char* computeCodeData, const GLint computeCodeSize) {
+void ComputeShader::loadFromData(const char* computeCodeData, const size_t computeCodeSize) {
     createAndCompileProgram(computeCodeData, computeCodeSize);
 }
 
-void ComputeShader::createAndCompileProgram(const char* computeCodeData, const GLint computeCodeSize) {
+void ComputeShader::createAndCompileProgram(const char* computeCodeData, const size_t computeCodeSize) {
     GLuint compute = createShader(version, extensions, defines, computeCodeData, computeCodeSize, ShaderType::COMPUTE);
 
     ID = glCreateProgram();

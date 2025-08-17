@@ -12,7 +12,7 @@ namespace quasar {
 struct BufferCreateParams {
     GLenum target;
     size_t dataSize;
-    uint numElems = 0;
+    size_t numElems = 0;
     GLenum usage = GL_STATIC_DRAW;
     const void* data = nullptr;
 };
@@ -33,7 +33,7 @@ public:
 
     void bindToUniformBlock(GLuint shaderID, const std::string& blockName, GLuint bindingIndex) const;
 
-    uint32_t getSize() const;
+    size_t getSize() const;
 
     void resize(uint newNumElems, bool copy = false);
     void smartResize(uint newNumElems, bool copy = false);

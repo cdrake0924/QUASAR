@@ -1,15 +1,18 @@
 #include <spdlog/spdlog.h>
-
 #include <Quads/DepthOffsets.h>
 
 using namespace quasar;
+
+static inline size_t bytesPerRow(unsigned w) {
+    return static_cast<size_t>(w) * 4 * sizeof(uint16_t); // RGBA16F => 4 channels * 2 bytes
+}
 
 DepthOffsets::DepthOffsets(const glm::uvec2& size)
     : size(size)
     , buffer({
         .width = size.x,
         .height = size.y,
-        .internalFormat = GL_RGBA16F,
+        .internalFormat = GL_RGBA16F, // 4 offsets per subpixel corner
         .format = GL_RGBA,
         .type = GL_HALF_FLOAT,
         .wrapS = GL_CLAMP_TO_EDGE,
@@ -24,23 +27,22 @@ DepthOffsets::DepthOffsets(const glm::uvec2& size)
 {}
 
 #if defined(HAS_CUDA)
-uint DepthOffsets::copyToMemory(std::vector<char>& outputData) {
-    cudaImage.copyToArray(size.x * 4 * sizeof(uint16_t), size.y, size.x * 4 * sizeof(uint16_t), data.data());
-    outputData.resize(data.size());
+size_t DepthOffsets::mapToCPU(std::vector<char>& outputData) {
+    size_t rowBytes = bytesPerRow(size.x);
+    size_t total = rowBytes * size.y;
 
-    uint outputSize = data.size();
-    memcpy(outputData.data(), data.data(), data.size());
-
-    return outputSize;
+    outputData.resize(total);
+    cudaImage.copyArrayToHost(rowBytes, size.y, rowBytes, outputData.data());
+    return total;
 }
 #endif
 
-
-uint DepthOffsets::loadFromMemory(std::vector<char>& inputData) {
+size_t DepthOffsets::unmapFromCPU(std::vector<char>& inputData) {
     data = inputData;
 
 #if defined(HAS_CUDA)
-    cudaImage.copyToArray(size.x * 4 * sizeof(uint16_t), size.y, size.x * 4 * sizeof(uint16_t), data.data());
+    size_t rowBytes = bytesPerRow(size.x);
+    cudaImage.copyHostToArray(rowBytes, size.y, rowBytes, data.data());
 #else
     buffer.setData(size.x, size.y, data.data());
 #endif

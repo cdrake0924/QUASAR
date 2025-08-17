@@ -20,7 +20,7 @@ public:
 
     DepthVideoTexture(const TextureDataCreateParams& params, std::string streamerURL);
 
-    void setMaxQueueSize(uint maxQueueSize) {
+    void setMaxQueueSize(size_t maxQueueSize) {
         this->maxQueueSize = maxQueueSize;
     }
 
@@ -33,7 +33,7 @@ public:
 
 private:
     pose_id_t prevPoseID = -1;
-    uint maxQueueSize = 10;
+    size_t maxQueueSize = 10;
 
     std::mutex m;
 

@@ -105,7 +105,7 @@ void VideoTexture::resize(uint width, uint height) {
     Texture::resize(width, height);
 }
 
-void VideoTexture::setMaxQueueSize(uint maxQueueSize) {
+void VideoTexture::setMaxQueueSize(size_t maxQueueSize) {
     this->maxQueueSize = maxQueueSize;
 }
 

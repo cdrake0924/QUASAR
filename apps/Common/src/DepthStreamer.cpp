@@ -59,7 +59,7 @@ void DepthStreamer::sendFrame(pose_id_t poseID) {
     unbind();
 
     // Add cuda buffer
-    cudaArray* cudaBuffer = cudaImage.getArray();
+    cudaArray_t cudaBuffer = cudaImage.getArrayMapped();
     {
         // Lock mutex
         std::lock_guard<std::mutex> lock(m);
@@ -101,7 +101,7 @@ void DepthStreamer::sendData() {
 
         // Copy depth buffer to data
         CudaBuffer cudaBufferStruct = cudaBufferQueue.front();
-        cudaArray* cudaBuffer = cudaBufferStruct.buffer;
+        cudaArray_t cudaBuffer = cudaBufferStruct.buffer;
         pose_id_t poseIDToSend = cudaBufferStruct.poseID;
 
         cudaBufferQueue.pop();

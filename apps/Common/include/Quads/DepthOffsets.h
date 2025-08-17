@@ -19,10 +19,10 @@ public:
     ~DepthOffsets() = default;
 
 #if defined(HAS_CUDA)
-    uint copyToMemory(std::vector<char>& outputData);
-    uint saveToFile(const Path& filename);
+    size_t mapToCPU(std::vector<char>& outputData);
+    size_t saveToFile(const Path& filename);
 #endif
-    uint loadFromMemory(std::vector<char>& inputData);
+    size_t unmapFromCPU(std::vector<char>& inputData);
 
 private:
     std::vector<char> data;

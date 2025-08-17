@@ -364,12 +364,12 @@ public:
             quadsGenerator.params = oldParams;
 
             // Copy quads and depth offsets to local vectors
-            quadFrame.copyToMemory(quads[layer], depthOffsets[layer]);
+            quadFrame.mapToCPU(quads[layer], depthOffsets[layer]);
 
             stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
             stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
             stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-            stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateProxiesMs;
+            stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
 
             stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
             stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToFillQuadIndicesMs;
@@ -402,7 +402,7 @@ public:
                     stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
                     stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
                     stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-                    stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateProxiesMs;
+                    stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
 
                     stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
                     stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToGatherQuadsMs;

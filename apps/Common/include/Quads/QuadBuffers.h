@@ -15,7 +15,7 @@ struct QuadMapData {
     glm::vec3 normal;
     float depth;
     glm::ivec2 offset;
-    uint size;
+    uint32_t size;
     bool flattened;
 };
 
@@ -30,23 +30,23 @@ struct QuadMapDataPacked {
 
 class QuadBuffers {
 public:
-    uint maxProxies;
-    uint numProxies;
+    size_t maxProxies;
+    size_t numProxies;
 
     Buffer normalSphericalsBuffer;
     Buffer depthsBuffer;
     Buffer metadatasBuffer;
 
-    QuadBuffers(uint maxProxies);
+    QuadBuffers(size_t maxProxies);
     ~QuadBuffers() = default;
 
-    void resize(uint numProxies);
+    void resize(size_t numProxies);
 
 #ifdef GL_CORE
-    uint copyToMemory(std::vector<char>& outputData);
-    uint updateDataBuffer();
+    size_t mapToCPU(std::vector<char>& outputData);
+    size_t updateDataBuffer();
 #endif
-    uint loadFromMemory(const std::vector<char>& inputData);
+    size_t unmapFromCPU(const std::vector<char>& inputData);
 
 private:
     std::vector<char> data;

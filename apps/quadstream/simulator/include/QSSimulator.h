@@ -224,12 +224,12 @@ public:
             depthOffsetsPerQuadSet[view] = sizes.numDepthOffsets;
 
             // Copy quads and depth offsets to local vectors
-            quadFrame.copyToMemory(quads[view], depthOffsets[view]);
+            quadFrame.mapToCPU(quads[view], depthOffsets[view]);
 
             stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
             stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
             stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-            stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateProxiesMs;
+            stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
 
             stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
             stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToFillQuadIndicesMs;

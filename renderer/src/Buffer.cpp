@@ -111,7 +111,7 @@ void Buffer::bindToUniformBlock(GLuint shaderID, const std::string& blockName, G
     glBindBufferBase(target, bindingIndex, ID);
 }
 
-uint32_t Buffer::getSize() const {
+size_t Buffer::getSize() const {
     return numElems;
 }
 

@@ -17,11 +17,11 @@ struct ShaderDataCreateParams {
     std::string version = "310 es";
 #endif
     const char* vertexCodeData = nullptr;
-    uint vertexCodeSize = 0;
+    size_t vertexCodeSize = 0;
     const char* fragmentCodeData = nullptr;
-    uint fragmentCodeSize = 0;
+    size_t fragmentCodeSize = 0;
     const char* geometryData = nullptr;
-    uint geometryDataSize = 0;
+    size_t geometryDataSize = 0;
     std::vector<std::string> extensions;
     std::vector<std::string> defines;
 };
@@ -50,14 +50,14 @@ public:
     Shader(const ShaderDataCreateParams& params);
 
     void loadFromFiles(const std::string vertexPath, const std::string fragmentPath, const std::string geometryPath = "");
-    void loadFromData(const char* vertexCodeData, const GLint vertexCodeSize,
-                      const char* fragmentCodeData, const GLint fragmentCodeSize,
-                      const char* geometryData = nullptr, const GLint geometryDataSize = 0);
+    void loadFromData(const char* vertexCodeData, const size_t vertexCodeSize,
+                      const char* fragmentCodeData, const size_t fragmentCodeSize,
+                      const char* geometryData = nullptr, const size_t geometryDataSize = 0);
 
 private:
-    void createAndCompileProgram(const char* vertexCodeData, const GLint vertexCodeSize,
-                                 const char* fragmentCodeData, const GLint fragmentCodeSize,
-                                 const char* geometryData = nullptr, const GLint geometryDataSize = 0);
+    void createAndCompileProgram(const char* vertexCodeData, const size_t vertexCodeSize,
+                                 const char* fragmentCodeData, const size_t fragmentCodeSize,
+                                 const char* geometryData = nullptr, const size_t geometryDataSize = 0);
 };
 
 } // namespace quasar

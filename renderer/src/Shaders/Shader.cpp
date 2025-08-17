@@ -33,22 +33,22 @@ void Shader::loadFromFiles(const std::string vertexPath, const std::string fragm
     const char* fShaderCode = fragmentCode.c_str();
     const char* gShaderCode = geometryPath != "" ? geometryCode.c_str() : nullptr;
 
-    uint vertexCodeSize = vertexCode.size();
-    uint fragmentCodeSize = fragmentCode.size();
-    uint geometryDataSize = geometryPath != "" ? geometryCode.size() : 0;
+    size_t vertexCodeSize = vertexCode.size();
+    size_t fragmentCodeSize = fragmentCode.size();
+    size_t geometryDataSize = geometryPath != "" ? geometryCode.size() : 0;
 
     loadFromData(vShaderCode, vertexCodeSize, fShaderCode, fragmentCodeSize, gShaderCode, geometryDataSize);
 }
 
-void Shader::loadFromData(const char* vertexCodeData, const GLint vertexCodeSize,
-                          const char* fragmentCodeData, const GLint fragmentCodeSize,
-                          const char* geometryData, const GLint geometryDataSize) {
+void Shader::loadFromData(const char* vertexCodeData, const size_t vertexCodeSize,
+                          const char* fragmentCodeData, const size_t fragmentCodeSize,
+                          const char* geometryData, const size_t geometryDataSize) {
     createAndCompileProgram(vertexCodeData, vertexCodeSize, fragmentCodeData, fragmentCodeSize, geometryData, geometryDataSize);
 }
 
-void Shader::createAndCompileProgram(const char* vertexCodeData, const GLint vertexCodeSize,
-                                     const char* fragmentCodeData, const GLint fragmentCodeSize,
-                                     const char* geometryData, const GLint geometryDataSize) {
+void Shader::createAndCompileProgram(const char* vertexCodeData, const size_t vertexCodeSize,
+                                     const char* fragmentCodeData, const size_t fragmentCodeSize,
+                                     const char* geometryData, const size_t geometryDataSize) {
     // Compile vertex shader
     GLuint vertex = createShader(version, extensions, defines, vertexCodeData, vertexCodeSize, ShaderType::VERTEX);
 

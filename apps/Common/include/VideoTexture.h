@@ -38,14 +38,14 @@ public:
     pose_id_t getLatestPoseID();
     float getFrameRate();
 
-    void setMaxQueueSize(uint maxQueueSize);
+    void setMaxQueueSize(size_t maxQueueSize);
 
     pose_id_t draw(pose_id_t poseID = -1);
 
 private:
     pose_id_t prevPoseID = -1;
     uint64_t framesReceived = 0;
-    uint maxQueueSize = 10;
+    size_t maxQueueSize = 10;
 
     mutable std::atomic<uint64_t> totalBytesRecv = 0;
 

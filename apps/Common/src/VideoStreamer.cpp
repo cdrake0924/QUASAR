@@ -136,7 +136,7 @@ void VideoStreamer::sendFrame(pose_id_t poseID) {
     blitToRenderTarget(*renderTargetCopy);
     unbind();
 
-    cudaArray* cudaBuffer = cudaGLImage.getArray();
+    cudaArray_t cudaBuffer = cudaGLImage.getArrayMapped();
     {
         std::lock_guard<std::mutex> lock(m);
         cudaBufferQueue.push({ poseID, cudaBuffer });
@@ -187,7 +187,7 @@ void VideoStreamer::encodeAndSendFrames() {
 #if defined(HAS_CUDA)
         auto cudaStruct = cudaBufferQueue.front();
         pose_id_t poseIDToSend = cudaStruct.poseID;
-        cudaArray* cudaBuffer = cudaStruct.buffer;
+        cudaArray_t cudaBuffer = cudaStruct.buffer;
         cudaBufferQueue.pop();
 
         lock.unlock();

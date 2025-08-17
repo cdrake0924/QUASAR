@@ -55,7 +55,7 @@ private:
 
     struct CudaBuffer {
         pose_id_t poseID;
-        cudaArray* buffer;
+        cudaArray_t buffer;
     };
     std::queue<CudaBuffer> cudaBufferQueue;
 

@@ -4,7 +4,7 @@
 
 using namespace quasar;
 
-QuadBuffers::QuadBuffers(uint maxProxies)
+QuadBuffers::QuadBuffers(size_t maxProxies)
     : maxProxies(maxProxies)
     , numProxies(maxProxies)
     , normalSphericalsBuffer({
@@ -33,23 +33,23 @@ QuadBuffers::QuadBuffers(uint maxProxies)
     , data(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked))
 {}
 
-void QuadBuffers::resize(uint numProxies) {
+void QuadBuffers::resize(size_t numProxies) {
     this->numProxies = numProxies;
 }
 
 #ifdef GL_CORE
-uint QuadBuffers::copyToMemory(std::vector<char>& outputData) {
-    uint dataSize = updateDataBuffer();
+size_t QuadBuffers::mapToCPU(std::vector<char>& outputData) {
+    size_t dataSize = updateDataBuffer();
     outputData.resize(dataSize);
 
-    uint outputSize = dataSize;
+    size_t outputSize = dataSize;
     memcpy(outputData.data(), data.data(), dataSize);
 
     return outputSize;
 }
 
-uint QuadBuffers::updateDataBuffer() {
-    uint bufferOffset = 0;
+size_t QuadBuffers::updateDataBuffer() {
+    size_t bufferOffset = 0;
 
 #if defined(HAS_CUDA)
     void* cudaPtr;
@@ -88,8 +88,8 @@ uint QuadBuffers::updateDataBuffer() {
 }
 #endif
 
-uint QuadBuffers::loadFromMemory(const std::vector<char>& inputData) {
-    uint bufferOffset = 0;
+size_t QuadBuffers::unmapFromCPU(const std::vector<char>& inputData) {
+    size_t bufferOffset = 0;
 
     numProxies = *reinterpret_cast<const uint*>(inputData.data());
     bufferOffset += sizeof(uint);
