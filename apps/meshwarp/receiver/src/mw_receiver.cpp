@@ -149,8 +149,7 @@ int main(int argc, char** argv) {
     scene.addChildNode(&nodeWireframe);
 
     // Post processing
-    ToneMapper toneMapper;
-    toneMapper.enableToneMapping(false);
+    ToneMapper toneMapper(false);
 
     Shader videoShader({
         .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,

@@ -41,7 +41,7 @@ size_t DepthOffsets::unmapFromCPU(std::vector<char>& inputData) {
     size_t rowBytes = bytesPerRow(textureSize.x);
     cudaImage.copyHostToArray(rowBytes, textureSize.y, rowBytes, inputData.data());
 #else
-    buffer.setData(textureSize.x, textureSize.y, inputData.data());
+    buffer.loadFromData(inputData.data());
 #endif
     return inputData.size();
 }

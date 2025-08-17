@@ -86,7 +86,9 @@ public:
     }
 
     void resize(uint width, uint height);
-    void setData(uint width, uint height, const void* data, bool resize = false);
+
+    void loadFromFile(const std::string& path, bool flipVertically, bool gammaCorrected);
+    void loadFromData(const void* data, bool resize = false);
 
     void cleanup() {
         glDeleteTextures(1, &ID);
@@ -102,9 +104,6 @@ public:
 
 protected:
     GLenum target;
-
-    void loadFromData(const unsigned char* data);
-    void loadFromFile(const TextureFileCreateParams& params);
 };
 
 } // namespace quasar

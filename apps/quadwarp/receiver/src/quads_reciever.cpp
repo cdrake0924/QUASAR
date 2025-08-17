@@ -72,8 +72,7 @@ int main(int argc, char** argv) {
     remoteCamera.setFovyDegrees(remoteFOV);
 
     // Post processing
-    ToneMapper toneMapper;
-    toneMapper.enableToneMapping(false);
+    ToneMapper toneMapper(false);
 
     Recorder recorder({
         .width = windowSize.x,
@@ -87,40 +86,24 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
+    QuadFrame::Sizes totalSizes{};
     uint totalTriangles = 0;
-    QuadFrame::Sizes totalSizes;
     double loadFromFilesTime = 0.0;
     double createMeshTime = 0.0;
 
-    std::string colorFileName = dataPath / "color.jpg";
-    Texture colorTexture = Texture({
+    Texture colorTexture({
+        .internalFormat = GL_RGB,
+        .format = GL_RGB,
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
-        .flipVertically = true,
-        .path = colorFileName,
     });
 
     QuadFrame quadFrame(windowSize);
-    QuadMesh quadMesh(quadFrame, colorTexture);
-
-    // Load quads and depth offsets from files
-    double startTime = window->getTime();
-    Path quadsFile = (dataPath / "quads").withExtension(".bin.zstd");
-    Path offsetsFile = (dataPath / "depthOffsets").withExtension(".bin.zstd");
-    auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
-    loadFromFilesTime = timeutils::secondsToMillis(window->getTime() - startTime);
 
     // Create mesh
-    const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
-    quadMesh.appendQuads(quadFrame, gBufferSize);
-    quadMesh.createMeshFromProxies(quadFrame, gBufferSize, remoteCamera);
-    createMeshTime = quadMesh.stats.timeToCreateMeshMs;
-
-    auto meshBufferSizes = quadMesh.getBufferSizes();
-    totalTriangles = meshBufferSizes.numIndices / 3;
-    totalSizes += sizes;
+    QuadMesh quadMesh(quadFrame, colorTexture);
 
     // Create node and wireframe node
     Node node(&quadMesh);
@@ -133,6 +116,37 @@ int main(int argc, char** argv) {
     nodeWireframe.visible = false;
     nodeWireframe.overrideMaterial = new QuadMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
     scene.addChildNode(&nodeWireframe);
+
+    auto reloadProxies = [&]() {
+        totalSizes = {};
+        totalTriangles = 0;
+        loadFromFilesTime = 0.0;
+        createMeshTime = 0.0;
+
+        // Load texture
+        std::string colorFileName = dataPath / "color.jpg";
+        colorTexture.loadFromFile(colorFileName, true, false);
+
+        // Load quads and depth offsets from files
+        double startTime = window->getTime();
+        Path quadsFile = (dataPath / "quads").withExtension(".bin.zstd");
+        Path offsetsFile = (dataPath / "depthOffsets").withExtension(".bin.zstd");
+        auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
+        loadFromFilesTime = timeutils::secondsToMillis(window->getTime() - startTime);
+
+        // Update mesh
+        const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
+        quadMesh.appendQuads(quadFrame, gBufferSize);
+        quadMesh.createMeshFromProxies(quadFrame, gBufferSize, remoteCamera);
+        createMeshTime = quadMesh.stats.timeToCreateMeshMs;
+
+        auto meshBufferSizes = quadMesh.getBufferSizes();
+        totalTriangles = meshBufferSizes.numIndices / 3;
+        totalSizes += sizes;
+    };
+
+    // Initial load
+    reloadProxies();
 
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
@@ -218,6 +232,12 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::Checkbox("Show Wireframe", &nodeWireframe.visible);
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Reload Proxies", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                reloadProxies();
+            }
 
             ImGui::End();
         }

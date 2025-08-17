@@ -1,5 +1,5 @@
-#include <Utils/FileIO.h>
 #include <Texture.h>
+#include <Utils/FileIO.h>
 
 using namespace quasar;
 
@@ -22,7 +22,7 @@ Texture::Texture(const TextureDataCreateParams& params)
     , numSamples(params.numSamples)
 {
     target = !params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE;
-    loadFromData(params.data);
+    loadFromData(params.data, true);
 
     if (params.hasBorder) {
         glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, glm::value_ptr(params.borderColor));
@@ -40,126 +40,102 @@ Texture::Texture(const TextureFileCreateParams& params)
     , numSamples(params.numSamples)
 {
     target = !params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE;
-    loadFromFile(params);
+    loadFromFile(params.path, params.flipVertically, params.gammaCorrected);
 }
 
 Texture::~Texture() {
     cleanup();
 }
 
-void Texture::loadFromData(const unsigned char* data) {
-    glGenTextures(1, &ID);
+void Texture::loadFromData(const void* data, bool resize) {
+    if (ID == 0) {
+        glGenTextures(1, &ID);
+    }
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
-
     glBindTexture(target, ID);
+
     if (!multiSampled) {
         glTexParameteri(target, GL_TEXTURE_WRAP_S, wrapS);
         glTexParameteri(target, GL_TEXTURE_WRAP_T, wrapT);
         glTexParameteri(target, GL_TEXTURE_MIN_FILTER, minFilter);
         glTexParameteri(target, GL_TEXTURE_MAG_FILTER, magFilter);
 
-        glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, data);
+        if (resize || data == nullptr) {
+            glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, data);
+        }
+        else {
+            glTexSubImage2D(target, 0, 0, 0, width, height, format, type, data);
+        }
+
+        if (minFilter == GL_LINEAR_MIPMAP_LINEAR || minFilter == GL_LINEAR_MIPMAP_NEAREST) {
+            glGenerateMipmap(target);
+        }
     }
 #ifdef GL_CORE
     else {
         glTexImage2DMultisample(target, numSamples, internalFormat, width, height, GL_TRUE);
     }
-#endif // gles does not have glTexImage2DMultisample
-    if (minFilter == GL_LINEAR_MIPMAP_LINEAR || minFilter == GL_LINEAR_MIPMAP_NEAREST) {
-        glGenerateMipmap(target);
-    }
+#endif
+    glBindTexture(target, 0);
 }
 
-void Texture::loadFromFile(const TextureFileCreateParams& params) {
-    std::string path = params.path;
+void Texture::loadFromFile(const std::string& path, bool flipVertically, bool gammaCorrected) {
+    std::string resolvedPath = path;
 
-    // Use absolute path if path starts with ~/
-    if (path[0] == '~') {
-        char* home = getenv("HOME");
-        if (home != nullptr) {
-            path.replace(0, 1, home);
+    if (!resolvedPath.empty() && resolvedPath[0] == '~') {
+        const char* home = getenv("HOME");
+        if (home) {
+            resolvedPath.replace(0, 1, home);
         }
     }
 
-    FileIO::flipVerticallyOnLoad(params.flipVertically);
+    FileIO::flipVerticallyOnLoad(flipVertically);
 
     int texWidth, texHeight, texChannels;
     void* data = nullptr;
     if (type == GL_UNSIGNED_BYTE) {
-        data = FileIO::loadImage(path, &texWidth, &texHeight, &texChannels);
+        data = FileIO::loadImage(resolvedPath, &texWidth, &texHeight, &texChannels);
     }
     else if (type == GL_FLOAT || type == GL_HALF_FLOAT) {
-        data = FileIO::loadImageHDR(path, &texWidth, &texHeight, &texChannels);
+        data = FileIO::loadImageHDR(resolvedPath, &texWidth, &texHeight, &texChannels);
+    }
+    if (!data) {
+        throw std::runtime_error("Texture failed to load at path: " + resolvedPath);
     }
 
-    if (data) {
-        this->width = texWidth;
-        this->height = texHeight;
+    width = texWidth;
+    height = texHeight;
 
-        if (texChannels == 1) {
-            if (type == GL_UNSIGNED_BYTE) {
-                internalFormat = GL_R8;
-            }
-            else {
-                internalFormat = GL_R16F;
-            }
+    switch (texChannels) {
+        case 1:
+            internalFormat = (type == GL_UNSIGNED_BYTE)
+                ? GL_R8
+                : GL_R16F;
             format = GL_RED;
-        }
-        else if (texChannels == 3) {
-            if (type == GL_UNSIGNED_BYTE) {
-                internalFormat = params.gammaCorrected ? GL_SRGB8 : GL_RGB;
-            }
-            else {
-                internalFormat = GL_RGB16F;
-            }
+            break;
+        case 3:
+            internalFormat = (type == GL_UNSIGNED_BYTE)
+                ? (gammaCorrected ? GL_SRGB8 : GL_RGB)
+                : GL_RGB16F;
             format = GL_RGB;
-        }
-        else if (texChannels == 4) {
-            if (type == GL_UNSIGNED_BYTE) {
-                internalFormat = params.gammaCorrected ? GL_SRGB8_ALPHA8 : GL_RGBA;
-            }
-            else {
-                internalFormat = GL_RGBA16F;
-            }
+            break;
+        case 4:
+            internalFormat = (type == GL_UNSIGNED_BYTE)
+                ? (gammaCorrected ? GL_SRGB8_ALPHA8 : GL_RGBA)
+                : GL_RGBA16F;
             format = GL_RGBA;
-        }
-
-        loadFromData(static_cast<unsigned char*>(data));
-
-        FileIO::freeImage(data);
+            break;
     }
-    else {
-        throw std::runtime_error("Texture failed to load at path: " + params.path);
-    }
+
+    loadFromData(data, true);
+    FileIO::freeImage(data);
 }
 
 void Texture::resize(uint width, uint height) {
-    setData(width, height, nullptr, true);
-}
-
-void Texture::setData(uint width, uint height, const void* data, bool resize) {
     this->width = width;
     this->height = height;
-
-    bind(0);
-    if (!multiSampled) {
-        if (resize) {
-            glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, nullptr);
-        }
-        else {
-            glTexSubImage2D(target, 0, internalFormat, width, height, 0, format, type, data);
-        }
-    }
-#ifdef GL_CORE
-    else {
-        glTexImage2DMultisample(target, 4, internalFormat, width, height, GL_TRUE);
-    }
-#endif
-    if (minFilter == GL_LINEAR_MIPMAP_LINEAR || minFilter == GL_LINEAR_MIPMAP_NEAREST) {
-        glGenerateMipmap(target);
-    }
-    unbind();
+    loadFromData(nullptr, true);
 }
 
 void Texture::readPixels(unsigned char* data, bool readAsFloat) {

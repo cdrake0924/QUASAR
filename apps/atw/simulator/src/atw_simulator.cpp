@@ -99,8 +99,7 @@ int main(int argc, char** argv) {
     });
 
     // Post processing
-    ToneMapper toneMapper;
-    toneMapper.enableToneMapping(false);
+    ToneMapper toneMapper(false);
 
     Shader atwShader({
         .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,

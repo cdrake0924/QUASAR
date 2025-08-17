@@ -10,8 +10,8 @@ namespace quasar {
 
 class ToneMapper : public PostProcessingEffect {
 public:
-    ToneMapper() {
-        enableToneMapping(true);
+    ToneMapper(bool toneMap = true) {
+        enableToneMapping(toneMap);
         setExposure(1.0f);
     }
 

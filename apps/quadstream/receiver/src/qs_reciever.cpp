@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
     args::ValueFlag<float> viewBoxSizeIn(parser, "view-box-size", "Size of view box in m", {'B', "view-size"}, 0.5f);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
-    args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'W', "remote-fov-wide"}, 120.0f);
+    args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'R', "remote-fov-wide"}, 120.0f);
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -130,8 +130,7 @@ int main(int argc, char** argv) {
     remoteCameras[maxViews-1].setViewMatrix(remoteCameraCenter.getViewMatrix());
 
     // Post processing
-    ToneMapper toneMapper;
-    toneMapper.enableToneMapping(false);
+    ToneMapper toneMapper(false);
 
     Recorder recorder({
         .width = windowSize.x,
@@ -145,9 +144,8 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
+    QuadFrame::Sizes totalSizes{};
     uint totalTriangles = 0;
-    QuadFrame::Sizes totalSizes;
-
     double loadFromFilesTime = 0.0;
     double createMeshTime = 0.0;
 
@@ -172,20 +170,8 @@ int main(int argc, char** argv) {
     std::vector<Node> nodeWireframes; nodeWireframes.reserve(maxViews);
 
     for (int view = 0; view < maxViews; view++) {
-        // Load quads and depth offsets from files
-        double startTime = window->getTime();
-        Path quadsFile = (dataPath / "quads").appendToName(std::to_string(view)).withExtension(".bin.zstd");
-        Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(view)).withExtension(".bin.zstd");
-        auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
-        loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
-
-        meshes.emplace_back(quadFrame, colorTextures[view]);
-
         // Create mesh
-        const glm::vec2& gBufferSize = glm::vec2(colorTextures[view].width, colorTextures[view].height);
-        meshes[view].appendQuads(quadFrame, gBufferSize);
-        meshes[view].createMeshFromProxies(quadFrame, gBufferSize, remoteCameras[view]);
-        createMeshTime += meshes[view].stats.timeToCreateMeshMs;
+        meshes.emplace_back(quadFrame, colorTextures[view]);
 
         // Create node and wireframe node
         nodes.emplace_back(&meshes[view]);
@@ -198,11 +184,40 @@ int main(int argc, char** argv) {
         nodeWireframes[view].visible = false;
         nodeWireframes[view].overrideMaterial = new QuadMaterial({ .baseColor = colors[view % colors.size()] });
         scene.addChildNode(&nodeWireframes[view]);
-
-        auto meshBufferSizes = meshes[view].getBufferSizes();
-        totalTriangles += meshBufferSizes.numIndices / 3;
-        totalSizes += sizes;
     }
+
+    auto reloadData = [&]() {
+        totalTriangles = 0;
+        totalSizes = {};
+        loadFromFilesTime = 0.0;
+        createMeshTime = 0.0;
+
+        for (int view = 0; view < maxViews; ++view) {
+            // Load texture from file (flip as per params)
+            Path colorPath = dataPath / ("color" + std::to_string(view) + ".jpg");
+            colorTextures[view].loadFromFile(colorPath.str(), true, false);
+
+            // Load quads and depth offsets from files
+            double startTime = window->getTime();
+            Path quadsFile   = (dataPath / "quads").appendToName(std::to_string(view)).withExtension(".bin.zstd");
+            Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(view)).withExtension(".bin.zstd");
+            auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
+            loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
+
+            // Update mesh
+            const glm::uvec2 gBufferSize(colorTextures[view].width, colorTextures[view].height);
+            meshes[view].appendQuads(quadFrame, glm::vec2(gBufferSize));
+            meshes[view].createMeshFromProxies(quadFrame, glm::vec2(gBufferSize), remoteCameras[view]);
+            createMeshTime += meshes[view].stats.timeToCreateMeshMs;
+
+            auto meshBufferSizes = meshes[view].getBufferSizes();
+            totalTriangles += meshBufferSizes.numIndices / 3;
+            totalSizes += sizes;
+        }
+    };
+
+    // Initial load
+    reloadData();
 
     bool* showViews = new bool[maxViews];
     for (int i = 0; i < maxViews; ++i) {
@@ -305,6 +320,12 @@ int main(int argc, char** argv) {
                 if ((i + 1) % columns != 0) {
                     ImGui::SameLine();
                 }
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Reload Data", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                reloadData();
             }
 
             ImGui::End();

@@ -32,7 +32,7 @@ const std::vector<glm::vec4> colors = {
 
 int main(int argc, char** argv) {
     Config config{};
-    config.title = "Depth Peeling Receiver";
+    config.title = "QUASAR Receiver";
 
     args::ArgumentParser parser(config.title);
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     args::Flag disableWideFov(parser, "disable-wide-fov", "Disable wide fov view", {'W', "disable-wide-fov"});
     args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
-    args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'W', "remote-fov-wide"}, 120.0f);
+    args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'R', "remote-fov-wide"}, 120.0f);
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -100,8 +100,7 @@ int main(int argc, char** argv) {
     remoteCameraWideFov.setFovyDegrees(remoteFOVWide);
 
     // Post processing
-    ToneMapper toneMapper;
-    toneMapper.enableToneMapping(false);
+    ToneMapper toneMapper(false);
 
     Recorder recorder({
         .width = windowSize.x,
@@ -115,8 +114,8 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
+    QuadFrame::Sizes totalSizes{};
     uint totalTriangles = 0;
-    QuadFrame::Sizes totalSizes;
     double loadFromFilesTime = 0.0;
     double createMeshTime = 0.0;
 
@@ -141,21 +140,8 @@ int main(int argc, char** argv) {
     std::vector<Node> nodeWireframes; nodeWireframes.reserve(maxLayers);
 
     for (int layer = 0; layer < maxLayers; layer++) {
-        // Load quads and depth offsets from files
-        double startTime = window->getTime();
-        Path quadsFile = (dataPath / "quads").appendToName(std::to_string(layer)).withExtension(".bin.zstd");
-        Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(layer)).withExtension(".bin.zstd");
-        auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
-        loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
-
-        meshes.emplace_back(quadFrame, colorTextures[layer]);
-
         // Create mesh
-        const glm::uvec2& gBufferSize = glm::uvec2(colorTextures[layer].width, colorTextures[layer].height);
-        auto& cameraToUse = (!disableWideFov && layer == maxLayers - 1) ? remoteCameraWideFov : remoteCamera;
-        meshes[layer].appendQuads(quadFrame, gBufferSize);
-        meshes[layer].createMeshFromProxies(quadFrame, gBufferSize, cameraToUse);
-        createMeshTime += meshes[layer].stats.timeToCreateMeshMs;
+        meshes.emplace_back(quadFrame, colorTextures[layer]);
 
         // Create node and wireframe node
         nodes.emplace_back(&meshes[layer]);
@@ -168,16 +154,49 @@ int main(int argc, char** argv) {
         nodeWireframes[layer].visible = false;
         nodeWireframes[layer].overrideMaterial = new QuadMaterial({ .baseColor = colors[layer % colors.size()] });
         scene.addChildNode(&nodeWireframes[layer]);
-
-        auto meshBufferSizes = meshes[layer].getBufferSizes();
-        totalTriangles += meshBufferSizes.numIndices / 3;
-        totalSizes += sizes;
     }
+
+    auto reloadData = [&]() {
+        totalSizes = {};
+        totalTriangles = 0;
+        loadFromFilesTime = 0.0;
+        createMeshTime = 0.0;
+
+        for (int layer = 0; layer < maxLayers; ++layer) {
+            // Load texture
+            Path colorPath = dataPath / ("color" + std::to_string(layer) + ".jpg");
+            colorTextures[layer].loadFromFile(colorPath.str(), true, false);
+
+            // Load quads and depth offsets
+            double startTime = window->getTime();
+            Path quadsFile = (dataPath / ("quads" + std::to_string(layer))).withExtension(".bin.zstd");
+            Path offsetsFile = (dataPath / ("depthOffsets" + std::to_string(layer))).withExtension(".bin.zstd");
+
+            auto sizes = quadFrame.loadFromFiles(quadsFile, offsetsFile);
+            loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
+
+            // Update mesh
+            const glm::uvec2& gBufferSize = glm::uvec2(colorTextures[layer].width, colorTextures[layer].height);
+            auto& cameraToUse = (!disableWideFov && layer == maxLayers - 1) ? remoteCameraWideFov : remoteCamera;
+            meshes[layer].appendQuads(quadFrame, gBufferSize);
+            meshes[layer].createMeshFromProxies(quadFrame, gBufferSize, cameraToUse);
+            createMeshTime += meshes[layer].stats.timeToCreateMeshMs;
+
+
+            auto meshBufferSizes = meshes[layer].getBufferSizes();
+            totalTriangles += meshBufferSizes.numIndices / 3;
+            totalSizes += sizes;
+        }
+    };
+
+    // Initial load
+    reloadData();
 
     bool* showLayers = new bool[maxLayers];
     for (int i = 0; i < maxLayers; ++i) {
         showLayers[i] = true;
     }
+
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
@@ -261,11 +280,9 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            bool showWireframe = nodeWireframes[0].visible;
+            bool showWireframe = !nodeWireframes.empty() && nodeWireframes[0].visible;
             ImGui::Checkbox("Show Wireframe", &showWireframe);
-            for (int i = 0; i < maxLayers; i++) {
-                nodeWireframes[i].visible = showWireframe;
-            }
+            for (auto& wf : nodeWireframes) wf.visible = showWireframe;
 
             ImGui::Separator();
 
@@ -275,6 +292,12 @@ int main(int argc, char** argv) {
                 if ((i + 1) % columns != 0) {
                     ImGui::SameLine();
                 }
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Reload Data", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                reloadData();
             }
 
             ImGui::End();
@@ -353,7 +376,7 @@ int main(int argc, char** argv) {
         auto scroll = window->getScrollOffset();
         camera.processScroll(scroll.y);
 
-        for (int i = 0; i < maxLayers; i++) {
+        for (int i = 0; i < maxLayers; ++i) {
             nodes[i].visible = showLayers[i];
         }
 
