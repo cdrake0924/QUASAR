@@ -68,7 +68,7 @@ public:
     }
 
     void setNumQuads(int numProxies) {
-        copiedToCPU = false;
+        isMapped = false;
         quadBuffers.resize(numProxies);
     }
 
@@ -76,7 +76,7 @@ public:
     Sizes mapToCPU() {
 #if defined(HAS_CUDA)
         // Already copied to CPU, no need to recopy
-        if (copiedToCPU) {
+        if (isMapped) {
             return {
                 quadBuffers.numProxies,
                 depthOffsets.size.x * depthOffsets.size.y,
@@ -91,38 +91,28 @@ public:
         quadBuffers.mapToCPU(decompressedQuads);
         depthOffsets.mapToCPU(decompressedDepthOffsets);
 
-        std::future<size_t> quadsSizeFuture;
-        std::future<size_t> offsetsSizeFuture;
-
-        // compress quads (async)
         if (compress) {
-            quadsSizeFuture = quadsCodec.compressAsync(
+            // Compress data (async)
+            std::future<size_t> quadsSizeFuture = quadsCodec.compressAsync(
                 decompressedQuads.data(), compressedQuads, decompressedQuads.size());
-        }
-        else {
-            compressedQuads = decompressedQuads;
-        }
-
-        // Compress depth offsets (async)
-        if (compress) {
-            offsetsSizeFuture = depthOffsetsCodec.compressAsync(
+            std::future<size_t> offsetsSizeFuture = depthOffsetsCodec.compressAsync(
                 decompressedDepthOffsets.data(), compressedDepthOffsets, decompressedDepthOffsets.size());
-        }
-        else {
-            compressedDepthOffsets = decompressedDepthOffsets;
-        }
 
-        // Wait for async results
-        if (compress) {
+            // Wait for async results
             size_t savedQuadsSize = quadsSizeFuture.get();
             compressedQuads.resize(savedQuadsSize);
 
             size_t savedDepthOffsetsSize = offsetsSizeFuture.get();
             compressedDepthOffsets.resize(savedDepthOffsetsSize);
         }
+        else {
+            compressedQuads = decompressedQuads;
+            compressedDepthOffsets = decompressedDepthOffsets;
+        }
+
         stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        copiedToCPU = true;
+        isMapped = true;
         return {
             quadBuffers.numProxies,
             depthOffsets.size.x * depthOffsets.size.y,
@@ -157,22 +147,47 @@ public:
     }
 #endif
 
-    Sizes loadFromFiles(const std::string& quadsFilename, const std::string& depthOffsetsFilename) {
+    Sizes unmapFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
         double startTime = timeutils::getTimeMicros();
 
-        // Load quads
-        compressedQuads = FileIO::loadBinaryFile(quadsFilename);
-        quadsCodec.decompress(compressedQuads, decompressedQuads);
-        quadBuffers.unmapFromCPU(decompressedQuads);
+        if (compress) {
+            // Decompress data (async)
+            std::future<size_t> quadsSizeFuture = quadsCodec.decompressAsync(
+                inputQuads, decompressedQuads);
+            std::future<size_t> offsetsSizeFuture = depthOffsetsCodec.decompressAsync(
+                inputDepthOffsets, decompressedDepthOffsets);
 
-        // Load depth offsets
-        compressedDepthOffsets = FileIO::loadBinaryFile(depthOffsetsFilename);
-        depthOffsetsCodec.decompress(compressedDepthOffsets, decompressedDepthOffsets);
-        depthOffsets.unmapFromCPU(decompressedDepthOffsets);
+            // Wait for async results
+            quadsSizeFuture.get();
+            quadBuffers.unmapFromCPU(decompressedQuads);
+
+            offsetsSizeFuture.get();
+            depthOffsets.unmapFromCPU(decompressedDepthOffsets);
+        }
+        else {
+            quadBuffers.unmapFromCPU(inputQuads);
+            depthOffsets.unmapFromCPU(inputDepthOffsets);
+        }
 
         stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        copiedToCPU = true;
+        isMapped = false;
+        return {
+            quadBuffers.numProxies,
+            depthOffsets.size.x * depthOffsets.size.y,
+            static_cast<double>(inputQuads.size()),
+            static_cast<double>(inputDepthOffsets.size())
+        };
+    }
+
+    Sizes loadFromFiles(const std::string& quadsFilename, const std::string& depthOffsetsFilename) {
+        // Load data
+        compressedQuads = FileIO::loadBinaryFile(quadsFilename);
+        compressedDepthOffsets = FileIO::loadBinaryFile(depthOffsetsFilename);
+
+        // Copy to GPU
+        unmapFromCPU(compressedQuads, compressedDepthOffsets);
+
         return {
             quadBuffers.numProxies,
             depthOffsets.size.x * depthOffsets.size.y,
@@ -183,7 +198,7 @@ public:
 
 private:
     bool compress = true;
-    bool copiedToCPU = false;
+    bool isMapped = false;
 
     glm::uvec2 frameSize;
 
