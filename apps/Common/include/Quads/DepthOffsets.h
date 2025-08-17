@@ -12,11 +12,14 @@ namespace quasar {
 
 class DepthOffsets {
 public:
-    glm::uvec2 size;
     Texture buffer;
 
-    DepthOffsets(const glm::uvec2& size);
+    DepthOffsets(const glm::uvec2& textureSize);
     ~DepthOffsets() = default;
+
+    const glm::uvec2& getSize() const {
+        return textureSize;
+    }
 
 #if defined(HAS_CUDA)
     size_t mapToCPU(std::vector<char>& outputData);
@@ -25,7 +28,7 @@ public:
     size_t unmapFromCPU(std::vector<char>& inputData);
 
 private:
-    std::vector<char> data;
+    glm::uvec2 textureSize;
 
 #if defined(HAS_CUDA)
     CudaGLImage cudaImage;

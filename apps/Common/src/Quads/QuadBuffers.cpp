@@ -30,7 +30,7 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
     , cudaBufferDepths(depthsBuffer)
     , cudaBuffermetadatas(metadatasBuffer)
 #endif
-    , data(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked))
+    , maxDataSize(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked))
 {}
 
 void QuadBuffers::resize(size_t numProxies) {
@@ -39,51 +39,42 @@ void QuadBuffers::resize(size_t numProxies) {
 
 #ifdef GL_CORE
 size_t QuadBuffers::mapToCPU(std::vector<char>& outputData) {
-    size_t dataSize = updateDataBuffer();
-    outputData.resize(dataSize);
-
-    size_t outputSize = dataSize;
-    memcpy(outputData.data(), data.data(), dataSize);
-
-    return outputSize;
-}
-
-size_t QuadBuffers::updateDataBuffer() {
+    outputData.resize(maxDataSize);
     size_t bufferOffset = 0;
+
+    std::memcpy(outputData.data(), &numProxies, sizeof(uint));
+    bufferOffset += sizeof(uint);
 
 #if defined(HAS_CUDA)
     void* cudaPtr;
 
-    memcpy(data.data(), &numProxies, sizeof(uint));
-    bufferOffset += sizeof(uint);
-
     cudaPtr = cudaBufferNormalSphericals.getPtr();
-    CHECK_CUDA_ERROR(cudaMemcpy(data.data() + bufferOffset, cudaPtr, numProxies * sizeof(uint), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERROR(cudaMemcpy(outputData.data() + bufferOffset, cudaPtr, numProxies * sizeof(uint), cudaMemcpyDeviceToHost));
     bufferOffset += numProxies * sizeof(uint);
 
     cudaPtr = cudaBufferDepths.getPtr();
-    CHECK_CUDA_ERROR(cudaMemcpy(data.data() + bufferOffset, cudaPtr, numProxies * sizeof(float), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERROR(cudaMemcpy(outputData.data() + bufferOffset, cudaPtr, numProxies * sizeof(float), cudaMemcpyDeviceToHost));
     bufferOffset += numProxies * sizeof(float);
 
     cudaPtr = cudaBuffermetadatas.getPtr();
-    CHECK_CUDA_ERROR(cudaMemcpy(data.data() + bufferOffset, cudaPtr, numProxies * sizeof(uint), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERROR(cudaMemcpy(outputData.data() + bufferOffset, cudaPtr, numProxies * sizeof(uint), cudaMemcpyDeviceToHost));
     bufferOffset += numProxies * sizeof(uint);
 #else
-    memcpy(data.data(), &numProxies, sizeof(uint));
-    bufferOffset += sizeof(uint);
-
     normalSphericalsBuffer.bind();
-    normalSphericalsBuffer.getSubData(0, numProxies, data.data() + bufferOffset);
+    normalSphericalsBuffer.getSubData(0, numProxies, outputData.data() + bufferOffset);
     bufferOffset += numProxies * sizeof(uint);
 
     depthsBuffer.bind();
-    depthsBuffer.getSubData(0, numProxies, data.data() + bufferOffset);
+    depthsBuffer.getSubData(0, numProxies, outputData.data() + bufferOffset);
     bufferOffset += numProxies * sizeof(float);
 
     metadatasBuffer.bind();
-    metadatasBuffer.getSubData(0, numProxies, data.data() + bufferOffset);
+    metadatasBuffer.getSubData(0, numProxies, outputData.data() + bufferOffset);
     bufferOffset += numProxies * sizeof(uint);
 #endif
+
+    // Resize output
+    outputData.resize(bufferOffset);
     return bufferOffset;
 }
 #endif
@@ -94,6 +85,21 @@ size_t QuadBuffers::unmapFromCPU(const std::vector<char>& inputData) {
     numProxies = *reinterpret_cast<const uint*>(inputData.data());
     bufferOffset += sizeof(uint);
 
+#if defined(HAS_CUDA)
+    void* cudaPtr;
+
+    cudaPtr = cudaBufferNormalSphericals.getPtr();
+    CHECK_CUDA_ERROR(cudaMemcpy(cudaPtr, inputData.data() + bufferOffset, numProxies * sizeof(uint), cudaMemcpyHostToDevice));
+    bufferOffset += numProxies * sizeof(uint);
+
+    cudaPtr = cudaBufferDepths.getPtr();
+    CHECK_CUDA_ERROR(cudaMemcpy(cudaPtr, inputData.data() + bufferOffset, numProxies * sizeof(float), cudaMemcpyHostToDevice));
+    bufferOffset += numProxies * sizeof(float);
+
+    cudaPtr = cudaBuffermetadatas.getPtr();
+    CHECK_CUDA_ERROR(cudaMemcpy(cudaPtr, inputData.data() + bufferOffset, numProxies * sizeof(uint), cudaMemcpyHostToDevice));
+    bufferOffset += numProxies * sizeof(uint);
+#else
     auto normalSphericalsPtr = reinterpret_cast<const uint*>(inputData.data() + bufferOffset);
     normalSphericalsBuffer.bind();
     normalSphericalsBuffer.setData(numProxies, normalSphericalsPtr);
@@ -107,10 +113,10 @@ size_t QuadBuffers::unmapFromCPU(const std::vector<char>& inputData) {
     auto metadatasPtr = reinterpret_cast<const uint*>(inputData.data() + bufferOffset);
     metadatasBuffer.bind();
     metadatasBuffer.setData(numProxies, metadatasPtr);
+    bufferOffset += numProxies * sizeof(uint);
+#endif
 
-    data = inputData;
+    // Set new number of proxies
     resize(numProxies);
-
     return numProxies;
 }
-

@@ -32,6 +32,7 @@ class QuadBuffers {
 public:
     size_t maxProxies;
     size_t numProxies;
+    size_t maxDataSize;
 
     Buffer normalSphericalsBuffer;
     Buffer depthsBuffer;
@@ -44,13 +45,10 @@ public:
 
 #ifdef GL_CORE
     size_t mapToCPU(std::vector<char>& outputData);
-    size_t updateDataBuffer();
 #endif
     size_t unmapFromCPU(const std::vector<char>& inputData);
 
 private:
-    std::vector<char> data;
-
 #if defined(HAS_CUDA)
     CudaGLBuffer cudaBufferNormalSphericals;
     CudaGLBuffer cudaBufferDepths;

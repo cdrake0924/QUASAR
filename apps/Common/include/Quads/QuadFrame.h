@@ -14,11 +14,6 @@ namespace quasar {
 
 class QuadFrame {
 public:
-    struct Stats {
-        double timeToCompressMs = 0.0;
-        double timeToDecompressMs = 0.0;
-    } stats;
-
     struct Sizes {
         size_t numQuads = 0;
         size_t numDepthOffsets = 0;
@@ -34,6 +29,11 @@ public:
         }
     };
 
+    struct Stats {
+        double timeToCompressMs = 0.0;
+        double timeToDecompressMs = 0.0;
+    } stats;
+
     // GPU buffers
     QuadBuffers quadBuffers;
     DepthOffsets depthOffsets;
@@ -44,7 +44,7 @@ public:
         , quadBuffers(frameSize.x * frameSize.y)
         , depthOffsets(2u * frameSize) // 4 sets of offsets per every pixel (2x2 subpixels)
         , decompressedQuads(sizeof(uint) + quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
-        , decompressedDepthOffsets(sizeof(uint) + depthOffsets.size.x * depthOffsets.size.y * 4 * sizeof(uint16_t))
+        , decompressedDepthOffsets(depthOffsets.getSize().x * depthOffsets.getSize().y * 4 * sizeof(uint16_t))
     {}
 
     const glm::uvec2& getSize() const {
@@ -64,7 +64,7 @@ public:
     }
 
     uint getNumDepthOffsets() const {
-        return depthOffsets.size.x * depthOffsets.size.y;
+        return depthOffsets.getSize().x * depthOffsets.getSize().y;
     }
 
     void setNumQuads(int numProxies) {
@@ -79,7 +79,7 @@ public:
         if (isMapped) {
             return {
                 quadBuffers.numProxies,
-                depthOffsets.size.x * depthOffsets.size.y,
+                depthOffsets.getSize().x * depthOffsets.getSize().y,
                 static_cast<double>(compressedQuads.size()),
                 static_cast<double>(compressedDepthOffsets.size())
             };
@@ -115,14 +115,14 @@ public:
         isMapped = true;
         return {
             quadBuffers.numProxies,
-            depthOffsets.size.x * depthOffsets.size.y,
+            depthOffsets.getSize().x * depthOffsets.getSize().y,
             static_cast<double>(compressedQuads.size()),
             static_cast<double>(compressedDepthOffsets.size())
         };
 #else
         return {
             quadBuffers.numProxies,
-            depthOffsets.size.x * depthOffsets.size.y,
+            depthOffsets.getSize().x * depthOffsets.getSize().y,
             static_cast<double>(compressedQuads.size()),
             static_cast<double>(compressedDepthOffsets.size())
         };
@@ -140,7 +140,7 @@ public:
 
         return {
             quadBuffers.numProxies,
-            depthOffsets.size.x * depthOffsets.size.y,
+            depthOffsets.getSize().x * depthOffsets.getSize().y,
             static_cast<double>(compressedQuads.size()),
             static_cast<double>(compressedDepthOffsets.size())
         };
@@ -174,7 +174,7 @@ public:
         isMapped = false;
         return {
             quadBuffers.numProxies,
-            depthOffsets.size.x * depthOffsets.size.y,
+            depthOffsets.getSize().x * depthOffsets.getSize().y,
             static_cast<double>(inputQuads.size()),
             static_cast<double>(inputDepthOffsets.size())
         };
@@ -190,7 +190,7 @@ public:
 
         return {
             quadBuffers.numProxies,
-            depthOffsets.size.x * depthOffsets.size.y,
+            depthOffsets.getSize().x * depthOffsets.getSize().y,
             static_cast<double>(compressedQuads.size()),
             static_cast<double>(compressedDepthOffsets.size())
         };

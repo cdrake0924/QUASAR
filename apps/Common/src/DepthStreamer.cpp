@@ -26,7 +26,7 @@ DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string
     spdlog::info("Created DepthStreamer that sends to URL: {}", receiverURL);
 
 #if defined(HAS_CUDA)
-    cudaImage.registerTexture(renderTargetCopy.colorTexture);
+    cudaGLImage.registerTexture(renderTargetCopy.colorTexture);
 
     // Start data sending thread
     running = true;
@@ -58,14 +58,14 @@ void DepthStreamer::sendFrame(pose_id_t poseID) {
     blitToRenderTarget(renderTargetCopy);
     unbind();
 
-    // Add cuda buffer
-    cudaArray_t cudaBuffer = cudaImage.getArrayMapped();
+    // Add cuda buffer to queue
+    cudaGLImage.map();
+    cudaArray_t cudaBuffer = cudaGLImage.getArrayMapped();
+    cudaGLImage.unmap();
     {
         // Lock mutex
         std::lock_guard<std::mutex> lock(m);
-
-        CudaBuffer cudaBufferStruct = { poseID, cudaBuffer };
-        cudaBufferQueue.push(cudaBufferStruct);
+        cudaBufferQueue.push({ poseID, cudaBuffer });
 
         // Tell thread to send data
         dataReady = true;

@@ -51,7 +51,7 @@ private:
     RenderTarget renderTargetCopy;
 
 #if defined(HAS_CUDA)
-    CudaGLImage cudaImage;
+    CudaGLImage cudaGLImage;
 
     struct CudaBuffer {
         pose_id_t poseID;
