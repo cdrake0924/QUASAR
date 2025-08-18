@@ -39,8 +39,7 @@ public:
         const RenderTargetCreateParams& params,
         const std::string& videoURL,
         int targetFrameRate = 30,
-        int targetBitRateMbps = 10,
-        const std::string& formatName = "mpegts");
+        int targetBitRateMbps = 10);
     ~VideoStreamer();
 
     float getFrameRate();
@@ -53,7 +52,10 @@ public:
 private:
     int targetFrameRate;
     int targetBitRate;
-    std::string formatName;
+
+    std::string format = "I420";
+    std::string appSrcName = "oglsrc0";
+    std::string payloaderName = "pay0";
 
     mutable std::atomic<uint64_t> totalBytesSent = 0;
 

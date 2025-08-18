@@ -1,4 +1,5 @@
 #include <cstring>
+#include <sstream>
 #include <spdlog/spdlog.h>
 #include <Utils/TimeUtils.h>
 #include <VideoStreamer.h>
@@ -9,14 +10,12 @@ VideoStreamer::VideoStreamer(
         const RenderTargetCreateParams& params,
         const std::string& videoURL,
         int targetFrameRate,
-        int targetBitRateMbps,
-        const std::string& formatName)
-    : targetFrameRate(targetFrameRate)
-    , targetBitRate(targetBitRateMbps * BYTES_PER_MEGABYTE)
-    , formatName(formatName)
-    , videoURL(videoURL)
+        int targetBitRateMbps)
+    : videoURL(videoURL)
     , videoWidth(params.width + poseIDOffset)
     , videoHeight(params.height)
+    , targetFrameRate(targetFrameRate)
+    , targetBitRate(targetBitRateMbps * BYTES_PER_MEGABYTE)
     , RenderTarget(params)
 #if defined(HAS_CUDA)
     , cudaGLImage(colorTexture)
@@ -36,7 +35,7 @@ VideoStreamer::VideoStreamer(
     });
 
     rgbaVideoFrameData.resize(videoWidth * videoHeight * 4);
-#if defined(__APPLE__) || defined(__ANDROID__)
+#if !defined(HAS_CUDA)
     openglFrameData.resize(width * height * 4);
 #endif
 
@@ -47,16 +46,25 @@ VideoStreamer::VideoStreamer(
     std::string host = videoURL.substr(0, colonPos);
     int port = std::stoi(videoURL.substr(colonPos + 1));
 
-    std::string pipelineStr =
-        "appsrc name=oglsrc0 is-live=true format=time "
-        "caps=video/x-raw,format=RGBA,width=" + std::to_string(videoWidth) +
-        ",height=" + std::to_string(videoHeight) +
-        ",framerate=" + std::to_string(targetFrameRate) + "/1 ! "
-        "queue ! videoconvert ! video/x-raw,format=I420 ! "
-        "nvh264enc preset=4 bitrate=" + std::to_string(targetBitRate / 1000) +
-        " rc-mode=cbr zerolatency=true ! "
-        "rtph264pay config-interval=1 pt=96 name=pay0 ! "
-        "udpsink host=" + host + " port=" + std::to_string(port);
+    std::string encoderName;
+#if defined(HAS_CUDA)
+        encoderName = "nvh264enc preset=4 rc-mode=cbr zerolatency=true";
+#else
+        encoderName = "x264enc";
+#endif
+
+    int bitrateKbps = targetBitRate / 1000;
+
+    std::ostringstream oss;
+    oss << "appsrc name=" << appSrcName << " is-live=true format=time "
+        << "caps=video/x-raw,format=RGBA,width=" << videoWidth
+        << ",height=" << videoHeight
+        << ",framerate=" << targetFrameRate << "/1 ! "
+        << "queue ! videoconvert ! video/x-raw,format=" << format << " ! "
+        << encoderName << " bitrate=" << bitrateKbps << " ! "
+        << "rtph264pay config-interval=1 pt=96 name=" << payloaderName << " ! "
+        << "udpsink host=" << host << " port=" << port;
+    std::string pipelineStr = oss.str();
 
     GError* error = nullptr;
     pipeline = gst_parse_launch(pipelineStr.c_str(), &error);
@@ -66,7 +74,7 @@ VideoStreamer::VideoStreamer(
         throw std::runtime_error("Failed to create GStreamer pipeline.");
     }
 
-    appsrc = gst_bin_get_by_name(GST_BIN(pipeline), "oglsrc0");
+    appsrc = gst_bin_get_by_name(GST_BIN(pipeline), appSrcName.c_str());
     g_object_set(G_OBJECT(appsrc),
                  "is-live", TRUE,
                  "format", GST_FORMAT_TIME,
@@ -74,7 +82,7 @@ VideoStreamer::VideoStreamer(
                  nullptr);
 
     // Add pad probe to rtph264pay (pay0)
-    GstElement* payloader = gst_bin_get_by_name(GST_BIN(pipeline), "pay0");
+    GstElement* payloader = gst_bin_get_by_name(GST_BIN(pipeline), payloaderName.c_str());
     GstPad* srcPad = gst_element_get_static_pad(payloader, "src");
     gst_pad_add_probe(srcPad, GST_PAD_PROBE_TYPE_BUFFER,
         [](GstPad*, GstPadProbeInfo* info, gpointer userData) -> GstPadProbeReturn {

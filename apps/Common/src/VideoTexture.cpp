@@ -1,4 +1,5 @@
 #include <cstring>
+#include <sstream>
 #include <spdlog/spdlog.h>
 #include <Utils/FileIO.h>
 #include <VideoTexture.h>
@@ -42,11 +43,17 @@ VideoTexture::VideoTexture(
     std::string host = videoURL.substr(0, colonPos);
     int port = std::stoi(videoURL.substr(colonPos + 1));
 
-    std::string pipelineStr =
-        "udpsrc name=udpsrc0 address=" + host + " port=" + std::to_string(port) +
-        " caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96\" ! "
-        "rtpjitterbuffer ! rtph264depay ! avdec_h264 ! "
-        "videoconvert ! video/x-raw,format=RGB ! appsink name=appsink0";
+    std::string decoderName = "avdec_h264";
+
+    std::ostringstream oss;
+    oss << "udpsrc name=" << udpSrcName
+        << " address=" << host << " port=" << port << " "
+        << "caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96\" ! "
+        << "rtpjitterbuffer latency=0 drop-on-latency=true ! "
+        << "rtph264depay ! " << decoderName << " ! "
+        << "videoconvert ! video/x-raw,format=RGB ! "
+        << "appsink name=" << appSinkName << " sync=false max-buffers=1 drop=true";
+    std::string pipelineStr = oss.str();
 
     GError* error = nullptr;
     pipeline = gst_parse_launch(pipelineStr.c_str(), &error);
@@ -56,12 +63,12 @@ VideoTexture::VideoTexture(
         return;
     }
 
-    appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink0");
+    appsink = gst_bin_get_by_name(GST_BIN(pipeline), appSinkName.c_str());
     gst_app_sink_set_emit_signals((GstAppSink*)appsink, false);
     gst_app_sink_set_drop((GstAppSink*)appsink, true);
     gst_app_sink_set_max_buffers((GstAppSink*)appsink, 1);
 
-    GstElement* udpSrcElement = gst_bin_get_by_name(GST_BIN(pipeline), "udpsrc0");
+    GstElement* udpSrcElement = gst_bin_get_by_name(GST_BIN(pipeline), udpSrcName.c_str());
     GstPad* srcPad = gst_element_get_static_pad(udpSrcElement, "src");
     gst_pad_add_probe(srcPad, GST_PAD_PROBE_TYPE_BUFFER,
         [](GstPad*, GstPadProbeInfo* info, gpointer userData) -> GstPadProbeReturn {

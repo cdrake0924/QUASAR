@@ -47,6 +47,9 @@ private:
     uint64_t framesReceived = 0;
     size_t maxQueueSize = 10;
 
+    std::string udpSrcName = "udpsrc0";
+    std::string appSinkName = "appsink0";
+
     mutable std::atomic<uint64_t> totalBytesRecv = 0;
 
     int poseIDOffset = sizeof(pose_id_t) * 8;
