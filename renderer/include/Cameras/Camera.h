@@ -2,12 +2,17 @@
 #define CAMERA_H
 
 #define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <Primitives/Node.h>
+
+#define DEFAULT_FOV_DEG 60.0f
+#define DEFAULT_ASPECT 16.0f / 9.0f
+#define DEFAULT_NEAR 0.1f
+#define DEFAULT_FAR 1000.0f
 
 namespace quasar {
 

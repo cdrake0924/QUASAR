@@ -77,13 +77,13 @@ int main(int argc, char** argv) {
 
     // "Remote" scene
     Scene remoteScene;
-    PerspectiveCamera remoteCamera(windowSize.x, windowSize.y);
+    PerspectiveCamera remoteCamera(windowSize);
     SceneLoader loader;
     loader.loadScene(sceneFile, remoteScene, remoteCamera);
 
     // Scene with all the meshes
     Scene scene;
-    PerspectiveCamera camera(windowSize.x, windowSize.y);
+    PerspectiveCamera camera(windowSize);
     camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     RenderTarget renderTarget({
@@ -326,7 +326,7 @@ int main(int argc, char** argv) {
         windowSize = glm::uvec2(width, height);
         renderer.setWindowSize(windowSize.x, windowSize.y);
 
-        camera.setAspect(windowSize.x, windowSize.y);
+        camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
 

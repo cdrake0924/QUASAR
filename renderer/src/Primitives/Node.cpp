@@ -47,7 +47,6 @@ int Node::getID() const {
 
 void Node::setEntity(Entity* entity) {
     this->entity = entity;
-    entity->parentNode = this;
 }
 
 void Node::setName(const std::string& name) {
@@ -143,16 +142,21 @@ const glm::mat4 Node::getTransformLocalFromWorld() const {
 
 const glm::mat4 Node::getTransformAnimation() const {
     glm::mat4 transformAnimation = glm::mat4(1.0f);
-
-    if (animation != nullptr) {
+    if (animation) {
         transformAnimation = animation->getTransformation();
     }
-
     return transformAnimation;
 }
 
+std::shared_ptr<Animation> Node::addAnimation() {
+    if (!animation) {
+        animation = std::make_shared<Animation>();
+    }
+    return animation;
+}
+
 void Node::updateAnimations(double dt) {
-    if (animation != nullptr) {
+    if (animation) {
         animation->update(dt);
     }
 

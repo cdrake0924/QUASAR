@@ -3,31 +3,34 @@
 using namespace quasar;
 
 VRCamera::VRCamera()
-    : left()
-    , right()
+    : VRCamera(DEFAULT_FOV_DEG, DEFAULT_ASPECT, DEFAULT_NEAR, DEFAULT_FAR)
+{}
+
+VRCamera::VRCamera(float fovyDeg, float aspect, float near, float far)
+    : left(PerspectiveCamera(fovyDeg, aspect, near, far))
+    , right(PerspectiveCamera(fovyDeg, aspect, near, far))
 {
-    left.setPosition(glm::vec3(-0.032f, 0.0f, 0.0f));
-    right.setPosition(glm::vec3(0.032f, 0.0f, 0.0f));
+    left .setPosition({ -DEFAULT_IPD / 2, 0.0f, 0.0f });
+    right.setPosition({ +DEFAULT_IPD / 2, 0.0f, 0.0f });
 
     addChildNode(&left);
     addChildNode(&right);
 }
+
+VRCamera::VRCamera(const glm::uvec2& windowSize)
+    : VRCamera(DEFAULT_FOV_DEG, (float)windowSize.x / (float)windowSize.y, DEFAULT_NEAR, DEFAULT_FAR)
+{}
 
 VRCamera::VRCamera(uint width, uint height)
-    : left(PerspectiveCamera(width, height))
-    , right(PerspectiveCamera(width, height)) {
-    left.setPosition(glm::vec3(-0.032f, 0.0f, 0.0f));
-    right.setPosition(glm::vec3(0.032f, 0.0f, 0.0f));
+    : VRCamera(DEFAULT_FOV_DEG, (float)width / (float)height, DEFAULT_NEAR, DEFAULT_FAR)
+{}
 
+VRCamera::VRCamera(const glm::mat4 (&projs)[2])
+    : left(projs[0])
+    , right(projs[1])
+{
     addChildNode(&left);
     addChildNode(&right);
-}
-
-VRCamera::VRCamera(float fovy, float aspect, float near, float far)
-    : left(PerspectiveCamera(fovy, aspect, near, far))
-    , right(PerspectiveCamera(fovy, aspect, near, far)) {
-    left.setPosition(glm::vec3(-0.032f, 0.0f, 0.0f));
-    right.setPosition(glm::vec3(0.032f, 0.0f, 0.0f));
 }
 
 void VRCamera::setProjectionMatrix(const glm::mat4& proj) {

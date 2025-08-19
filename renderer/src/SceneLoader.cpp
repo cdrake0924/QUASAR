@@ -748,7 +748,7 @@ int SceneLoader::parseAnimation(jsmntok_t* tokens, int i, const char* json, Scen
     // Add animation to node
     Node* node = findNodeByName(nodeName);
     if (node != nullptr) {
-        Animation* anim = (node->animation != nullptr) ? node->animation : new Animation();
+        std::shared_ptr<Animation> anim = node->addAnimation();
 
         anim->addPositionKey(fromPosition, delay);
         anim->addPositionKey(toPosition, delay + duration);
@@ -761,10 +761,6 @@ int SceneLoader::parseAnimation(jsmntok_t* tokens, int i, const char* json, Scen
         anim->addScaleKey(fromScale, delay);
         anim->addScaleKey(toScale, delay + duration);
         anim->setScaleProperties(reverse, loop);
-
-        if (node->animation == nullptr) {
-            node->animation = anim;
-        }
     }
     else {
         spdlog::warn("Node not found: {}", nodeName);

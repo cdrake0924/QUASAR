@@ -116,8 +116,7 @@ void Model::processAnimations(const aiScene* scene) {
                 continue;
             }
 
-            Animation* anim = (node->animation != nullptr) ? node->animation : new Animation();
-
+            std::shared_ptr<Animation> anim = node->addAnimation();
             const glm::mat4& transformInv = node->getTransformLocalFromParent();
 
             for (uint k = 0; k < channel->mNumPositionKeys; k++) {
@@ -139,10 +138,6 @@ void Model::processAnimations(const aiScene* scene) {
                 const glm::vec3 scale = glm::vec3(scalingKey.mValue.x, scalingKey.mValue.y, scalingKey.mValue.z);
                 anim->addScaleKey(scale, scalingKey.mTime / animation->mTicksPerSecond);
             }
-
-            if (node->animation == nullptr) {
-                node->animation = anim;
-            }
         }
     }
 }
@@ -157,7 +152,7 @@ void Model::processNode(aiNode* aiNode, const aiScene* scene, Node* node, const 
         const int meshIndex = aiNode->mMeshes[i];
         aiMesh* mesh = scene->mMeshes[meshIndex];
         meshes[meshIndex] = processMesh(mesh, scene, material);
-        node->meshIndices.push_back(meshIndex);
+        node->pushMeshIndex(meshIndex);
     }
 
     for (int i = 0; i < aiNode->mNumChildren; i++) {
@@ -510,7 +505,7 @@ RenderStats Model::drawNode(const Node* node,
     const glm::mat4& globalTransform = parentTransform * node->getTransformParentFromLocal() * node->getTransformAnimation();
     const glm::mat4& modelMatrix = model * globalTransform;
 
-    for (int meshIndex : node->meshIndices) {
+    for (int meshIndex : node->getMeshIndices()) {
         stats += meshes[meshIndex]->draw(primativeType, camera, modelMatrix, frustumCull, overrideMaterial);
     }
 
@@ -529,7 +524,7 @@ RenderStats Model::drawNode(const Node* node,
     const glm::mat4& globalTransform = parentTransform * node->getTransformParentFromLocal() * node->getTransformAnimation();
     const glm::mat4& modelMatrix = model * globalTransform;
 
-    for (int meshIndex : node->meshIndices) {
+    for (int meshIndex : node->getMeshIndices()) {
         stats += meshes[meshIndex]->draw(primativeType, camera, modelMatrix, boundingSphere, overrideMaterial);
     }
 

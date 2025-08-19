@@ -86,14 +86,14 @@ int main(int argc, char** argv) {
 
     // "Remote" scene
     Scene remoteScene;
-    PerspectiveCamera remoteCamera(windowSize.x, windowSize.y);
+    PerspectiveCamera remoteCamera(windowSize);
     SceneLoader loader;
     loader.loadScene(sceneFile, remoteScene, remoteCamera);
 
     // Scene with all the meshes
     Scene scene = Scene();
     scene.backgroundColor = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
-    PerspectiveCamera camera = PerspectiveCamera(windowSize.x, windowSize.y);
+    PerspectiveCamera camera = PerspectiveCamera(windowSize);
     camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
@@ -280,7 +280,7 @@ int main(int argc, char** argv) {
         remoteRenderer.setWindowSize(width, height);
         renderer.setWindowSize(width, height);
 
-        camera.setAspect(windowSize.x, windowSize.y);
+        camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
 

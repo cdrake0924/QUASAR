@@ -13,16 +13,12 @@ namespace quasar {
 
 class Node {
 public:
-    std::string name;
-
     Node* parent = nullptr;
     Entity* entity = nullptr;
     std::vector<Node*> children;
 
-    Animation* animation = nullptr;
-
-    bool frustumCulled = true;
     bool visible = true;
+    bool frustumCulled = true;
 
     GLenum primativeType = GL_TRIANGLES;
     float pointSize = 5.0f;
@@ -31,8 +27,6 @@ public:
     float wireframeLineWidth = 1.0f;
 
     const Material* overrideMaterial = nullptr;
-
-    std::vector<int> meshIndices;
 
     Node();
     Node(const std::string& name);
@@ -51,28 +45,38 @@ public:
     void setRotationEuler(const glm::vec3& euler, bool radians = false);
     void setScale(const glm::vec3& scale);
 
+    const std::string& getName() const { return name; }
     virtual glm::vec3 getPosition() const;
     glm::quat getRotationQuat() const;
     glm::vec3 getRotationEuler(bool radians = false) const;
     glm::vec3 getScale() const;
 
-    void setTransformParentFromLocal(const glm::mat4& pose);
-    void setTransformLocalFromParent(const glm::mat4& view);
-
     const glm::mat4 getTransformParentFromLocal() const;
     const glm::mat4 getTransformLocalFromParent() const;
     const glm::mat4 getTransformLocalFromWorld() const;
-
     const glm::mat4 getTransformAnimation() const;
+
+    void setTransformParentFromLocal(const glm::mat4& pose);
+    void setTransformLocalFromParent(const glm::mat4& view);
+
+    const std::vector<int>& getMeshIndices() const { return meshIndices; }
+    void pushMeshIndex(int index) { meshIndices.push_back(index); }
+
+    bool hasAnimation() const { return animation != nullptr; }
+    std::shared_ptr<Animation> addAnimation();
 
     void updateAnimations(double dt);
 
 protected:
     uint32_t ID;
+    std::string name;
 
     glm::vec3 position = glm::vec3(0.0f);
     glm::quat rotationQuat = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 scale = glm::vec3(1.0f);
+
+    std::shared_ptr<Animation> animation;
+    std::vector<int> meshIndices;
 
     static uint32_t nextID;
 };

@@ -2,23 +2,26 @@
 
 using namespace quasar;
 
-#define DEFAULT_FOV_DEG 60.0f
-#define DEFAULT_ASPECT 16.0f / 9.0f
-#define DEFAULT_NEAR 0.1f
-#define DEFAULT_FAR 1000.0f
-
-PerspectiveCamera::PerspectiveCamera() {
-    setProjectionMatrix(glm::radians(DEFAULT_FOV_DEG), DEFAULT_ASPECT, DEFAULT_NEAR, DEFAULT_FAR);
-    updateCameraOrientation();
-}
-
-PerspectiveCamera::PerspectiveCamera(uint width, uint height) {
-    setProjectionMatrix(glm::radians(DEFAULT_FOV_DEG), (float)width / (float)height, DEFAULT_NEAR, DEFAULT_FAR);
-    updateCameraOrientation();
-}
+PerspectiveCamera::PerspectiveCamera()
+    : PerspectiveCamera(DEFAULT_FOV_DEG, DEFAULT_ASPECT, DEFAULT_NEAR, DEFAULT_FAR)
+{}
 
 PerspectiveCamera::PerspectiveCamera(float fovyDeg, float aspect, float near, float far) {
     setProjectionMatrix(glm::radians(fovyDeg), aspect, near, far);
+    updateCameraOrientation();
+}
+
+PerspectiveCamera::PerspectiveCamera(uint width, uint height)
+    : PerspectiveCamera(DEFAULT_FOV_DEG, (float)width / (float)height, DEFAULT_NEAR, DEFAULT_FAR)
+{}
+
+PerspectiveCamera::PerspectiveCamera(const glm::uvec2& windowSize)
+    : PerspectiveCamera(DEFAULT_FOV_DEG, (float)windowSize.x / (float)windowSize.y, DEFAULT_NEAR, DEFAULT_FAR)
+{}
+
+
+PerspectiveCamera::PerspectiveCamera(const glm::mat4& proj) {
+    setProjectionMatrix(proj);
     updateCameraOrientation();
 }
 
@@ -69,7 +72,7 @@ void PerspectiveCamera::processScroll(float yoffset) {
     movementSpeed = glm::clamp(movementSpeed, 0.1f, 20.0f);
 }
 
-void PerspectiveCamera::processKeyboard(Keys keys, double deltaTime) {
+void PerspectiveCamera::processKeyboard(const Keys& keys, double deltaTime) {
     float velocity = movementSpeed * deltaTime;
     if (keys.W_PRESSED)
         position += front * velocity;

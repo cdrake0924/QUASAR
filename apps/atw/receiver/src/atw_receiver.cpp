@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
     ForwardRenderer renderer(config);
 
     Scene scene;
-    PerspectiveCamera camera(windowSize.x, windowSize.y);
+    PerspectiveCamera camera(windowSize);
     VideoTexture videoTexture({
         .width = windowSize.x,
         .height = windowSize.y,
@@ -261,7 +261,7 @@ int main(int argc, char** argv) {
         windowSize = glm::uvec2(width, height);
         renderer.setWindowSize(windowSize.x, windowSize.y);
 
-        camera.setAspect(windowSize.x, windowSize.y);
+        camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
 

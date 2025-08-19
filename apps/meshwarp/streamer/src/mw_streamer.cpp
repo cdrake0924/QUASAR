@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
     DeferredRenderer renderer(config);
 
     Scene scene;
-    PerspectiveCamera camera(windowSize.x, windowSize.y);
+    PerspectiveCamera camera(windowSize);
     SceneLoader loader;
     loader.loadScene(sceneFile, scene, camera);
 
@@ -222,7 +222,7 @@ int main(int argc, char** argv) {
         windowSize = glm::uvec2(width, height);
         renderer.setWindowSize(windowSize.x, windowSize.y);
 
-        camera.setAspect(windowSize.x, windowSize.y);
+        camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
 

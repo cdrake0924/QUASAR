@@ -214,15 +214,15 @@ RenderStats Mesh::draw(GLenum primativeType, const Camera& camera, const glm::ma
     // If the camera is a VR camera, check if the AABB is visible in both frustums
     if (camera.isVR()) {
         auto vrcamera = static_cast<const VRCamera*>(&camera);
-        auto& frustumLeft = vrcamera->left.frustum;
-        auto& frustumRight = vrcamera->right.frustum;
+        auto& frustumLeft = vrcamera->left.getFrustum();
+        auto& frustumRight = vrcamera->right.getFrustum();
         if (frustumCull && !frustumLeft.aabbIsVisible(aabb, model) && !frustumRight.aabbIsVisible(aabb, model)) {
             return stats;
         }
     }
     else {
         auto monocamera = static_cast<const PerspectiveCamera*>(&camera);
-        auto& frustum = monocamera->frustum;
+        auto& frustum = monocamera->getFrustum();
         if (frustumCull && !frustum.aabbIsVisible(aabb, model)) {
             return stats;
         }

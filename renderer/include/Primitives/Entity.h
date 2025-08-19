@@ -44,8 +44,6 @@ struct RenderStats {
 
 class Entity {
 public:
-    Node* parentNode = nullptr;
-
     AABB aabb;
 
     Entity()

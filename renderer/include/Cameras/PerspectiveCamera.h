@@ -13,11 +13,11 @@ public:
     float movementSpeed = 2.0f;
     float mouseSensitivity = 0.05f;
 
-    Frustum frustum;
-
     PerspectiveCamera();
+    PerspectiveCamera(float fovyDeg, float aspect, float near, float far);
     PerspectiveCamera(uint width, uint height);
-    PerspectiveCamera(float fovy, float aspect, float near, float far);
+    PerspectiveCamera(const glm::uvec2& windowSize);
+    PerspectiveCamera(const glm::mat4& proj);
 
     float getFovyRadians() const override { return fovyRad; }
     float getFovyDegrees() const override { return glm::degrees(fovyRad); }
@@ -31,6 +31,7 @@ public:
 
     float getAspect() const override { return aspect; }
     void setAspect(float aspect) { this->aspect = aspect; updateProjectionMatrix(); }
+    void setAspect(const glm::uvec2& windowSize) { setAspect((float)windowSize.x / (float)windowSize.y); }
     void setAspect(uint width, uint height) { setAspect((float)width / (float)height); }
 
     float getNear() const override { return near; }
@@ -54,9 +55,11 @@ public:
     glm::vec3 getRightVector() const { return right; }
     glm::vec3 getUpVector() const { return up; }
 
-    void processKeyboard(Keys keys, double deltaTime);
     void processScroll(float yoffset);
+    void processKeyboard(const Keys& keys, double deltaTime);
     void processMouseMovement(float xoffset, float yoffset, bool constrainPitch = true);
+
+    const Frustum& getFrustum() const { return frustum; }
 
     bool isVR() const override { return false; }
 
@@ -78,6 +81,8 @@ private:
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 right = glm::vec3(-1.0f, 0.0f, 0.0f);
     glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    Frustum frustum;
 
     void updateCameraOrientation();
     // Calculates the front vector from the PerspectiveCamera's (updated) Euler Angles

@@ -5,6 +5,8 @@
 #include <Cameras/PerspectiveCamera.h>
 #include <Culling/Frustum.h>
 
+#define DEFAULT_IPD 0.064f
+
 namespace quasar {
 
 class VRCamera : public Camera {
@@ -13,8 +15,10 @@ public:
     PerspectiveCamera right;
 
     VRCamera();
+    VRCamera(float fovyDeg, float aspect, float near, float far);
+    VRCamera(const glm::uvec2& windowSize);
     VRCamera(uint width, uint height);
-    VRCamera(float fovy, float aspect, float near, float far);
+    VRCamera(const glm::mat4 (&projs)[2]);
 
     float getFovyRadians() const override { return left.getFovyRadians(); }
     float getFovyDegrees() const override { return left.getFovyDegrees(); }

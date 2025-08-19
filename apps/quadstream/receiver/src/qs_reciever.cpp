@@ -95,16 +95,16 @@ int main(int argc, char** argv) {
     ForwardRenderer renderer(config);
 
     Scene scene;
-    PerspectiveCamera camera(windowSize.x, windowSize.y);
+    PerspectiveCamera camera(windowSize);
 
     float remoteFOV = args::get(remoteFOVIn);
     std::vector<PerspectiveCamera> remoteCameras; remoteCameras.reserve(maxViews);
     for (int view = 0; view < maxViews; view++) {
-        remoteCameras.emplace_back(windowSize.x, windowSize.y);
+        remoteCameras.emplace_back(windowSize);
         remoteCameras[view].setFovyDegrees(remoteFOV);
     }
     PerspectiveCamera& remoteCameraCenter = remoteCameras[0];
-    remoteCameraCenter.setPosition(glm::vec3(0.0f, 3.0f, 10.0f));
+    remoteCameraCenter.setPosition({ 0.0f, 3.0f, 10.0f });
     remoteCameraCenter.updateViewMatrix();
 
     float viewBoxSize = args::get(viewBoxSizeIn);
@@ -357,7 +357,7 @@ int main(int argc, char** argv) {
         windowSize = glm::uvec2(width, height);
         renderer.setWindowSize(windowSize.x, windowSize.y);
 
-        camera.setAspect(windowSize.x, windowSize.y);
+        camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
 

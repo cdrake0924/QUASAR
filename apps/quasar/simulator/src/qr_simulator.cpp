@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
     // "Local" scene with all the meshLayers
     Scene localScene;
     localScene.envCubeMap = remoteScene.envCubeMap;
-    PerspectiveCamera camera(windowSize.x, windowSize.y);
+    PerspectiveCamera camera(windowSize);
     camera.setViewMatrix(remoteCameraCenter.getViewMatrix());
 
     QuadFrame quadFrame(remoteWindowSize);
@@ -531,7 +531,7 @@ int main(int argc, char** argv) {
         remoteRendererDP.setWindowSize(width, height);
         renderer.setWindowSize(width, height);
 
-        camera.setAspect(windowSize.x, windowSize.y);
+        camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
 
