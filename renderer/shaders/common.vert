@@ -12,7 +12,7 @@ layout(num_views = 2) in;
 #endif
 
 out VertexData {
-    flat uint drawID;
+    flat uint DrawID;
     vec2 TexCoord;
     vec3 FragPosView;
     vec3 FragPosWorld;
@@ -23,7 +23,7 @@ out VertexData {
     vec4 FragPosLightSpace;
 } vsOut;
 
-uniform uint drawID;
+uniform uint DrawID;
 
 uniform mat4 model;
 uniform mat3 normalMatrix;
@@ -42,7 +42,7 @@ void main() {
     vec4 worldPos = modelMatrix * vec4(aPos, 1.0);
     vec4 viewPos = viewMatrix * worldPos;
 
-    vsOut.drawID = drawID;
+    vsOut.DrawID = DrawID;
     vsOut.TexCoord = aTexCoord;
     vsOut.FragPosView = viewPos.xyz;
     vsOut.FragPosWorld = worldPos.xyz;

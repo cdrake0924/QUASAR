@@ -8,18 +8,18 @@ layout(num_views = 2) in;
 #endif
 
 out VertexData {
-    flat uint drawID;
+    flat uint DrawID;
     vec3 TexCoord3D;
     vec3 FragPos;
 } vsOut;
 
-uniform uint drawID;
+uniform uint DrawID;
 
 uniform mat4 model;
 uniform mat3 normalMatrix;
 
 void main() {
-    vsOut.drawID = drawID;
+    vsOut.DrawID = DrawID;
     vsOut.FragPos = vec3(model * vec4(aPos, 1.0));
     vsOut.TexCoord3D = aTexCoord3D;
 

@@ -5,7 +5,7 @@ layout(location = 1) out vec4 FragNormal;
 layout(location = 2) out uvec4 FragIDs;
 
 in VertexData {
-    flat uint drawID;
+    flat uint DrawID;
     vec2 TexCoord;
     vec3 FragPosView;
     vec3 FragPosWorld;
@@ -128,6 +128,6 @@ void main() {
 
     FragColor = vec4(baseColor.rgb, alpha);
     FragNormal = vec4(normalize(fsIn.Normal), 1.0);
-    FragIDs = uvec4(fsIn.drawID, gl_PrimitiveID, 0, 1);
+    FragIDs = uvec4(fsIn.DrawID, gl_PrimitiveID, 0, 1);
     FragIDs.z = floatBitsToUint((-fsIn.FragPosView.z - camera.near) / (camera.far - camera.near));
 }

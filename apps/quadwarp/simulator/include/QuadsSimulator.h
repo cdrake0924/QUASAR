@@ -40,9 +40,11 @@ public:
     std::vector<Node> refFrameWireframesLocal;
     Node maskFrameWireframeNodesLocal;
 
+    // Depth point cloud for debugging
     DepthMesh depthMesh;
     Node depthNode;
 
+    // Holds a copy of the current frame
     FrameRenderTarget copyRT;
 
     int currMeshIndex = 0, prevMeshIndex = 1;
@@ -109,13 +111,13 @@ public:
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
         })
-        , depthMesh(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
-        , meshScenes(2)
         , maskFrameMesh(quadFrame, maskFrameRT.colorTexture, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
+        , depthMesh(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
+        meshScenes.resize(2);
         refFrameMeshes.reserve(2);
         refFrameNodes.reserve(2);
         refFrameNodesLocal.reserve(2);
@@ -250,8 +252,8 @@ public:
         stats.sizes = sizes;
 
         maskFrameNode.visible = generateResFrame;
-        currMeshIndex = (currMeshIndex + 1) % 2;
-        prevMeshIndex = (prevMeshIndex + 1) % 2;
+        currMeshIndex = (currMeshIndex + 1) % meshScenes.size();
+        prevMeshIndex = (prevMeshIndex + 1) % meshScenes.size();
 
         // Only update the previous camera pose if we are not generating a Residual Frame
         if (!generateResFrame) {

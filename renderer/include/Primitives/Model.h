@@ -53,8 +53,6 @@ public:
                              const BoundingSphere& boundingSphere, const Material* overrideMaterial = nullptr) override;
     virtual void updateAnimations(float dt) override;
 
-    EntityType getType() const override { return EntityType::MODEL; }
-
     Node* findNodeByName(const std::string& name);
 
 private:

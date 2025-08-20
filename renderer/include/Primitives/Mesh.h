@@ -83,8 +83,6 @@ public:
     void resizeBuffers(uint verticesSize, uint indicesSize);
     void updateAABB(const void* vertices, uint verticesSize);
 
-    EntityType getType() const override { return EntityType::MESH; }
-
 protected:
     GLuint vertexArrayBuffer;
 

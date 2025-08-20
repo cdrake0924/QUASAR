@@ -232,7 +232,7 @@ RenderStats Mesh::draw(GLenum primativeType, const Camera& camera, const glm::ma
     materialToUse->bind();
 
     // Set draw ID/object ID
-    materialToUse->getShader()->setUint("drawID", ID);
+    materialToUse->getShader()->setUint("DrawID", ID);
 
     // Set camera params
     setMaterialCameraParams(camera, materialToUse);

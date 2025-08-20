@@ -66,8 +66,6 @@ public:
 
     virtual void updateAnimations(float dt) {}
 
-    virtual EntityType getType() const { return EntityType::EMPTY; }
-
 protected:
     uint32_t ID;
 

@@ -201,7 +201,6 @@ int main(int argc, char** argv) {
     app.onResize([&](uint width, uint height) {
         windowSize = glm::uvec2(width, height);
         renderer.setWindowSize(windowSize.x, windowSize.y);
-
         if (vrMode) {
             auto vrCamera = static_cast<VRCamera*>(camera.get());
             vrCamera->left.setAspect(windowSize.x / 2, windowSize.y);

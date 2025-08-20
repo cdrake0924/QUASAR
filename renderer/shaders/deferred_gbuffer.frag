@@ -10,7 +10,7 @@ layout(location = 5) out vec4 gLightPosition;
 layout(location = 6) out uvec3 gIDs;
 
 in VertexData {
-    flat uint drawID;
+    flat uint DrawID;
     vec2 TexCoord;
     vec3 FragPosView;
     vec3 FragPosWorld;
@@ -217,6 +217,6 @@ void main() {
 #endif
     gPosition = vec4(fsIn.FragPosWorld, material.IBL);
     gLightPosition = fsIn.FragPosLightSpace;
-    gIDs = uvec3(fsIn.drawID, gl_PrimitiveID, 0);
+    gIDs = uvec3(fsIn.DrawID, gl_PrimitiveID, 0);
     gIDs.z = floatBitsToUint((-fsIn.FragPosView.z - camera.near) / (camera.far - camera.near));
 }

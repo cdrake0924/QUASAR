@@ -33,9 +33,11 @@ public:
     std::vector<Node> refFrameNodesLocal;
     std::vector<Node> refFrameWireframesLocal;
 
+    // Depth point cloud for debugging
     std::vector<DepthMesh> depthMeshes;
     std::vector<Node> depthNodes;
 
+    // Holds a copies of the current frame
     std::vector<FrameRenderTarget> copyRTs;
 
     uint maxViews;

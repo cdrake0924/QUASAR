@@ -1,12 +1,6 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#define GLM_FORCE_RADIANS
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-#include <glm/gtx/matrix_decompose.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <Primitives/Node.h>
 
 #define DEFAULT_FOV_DEG 60.0f

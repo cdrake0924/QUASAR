@@ -1,17 +1,17 @@
 layout(location = 0) in vec3 aPos;
 
-uniform uint drawID;
+uniform uint DrawID;
 
 uniform mat4 projection;
 uniform mat4 view;
 
 out VertexData {
-	flat uint drawID;
+	flat uint DrawID;
 	vec3 WorldPos;
 } vsOut;
 
 void main() {
-	vsOut.drawID = drawID;
+	vsOut.DrawID = DrawID;
     vsOut.WorldPos = aPos;
 
 	mat4 rotView = mat4(mat3(view));

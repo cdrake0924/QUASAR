@@ -53,15 +53,18 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
 
     double startTime = timeutils::getTimeMicros();
 
-    // Generate frame using previous frame as a mask for animations
+    // Generate frame from old camera pose using previous frame as a mask to capture scene changes
     {
+        // Fill depth buffer with previous generated mesh
         remoteRenderer.pipeline.writeMaskState.disableColorWrites();
         remoteRenderer.drawObjectsNoLighting(prevScene, prevRemoteCamera);
 
+        // Use current generated mesh as a stencil mask
         remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
         remoteRenderer.pipeline.depthState.depthFunc = GL_EQUAL;
         remoteRenderer.drawObjectsNoLighting(currScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+        // Render scene using stencil mask; this lets only content that is different pass
         remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
         remoteRenderer.pipeline.depthState.depthFunc = GL_LESS;
         remoteRenderer.pipeline.writeMaskState.enableColorWrites();
@@ -71,12 +74,14 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
         remoteRenderer.copyToFrameRT(frameRT);
     }
 
-    // Generate frame using current frame as a mask for movement
+    // Generate frame from new camera pose using current frame as a mask to capture disocclusions due to camera movement
     {
+        // Use current generated mesh as a stencil mask
         remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
         remoteRenderer.pipeline.writeMaskState.disableColorWrites();
         remoteRenderer.drawObjectsNoLighting(currScene, currRemoteCamera);
 
+        // Render scene using stencil mask; this lets only content that is different pass
         remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
         remoteRenderer.pipeline.writeMaskState.enableColorWrites();
         remoteRenderer.drawObjects(remoteScene, currRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -87,7 +92,7 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
 
     stats.timeToRenderMaskMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    // Create proxies and meshes for the updated keyframe
+    // Create proxies and meshes for the updated reference frame
     {
         startTime = timeutils::getTimeMicros();
         quadsGenerator.createProxiesFromRT(frameRT, prevRemoteCamera);
@@ -111,17 +116,14 @@ QuadFrame::Sizes FrameGenerator::generateResFrame(
         stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     }
 
-    // Create proxies and meshes for the updated mask
+    // Create proxies and meshes for the updated residual frame
     {
         startTime = timeutils::getTimeMicros();
         quadsGenerator.createProxiesFromRT(maskFrameRT, currRemoteCamera);
         stats.timeToCreateQuadsMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         auto sizes = quadFrame.mapToCPU();
-        outputSizes.numQuads += sizes.numQuads;
-        outputSizes.numDepthOffsets += sizes.numDepthOffsets;
-        outputSizes.quadsSize += sizes.quadsSize;
-        outputSizes.depthOffsetsSize += sizes.depthOffsetsSize;
+        outputSizes += sizes;
         stats.timeToCompress = quadFrame.stats.timeToCompressMs;
 
         startTime = timeutils::getTimeMicros();

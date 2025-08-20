@@ -46,12 +46,14 @@ public:
     std::vector<Node> nodesHidLayer;
     std::vector<Node> wireframesHidLayer;
 
+    // Depth point cloud for debugging
     std::vector<DepthMesh> depthMeshsHidLayer;
     std::vector<Node> depthNodesHidLayer;
 
     // Wide fov
     std::vector<Node> wideFovNodes;
 
+    // Holds a copies of the current frame
     std::vector<FrameRenderTarget> copyRTs;
 
     DepthMesh depthMesh;
@@ -124,12 +126,12 @@ public:
             .magFilter = GL_NEAREST,
         })
         , depthMesh(quadFrame.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
-        , meshScenes(2)
         , maskFrameMesh(quadFrame, maskFrameRT.colorTexture, MAX_NUM_PROXIES / 4) // We can use less vertices and indicies for the mask since it will be sparse
     {
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
+        meshScenes.resize(2);
         refFrameMeshes.reserve(2);
         refFrameNodes.reserve(2);
         wideFovNodes.reserve(2);

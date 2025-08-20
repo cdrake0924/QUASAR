@@ -1,5 +1,6 @@
 #ifndef NODE_H
 #define NODE_H
+
 #include <vector>
 
 #define GLM_ENABLE_EXPERIMENTAL
