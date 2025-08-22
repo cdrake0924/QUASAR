@@ -1,8 +1,7 @@
-#include <cstring>
 #include <sstream>
 #include <spdlog/spdlog.h>
-#include <Utils/FileIO.h>
 #include <VideoTexture.h>
+#include <Networking/Utils.h>
 
 using namespace quasar;
 
@@ -26,7 +25,6 @@ VideoTexture::VideoTexture(
     , Texture(params)
 {
     gst_init(nullptr, nullptr);
-
 #ifdef __ANDROID__
     GST_PLUGIN_STATIC_REGISTER(app);
     GST_PLUGIN_STATIC_REGISTER(coreelements);
@@ -39,9 +37,7 @@ VideoTexture::VideoTexture(
 #endif
 
     // Parse host and port
-    auto colonPos = videoURL.find(':');
-    std::string host = videoURL.substr(0, colonPos);
-    int port = std::stoi(videoURL.substr(colonPos + 1));
+    auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
     std::string decoderName = "avdec_h264";
 

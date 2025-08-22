@@ -13,6 +13,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
+#include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 
 using namespace quasar;
@@ -117,6 +118,7 @@ int main(int argc, char** argv) {
     QuadSet::Sizes totalSizes{};
     uint totalTriangles = 0;
     double loadFromFilesTime = 0.0;
+    double transferTime = 0.0;
     double createMeshTime = 0.0;
 
     std::vector<Texture> colorTextures; colorTextures.reserve(maxLayers);
@@ -156,10 +158,13 @@ int main(int argc, char** argv) {
         scene.addChildNode(&nodeWireframes[layer]);
     }
 
+    std::vector<ReferenceFrame> frames(maxLayers);
+
     auto reloadData = [&]() {
         totalSizes = {};
         totalTriangles = 0;
         loadFromFilesTime = 0.0;
+        transferTime = 0.0;
         createMeshTime = 0.0;
 
         for (int layer = 0; layer < maxLayers; ++layer) {
@@ -169,10 +174,13 @@ int main(int argc, char** argv) {
 
             // Load quads and depth offsets
             double startTime = window->getTime();
-            Path quadsFile = (dataPath / ("quads" + std::to_string(layer))).withExtension(".bin.zstd");
-            Path offsetsFile = (dataPath / ("depthOffsets" + std::to_string(layer))).withExtension(".bin.zstd");
-            auto sizes = quadSet.loadFromFiles(quadsFile, offsetsFile);
+            frames[layer].loadFromFiles(dataPath, layer);
             loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
+
+            // Copy data to GPU
+            startTime = window->getTime();
+            auto sizes = quadSet.unmapFromCPU(frames[layer].quads, frames[layer].depthOffsets);
+            transferTime += quadSet.stats.timeToTransferMs;
 
             // Update mesh
             const glm::uvec2& gBufferSize = glm::uvec2(colorTextures[layer].width, colorTextures[layer].height);
@@ -275,6 +283,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", loadFromFilesTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", transferTime);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", createMeshTime);
 
             ImGui::Separator();

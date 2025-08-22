@@ -28,7 +28,6 @@ public:
     };
 
     struct Stats {
-        double timeToLoadMs = 0.0;
         double timeToTransferMs = 0.0;
         double timeToDecompressMs = 0.0;
     } stats;
@@ -83,35 +82,11 @@ public:
     Sizes unmapFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
         double startTime = timeutils::getTimeMicros();
 
-        quadBuffers.unmapFromCPU(inputQuads);
-        depthOffsets.unmapFromCPU(inputDepthOffsets);
-
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-
-        return {
-            quadBuffers.numProxies,
-            depthOffsets.getSize().x * depthOffsets.getSize().y,
-            static_cast<double>(inputQuads.size()),
-            static_cast<double>(inputDepthOffsets.size()),
-        };
-    }
-
-    Sizes loadFromFiles(const Path& quadsFilename, const Path& depthOffsetsFilename) {
-        double startTime = timeutils::getTimeMicros();
-
-        // Load data
-        auto compressedQuads = FileIO::loadBinaryFile(quadsFilename);
-        auto compressedDepthOffsets = FileIO::loadBinaryFile(depthOffsetsFilename);
-
-        stats.timeToLoadMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-
-        startTime = timeutils::getTimeMicros();
-
         // Uncompress
-        std::future<size_t> quadsSizeFuture = quadCodec.decompressAsync(compressedQuads, decompressedQuads);
-        std::future<size_t> offsetsSizeFuture = depthOffsetCodec.decompressAsync(compressedDepthOffsets, decompressedDepthOffsets);
+        std::future<size_t> quadsSizeFuture = quadCodec.decompressAsync(inputQuads, decompressedQuads);
+        std::future<size_t> offsetsSizeFuture = depthOffsetCodec.decompressAsync(inputDepthOffsets, decompressedDepthOffsets);
 
-        // Wait for decompression then copy to GPU
+        // Wait for decompression, then copy to GPU
         quadsSizeFuture.get();
         // Don't resize decompressedQuads here so we can reuse it with the max size
         // quadBuffers knows the number of proxies internally
@@ -126,8 +101,8 @@ public:
         return {
             quadBuffers.numProxies,
             depthOffsets.getSize().x * depthOffsets.getSize().y,
-            static_cast<double>(compressedQuads.size()),
-            static_cast<double>(compressedDepthOffsets.size())
+            static_cast<double>(inputQuads.size()),
+            static_cast<double>(inputDepthOffsets.size())
         };
     }
 

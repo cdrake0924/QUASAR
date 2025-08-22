@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
     nodeDecompressed.pointSize = 7.5f;
     scene.addChildNode(&nodeDecompressed);
 
-    bool generateRemoteFrame = true;
+    bool sendRemoteFrame = true;
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                generateRemoteFrame = true;
+                sendRemoteFrame = true;
             }
 
             ImGui::End();
@@ -327,14 +327,14 @@ int main(int argc, char** argv) {
         camera.processScroll(scroll.y);
         camera.processKeyboard(keys, dt);
 
-        if (generateRemoteFrame) {
+        if (sendRemoteFrame) {
             remoteCamera.setPosition(camera.getPosition());
             remoteCamera.setRotationQuat(camera.getRotationQuat());
             remoteCamera.updateViewMatrix();
 
             remoteRenderer.drawObjects(remoteScene, remoteCamera);
 
-            generateRemoteFrame = false;
+            sendRemoteFrame = false;
         }
 
         // Generate mesh for original depth data

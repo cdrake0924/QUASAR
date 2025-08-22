@@ -1,8 +1,6 @@
 #ifndef FRAME_GENERATOR_H
 #define FRAME_GENERATOR_H
 
-#include <future>
-
 #include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 #include <Quads/QuadsGenerator.h>
@@ -31,29 +29,31 @@ public:
 
     QuadsGenerator quadsGenerator;
 
-    FrameGenerator(QuadSet& quadSet, DeferredRenderer& remoteRenderer, Scene& remoteScene);
+    FrameGenerator(QuadSet& quadSet);
 
-    void generateRefFrame(
+    void createReferenceFrame(
         const FrameRenderTarget& referenceFrameRT,
         const PerspectiveCamera& remoteCamera,
-        QuadMesh& mesh, ReferenceFrame& resultFrame,
+        QuadMesh& mesh,
+        ReferenceFrame& resultFrame,
         bool compress = true);
 
-    void generateResFrame(
+    void updateResidualRenderTargets(
+        FrameRenderTarget& resFrameMaskRT, FrameRenderTarget& resFrameRT,
+        DeferredRenderer& remoteRenderer, Scene& remoteScene,
         Scene& currMeshScene, Scene& prevMeshScene, // Scenes that contain the resulting reconstructed meshes
-        FrameRenderTarget& residualFrameRT,
+        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera
+    );
+
+    void createResidualFrame(
+        const FrameRenderTarget& resFrameMaskRT, const FrameRenderTarget& resFrameRT,
         const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-        QuadMesh& currMesh, QuadMesh& maskMesh, ResidualFrame& resultFrame,
+        QuadMesh& mesh, QuadMesh& maskMesh,
+        ResidualFrame& resultFrame,
         bool compress = true);
 
 private:
     QuadSet& quadSet;
-
-    DeferredRenderer& remoteRenderer;
-    Scene& remoteScene;
-
-    // Temporary render target to hold updated/masked depth and normals for residual frames
-    FrameRenderTarget maskedRT;
 
     ZSTDCodec refQuadsCodec;
     ZSTDCodec refOffsetsCodec;

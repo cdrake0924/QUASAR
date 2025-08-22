@@ -13,6 +13,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
+#include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 
 using namespace quasar;
@@ -89,6 +90,7 @@ int main(int argc, char** argv) {
     QuadSet::Sizes totalSizes{};
     uint totalTriangles = 0;
     double loadFromFilesTime = 0.0;
+    double transferTime = 0.0;
     double createMeshTime = 0.0;
 
     Texture colorTexture({
@@ -117,10 +119,13 @@ int main(int argc, char** argv) {
     nodeWireframe.overrideMaterial = new QuadMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
     scene.addChildNode(&nodeWireframe);
 
+    ReferenceFrame frame;
+
     auto reloadProxies = [&]() {
         totalSizes = {};
         totalTriangles = 0;
         loadFromFilesTime = 0.0;
+        transferTime = 0.0;
         createMeshTime = 0.0;
 
         // Load texture
@@ -129,10 +134,13 @@ int main(int argc, char** argv) {
 
         // Load quads and depth offsets from files
         double startTime = window->getTime();
-        Path quadsFile = (dataPath / "quads").withExtension(".bin.zstd");
-        Path offsetsFile = (dataPath / "depthOffsets").withExtension(".bin.zstd");
-        auto sizes = quadSet.loadFromFiles(quadsFile, offsetsFile);
+        frame.loadFromFiles(dataPath);
         loadFromFilesTime = timeutils::secondsToMillis(window->getTime() - startTime);
+
+        // Copy data to GPU
+        startTime = window->getTime();
+        auto sizes = quadSet.unmapFromCPU(frame.quads, frame.depthOffsets);
+        transferTime = quadSet.stats.timeToTransferMs;
 
         // Update mesh
         const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
@@ -227,6 +235,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", loadFromFilesTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", transferTime);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", createMeshTime);
 
             ImGui::Separator();

@@ -1,13 +1,13 @@
 #ifndef DATA_RECEIVER_TCP_H
 #define DATA_RECEIVER_TCP_H
 
-#include <queue>
 #include <vector>
+#include <mutex>
 #include <thread>
 #include <atomic>
-#include <mutex>
-#include <functional>
+#include <queue>
 #include <string>
+#include <functional>
 
 #include <Networking/Socket.h>
 

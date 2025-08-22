@@ -1,8 +1,8 @@
-#include <cstring>
 #include <sstream>
 #include <spdlog/spdlog.h>
-#include <Utils/TimeUtils.h>
 #include <VideoStreamer.h>
+#include <Utils/TimeUtils.h>
+#include <Networking/Utils.h>
 
 using namespace quasar;
 
@@ -42,9 +42,7 @@ VideoStreamer::VideoStreamer(
     gst_init(nullptr, nullptr);
 
     // Parse host and port
-    auto colonPos = videoURL.find(':');
-    std::string host = videoURL.substr(0, colonPos);
-    int port = std::stoi(videoURL.substr(colonPos + 1));
+    auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
     std::string encoderName;
 #if defined(HAS_CUDA)

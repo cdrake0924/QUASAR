@@ -1,25 +1,21 @@
 #ifndef SOCKET_H
 #define SOCKET_H
 
-#include <unistd.h>
-#include <stdexcept>
+#include <string>
+#include <cerrno>
 #include <cstring>
 #include <fcntl.h>
+#include <netdb.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <netdb.h>
-#include <string>
-#include <cerrno>
+#include <Networking/Utils.h>
 
 namespace quasar {
 
 class Socket {
 public:
-    int socketID;
-    struct sockaddr_in addr;
-    socklen_t addrLen;
-
     Socket(int domain, int type, int protocol, bool nonBlocking = false) {
         socketID = socket(domain, type, protocol);
         if (socketID < 0) {
@@ -74,17 +70,7 @@ public:
     }
 
     void setAddress(const std::string& ipAddressAndPort) {
-        size_t pos = ipAddressAndPort.find(':');
-        if (pos == std::string::npos) {
-            throw std::invalid_argument("Invalid address format, expected ip:port");
-        }
-        std::string ipAddress = ipAddressAndPort.substr(0, pos);
-        int port;
-        try {
-            port = std::stoi(ipAddressAndPort.substr(pos + 1));
-        } catch (const std::exception& e) {
-            throw std::invalid_argument("Invalid port number");
-        }
+        auto [ipAddress, port] = networkutils::parseIPAddressAndPort(ipAddressAndPort);
         setAddress(ipAddress, port);
     }
 
@@ -118,6 +104,11 @@ public:
             socketID = -1;
         }
     }
+
+protected:
+    int socketID;
+    struct sockaddr_in addr;
+    socklen_t addrLen;
 };
 
 class SocketTCP final : public Socket {

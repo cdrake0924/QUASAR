@@ -3,6 +3,7 @@
 
 #include <Primitives/Mesh.h>
 #include <Shaders/ComputeShader.h>
+#include <Materials/UnlitMaterial.h>
 #include <RenderTargets/FrameRenderTarget.h>
 
 #include <shaders_common.h>

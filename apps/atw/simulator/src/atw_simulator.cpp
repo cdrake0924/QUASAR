@@ -136,7 +136,7 @@ int main(int argc, char** argv) {
     bool preventCopyingLocalPose = false;
     bool runAnimations = cameraPathFileIn;
 
-    bool generateRemoteFrame = true;
+    bool sendRemoteFrame = true;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
@@ -248,7 +248,7 @@ int main(int argc, char** argv) {
             }
 
             if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                generateRemoteFrame = true;
+                sendRemoteFrame = true;
                 runAnimations = true;
             }
 
@@ -388,9 +388,9 @@ int main(int argc, char** argv) {
         totalDT += dt;
 
         if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
-            generateRemoteFrame = true;
+            sendRemoteFrame = true;
         }
-        if (generateRemoteFrame) {
+        if (sendRemoteFrame) {
             // Update all animations
             if (runAnimations) {
                 remoteScene.updateAnimations(totalDT);
@@ -423,7 +423,7 @@ int main(int argc, char** argv) {
             spdlog::info("Rendering Time: {:.3f}ms", timeutils::secondsToMillis(window->getTime() - startTime));
 
             preventCopyingLocalPose = false;
-            generateRemoteFrame = false;
+            sendRemoteFrame = false;
         }
 
         poseSendRecvSimulator.update(now);

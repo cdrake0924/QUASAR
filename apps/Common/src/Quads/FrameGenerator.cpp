@@ -1,29 +1,18 @@
+#include <future>
 #include <algorithm>
 #include <Quads/FrameGenerator.h>
 
 using namespace quasar;
 
-FrameGenerator::FrameGenerator(QuadSet& quadSet, DeferredRenderer& remoteRenderer, Scene& remoteScene)
+FrameGenerator::FrameGenerator(QuadSet& quadSet)
     : quadSet(quadSet)
-    , remoteRenderer(remoteRenderer)
-    , remoteScene(remoteScene)
     , quadsGenerator(quadSet)
-    , maskedRT({
-        .width = quadSet.getSize().x,
-        .height = quadSet.getSize().y,
-        .internalFormat = GL_RGBA16F,
-        .format = GL_RGBA,
-        .type = GL_HALF_FLOAT,
-        .wrapS = GL_CLAMP_TO_EDGE,
-        .wrapT = GL_CLAMP_TO_EDGE,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
-    })
 {}
 
-void FrameGenerator::generateRefFrame(
+void FrameGenerator::createReferenceFrame(
     const FrameRenderTarget& referenceFrameRT, const PerspectiveCamera& remoteCamera,
-    QuadMesh& mesh, ReferenceFrame& resultFrame,
+    QuadMesh& mesh,
+    ReferenceFrame& resultFrame,
     bool compress)
 {
     stats = {};
@@ -74,19 +63,15 @@ void FrameGenerator::generateRefFrame(
     }
 }
 
-void FrameGenerator::generateResFrame(
+void FrameGenerator::updateResidualRenderTargets(
+    FrameRenderTarget& resFrameMaskRT, FrameRenderTarget& resFrameRT,
+    DeferredRenderer& remoteRenderer, Scene& remoteScene,
     Scene& currMeshScene, Scene& prevMeshScene,
-    FrameRenderTarget& residualFrameRT,
-    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-    QuadMesh& currMesh, QuadMesh& maskMesh, ResidualFrame& resultFrame,
-    bool compress)
+    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera)
 {
     stats = {};
 
-    const glm::vec2 gBufferSize = glm::vec2(residualFrameRT.width, residualFrameRT.height);
-    if (residualFrameRT.width != maskedRT.width || residualFrameRT.height != maskedRT.height) {
-        maskedRT.resize(gBufferSize.x, gBufferSize.y);
-    }
+    const glm::vec2 gBufferSize = glm::vec2(resFrameRT.width, resFrameRT.height);
 
     // Generate frame from old camera pose using previous frame as a mask to capture scene changes
     double startTime = timeutils::getTimeMicros();
@@ -107,13 +92,43 @@ void FrameGenerator::generateResFrame(
         remoteRenderer.drawObjects(remoteScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         remoteRenderer.pipeline.stencilState.restoreStencilState();
-        remoteRenderer.copyToFrameRT(maskedRT); // Save result into a temporary render target
+        remoteRenderer.copyToFrameRT(resFrameMaskRT); // Save result into a temporary render target
     }
-    double timeToRenderUpdated = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    // Create proxies and meshes for the updated/masked portion of the residual frame
-    startTime = timeutils::getTimeMicros();
-    quadsGenerator.createProxiesFromRT(maskedRT, prevRemoteCamera);
+    // Generate frame from new camera pose using current frame as a mask to capture disocclusions due to camera movement
+    {
+        // Use current generated mesh as a stencil mask
+        remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
+        remoteRenderer.pipeline.writeMaskState.disableColorWrites();
+        remoteRenderer.drawObjectsNoLighting(currMeshScene, currRemoteCamera);
+
+        // Render scene using stencil mask; this lets only content that is different pass
+        remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
+        remoteRenderer.pipeline.writeMaskState.enableColorWrites();
+        remoteRenderer.drawObjects(remoteScene, currRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        remoteRenderer.pipeline.stencilState.restoreStencilState();
+        remoteRenderer.copyToFrameRT(resFrameRT);
+    }
+    stats.timeToRenderMaskMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+}
+
+void FrameGenerator::createResidualFrame(
+    const FrameRenderTarget& resFrameMaskRT, const FrameRenderTarget& resFrameRT,
+    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
+    QuadMesh& mesh, QuadMesh& maskMesh,
+    ResidualFrame& resultFrame,
+    bool compress)
+{
+    const glm::vec2 gBufferSize = glm::vec2(resFrameRT.width, resFrameRT.height);
+
+    /*
+    ============================
+    Create proxies and meshes for the masked portion of the residual frame capturing updated geometry
+    ============================
+    */
+    double startTime = timeutils::getTimeMicros();
+    quadsGenerator.createProxiesFromRT(resFrameMaskRT, prevRemoteCamera);
     stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer updated proxies to CPU for compression
@@ -137,34 +152,20 @@ void FrameGenerator::generateResFrame(
 
     // Using GPU buffers, create mesh using proxies
     startTime = timeutils::getTimeMicros();
-    currMesh.appendQuads(quadSet, gBufferSize, false);
-    currMesh.createMeshFromProxies(quadSet, gBufferSize, prevRemoteCamera);
-    stats.timeToAppendQuadsMs = currMesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs = currMesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs = currMesh.stats.timeToCreateMeshMs;
+    mesh.appendQuads(quadSet, gBufferSize, false);
+    mesh.createMeshFromProxies(quadSet, gBufferSize, prevRemoteCamera);
+    stats.timeToAppendQuadsMs = mesh.stats.timeToAppendQuadsMs;
+    stats.timeToFillQuadIndicesMs = mesh.stats.timeToGatherQuadsMs;
+    stats.timeToCreateVertIndMs = mesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    // Generate frame from new camera pose using current frame as a mask to capture disocclusions due to camera movement
+    /*
+    ============================
+    Create proxies and meshes for the revealed portion of the residual frame capturing disocclusions
+    ============================
+    */
     startTime = timeutils::getTimeMicros();
-    {
-        // Use current generated mesh as a stencil mask
-        remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
-        remoteRenderer.pipeline.writeMaskState.disableColorWrites();
-        remoteRenderer.drawObjectsNoLighting(currMeshScene, currRemoteCamera);
-
-        // Render scene using stencil mask; this lets only content that is different pass
-        remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
-        remoteRenderer.pipeline.writeMaskState.enableColorWrites();
-        remoteRenderer.drawObjects(remoteScene, currRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        remoteRenderer.pipeline.stencilState.restoreStencilState();
-        remoteRenderer.copyToFrameRT(residualFrameRT);
-    }
-    stats.timeToRenderMaskMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime) + timeToRenderUpdated;
-
-    // Create proxies and meshes for the revealed portion of the residual frame
-    startTime = timeutils::getTimeMicros();
-    quadsGenerator.createProxiesFromRT(residualFrameRT, currRemoteCamera);
+    quadsGenerator.createProxiesFromRT(resFrameRT, currRemoteCamera);
     stats.timeToCreateQuadsMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer revealed proxies to CPU for compression
@@ -195,7 +196,11 @@ void FrameGenerator::generateResFrame(
     stats.timeToCreateVertIndMs += maskMesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    // Wait for compression to finish and set resulting data sizes
+    /*
+    ============================
+    Wait for asynchronous compression to finish and set resulting data sizes
+    ============================
+    */
     if (compress) {
         resultFrame.quadsUpdated.resize(quadsUpdatedFuture.get());
         resultFrame.depthOffsetsUpdated.resize(offsetsUpdatedFuture.get());

@@ -135,8 +135,8 @@ int main(int argc, char** argv) {
     camera.setViewMatrix(remoteCameraCenter.getViewMatrix());
 
     QuadSet quadSet(remoteWindowSize);
-    FrameGenerator frameGenerator(quadSet, remoteRenderer, remoteScene);
-    QSSimulator quadstream(quadSet, maxViews, frameGenerator);
+    FrameGenerator frameGenerator(quadSet);
+    QSSimulator quadstream(quadSet, maxViews, remoteRenderer, remoteScene, remoteCameraCenter, frameGenerator);
 
     quadstream.addMeshesToScene(localScene);
 
@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
     bool restrictMovementToViewBox = !cameraPathFileIn;
     float viewBoxSize = args::get(viewBoxSizeIn);
 
-    bool generateRemoteFrame = true;
+    bool sendRemoteFrame = true;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
@@ -308,12 +308,12 @@ int main(int argc, char** argv) {
             ImGui::Checkbox("Show Wireframe", &showWireframe);
             if (ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth)) {
                 preventCopyingLocalPose = true;
-                generateRemoteFrame = true;
+                sendRemoteFrame = true;
                 runAnimations = false;
             }
             if (ImGui::Checkbox("Show Normals Instead of Color", &showNormals)) {
                 preventCopyingLocalPose = true;
-                generateRemoteFrame = true;
+                sendRemoteFrame = true;
                 runAnimations = false;
             }
 
@@ -323,32 +323,32 @@ int main(int argc, char** argv) {
                 auto& quadsGenerator = frameGenerator.quadsGenerator;
                 if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
                     preventCopyingLocalPose = true;
-                    generateRemoteFrame = true;
+                    sendRemoteFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
-                    generateRemoteFrame = true;
+                    sendRemoteFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
-                    generateRemoteFrame = true;
+                    sendRemoteFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
-                    generateRemoteFrame = true;
+                    sendRemoteFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
-                    generateRemoteFrame = true;
+                    sendRemoteFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
-                    generateRemoteFrame = true;
+                    sendRemoteFrame = true;
                     runAnimations = false;
                 }
             }
@@ -369,7 +369,7 @@ int main(int argc, char** argv) {
             }
 
             if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                generateRemoteFrame = true;
+                sendRemoteFrame = true;
                 runAnimations = true;
             }
 
@@ -377,7 +377,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::DragFloat("View Box Size", &viewBoxSize, 0.025f, 0.1f, 2.0f)) {
                 preventCopyingLocalPose = true;
-                generateRemoteFrame = true;
+                sendRemoteFrame = true;
                 runAnimations = false;
             }
 
@@ -400,7 +400,6 @@ int main(int argc, char** argv) {
             flags = ImGuiWindowFlags_AlwaysAutoResize;
 
             const int texturePreviewSize = (windowSize.x * 0.8) / maxViews;
-
             int rowSize = (maxViews + 1) / 2;
             for (int view = 0; view < maxViews; view++) {
                 int viewIdx = maxViews - view - 1;
@@ -414,7 +413,11 @@ int main(int argc, char** argv) {
                     );
 
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
-                    ImGui::Image((void*)(intptr_t)(quadstream.refFrameRTs[viewIdx].colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
+                    ImGui::Image(
+                        (void*)(intptr_t)(quadstream.refFrameRTs[viewIdx].colorTexture.ID),
+                        ImVec2(texturePreviewSize, texturePreviewSize),
+                        ImVec2(0, 1), ImVec2(1, 0)
+                    );
                     ImGui::End();
                 }
             }
@@ -504,7 +507,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::Button("Save Proxies")) {
                 preventCopyingLocalPose = true;
-                generateRemoteFrame = true;
+                sendRemoteFrame = true;
                 runAnimations = false;
                 saveToFile = true;
             }
@@ -579,9 +582,9 @@ int main(int argc, char** argv) {
         totalDT += dt;
 
         if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
-            generateRemoteFrame = true;
+            sendRemoteFrame = true;
         }
-        if (generateRemoteFrame) {
+        if (sendRemoteFrame) {
             // Update all animations
             if (runAnimations) {
                 remoteScene.updateAnimations(totalDT);
@@ -643,7 +646,7 @@ int main(int argc, char** argv) {
             }
 
             preventCopyingLocalPose = false;
-            generateRemoteFrame = false;
+            sendRemoteFrame = false;
             saveToFile = false;
         }
 

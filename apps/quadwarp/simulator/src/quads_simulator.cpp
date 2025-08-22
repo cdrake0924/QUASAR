@@ -104,8 +104,8 @@ int main(int argc, char** argv) {
     camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     QuadSet quadSet(remoteWindowSize);
-    FrameGenerator frameGenerator(quadSet, remoteRenderer, remoteScene);
-    QuadsSimulator quadwarp(quadSet, remoteCamera, frameGenerator);
+    FrameGenerator frameGenerator(quadSet);
+    QuadsSimulator quadwarp(quadSet, remoteRenderer, remoteScene, remoteCamera, frameGenerator);
 
     // Add meshes to local scene
     quadwarp.addMeshesToScene(localScene);
@@ -146,8 +146,8 @@ int main(int argc, char** argv) {
     bool restrictMovementToViewBox = !cameraPathFileIn;
     float viewBoxSize = args::get(viewBoxSizeIn);
 
-    bool generateRefFrame = true;
-    bool generateResFrame = false;
+    bool sendReferenceFrame = true;
+    bool sendResidualFrame = false;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
             ImGui::MenuItem("Record", 0, &showRecordWindow);
             ImGui::MenuItem("Mesh Capture", 0, &showMeshCaptureWindow);
-            ImGui::MenuItem("Intermediate RT Previews", 0, &showFramePreviewWindow);
+            ImGui::MenuItem("Frame Previews", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -274,12 +274,12 @@ int main(int argc, char** argv) {
             ImGui::Checkbox("Show Wireframe", &showWireframe);
             if (ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth)) {
                 preventCopyingLocalPose = true;
-                generateRefFrame = true;
+                sendReferenceFrame = true;
                 runAnimations = false;
             }
             if (ImGui::Checkbox("Show Normals Instead of Color", &showNormals)) {
                 preventCopyingLocalPose = true;
-                generateRefFrame = true;
+                sendReferenceFrame = true;
                 runAnimations = false;
             }
 
@@ -289,32 +289,32 @@ int main(int argc, char** argv) {
                 auto& quadsGenerator = frameGenerator.quadsGenerator;
                 if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
                     preventCopyingLocalPose = true;
-                    generateRefFrame = true;
+                    sendReferenceFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
-                    generateRefFrame = true;
+                    sendReferenceFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
-                    generateRefFrame = true;
+                    sendReferenceFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
-                    generateRefFrame = true;
+                    sendReferenceFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
-                    generateRefFrame = true;
+                    sendReferenceFrame = true;
                     runAnimations = false;
                 }
                 if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
-                    generateRefFrame = true;
+                    sendReferenceFrame = true;
                     runAnimations = false;
                 }
             }
@@ -337,12 +337,12 @@ int main(int argc, char** argv) {
             float windowWidth = ImGui::GetContentRegionAvail().x;
             float buttonWidth = (windowWidth - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
             if (ImGui::Button("Send Reference Frame", ImVec2(buttonWidth, 0))) {
-                generateRefFrame = true;
+                sendReferenceFrame = true;
                 runAnimations = true;
             }
             ImGui::SameLine();
             if (ImGui::Button("Send Residual Frame", ImVec2(buttonWidth, 0))) {
-                generateResFrame = true;
+                sendResidualFrame = true;
                 runAnimations = true;
             }
 
@@ -350,7 +350,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::DragFloat("View Box Size", &viewBoxSize, 0.025f, 0.1f, 2.0f)) {
                 preventCopyingLocalPose = true;
-                generateRefFrame = true;
+                sendReferenceFrame = true;
                 runAnimations = false;
             }
 
@@ -432,7 +432,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::Button("Save Proxies")) {
                 preventCopyingLocalPose = true;
-                generateRefFrame = true;
+                sendReferenceFrame = true;
                 runAnimations = false;
                 saveToFile = true;
             }
@@ -442,12 +442,17 @@ int main(int argc, char** argv) {
 
         if (showFramePreviewWindow) {
             flags = 0;
-            ImGui::Begin("FrameRenderTarget Color", 0, flags);
+            ImGui::Begin("Reference Frame", 0, flags);
             ImGui::Image((void*)(intptr_t)(quadwarp.refFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
-            ImGui::Begin("FrameRenderTarget Mask Color", 0, flags);
+            ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
+            ImGui::Image((void*)(intptr_t)(quadwarp.resFrameMaskRT.colorTexture),
+                         ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::End();
+
+            ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
             ImGui::Image((void*)(intptr_t)(quadwarp.resFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
@@ -521,10 +526,10 @@ int main(int argc, char** argv) {
         totalDT += dt;
 
         if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
-            generateRefFrame = (frameCounter++) % REF_FRAME_PERIOD == 0; // insert Reference Frame every REF_FRAME_PERIOD frames
-            generateResFrame = !generateRefFrame;
+            sendReferenceFrame = (frameCounter++) % REF_FRAME_PERIOD == 0; // insert Reference Frame every REF_FRAME_PERIOD frames
+            sendResidualFrame = !sendReferenceFrame;
         }
-        if (generateRefFrame || generateResFrame) {
+        if (sendReferenceFrame || sendResidualFrame) {
             // Update all animations
             if (runAnimations) {
                 remoteScene.updateAnimations(totalDT);
@@ -543,7 +548,7 @@ int main(int argc, char** argv) {
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            quadwarp.generateFrame(remoteCamera, remoteScene, remoteRenderer, generateResFrame, showNormals, showDepth);
+            quadwarp.generateFrame(remoteCamera, remoteScene, remoteRenderer, sendResidualFrame, showNormals, showDepth);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
@@ -567,8 +572,8 @@ int main(int argc, char** argv) {
             }
 
             preventCopyingLocalPose = false;
-            generateRefFrame = false;
-            generateResFrame = false;
+            sendReferenceFrame = false;
+            sendResidualFrame = false;
             saveToFile = false;
         }
 

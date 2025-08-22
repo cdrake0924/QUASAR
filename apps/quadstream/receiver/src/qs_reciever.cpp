@@ -13,6 +13,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
+#include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 
 using namespace quasar;
@@ -147,6 +148,7 @@ int main(int argc, char** argv) {
     QuadSet::Sizes totalSizes{};
     uint totalTriangles = 0;
     double loadFromFilesTime = 0.0;
+    double transferTime = 0.0;
     double createMeshTime = 0.0;
 
     std::vector<Texture> colorTextures; colorTextures.reserve(maxViews);
@@ -186,10 +188,13 @@ int main(int argc, char** argv) {
         scene.addChildNode(&nodeWireframes[view]);
     }
 
+    std::vector<ReferenceFrame> frames(maxViews);
+
     auto reloadData = [&]() {
         totalTriangles = 0;
         totalSizes = {};
         loadFromFilesTime = 0.0;
+        transferTime = 0.0;
         createMeshTime = 0.0;
 
         for (int view = 0; view < maxViews; ++view) {
@@ -197,12 +202,15 @@ int main(int argc, char** argv) {
             Path colorPath = dataPath / ("color" + std::to_string(view) + ".jpg");
             colorTextures[view].loadFromFile(colorPath.str(), true, false);
 
-            // Load quads and depth offsets from files
+            // Load quads and depth offsets
             double startTime = window->getTime();
-            Path quadsFile   = (dataPath / "quads").appendToName(std::to_string(view)).withExtension(".bin.zstd");
-            Path offsetsFile = (dataPath / "depthOffsets").appendToName(std::to_string(view)).withExtension(".bin.zstd");
-            auto sizes = quadSet.loadFromFiles(quadsFile, offsetsFile);
+            frames[view].loadFromFiles(dataPath, view);
             loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
+
+            // Copy data to GPU
+            startTime = window->getTime();
+            auto sizes = quadSet.unmapFromCPU(frames[view].quads, frames[view].depthOffsets);
+            transferTime += quadSet.stats.timeToTransferMs;
 
             // Update mesh
             const glm::uvec2 gBufferSize(colorTextures[view].width, colorTextures[view].height);
@@ -302,6 +310,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", loadFromFilesTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", transferTime);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", createMeshTime);
 
             ImGui::Separator();

@@ -5,13 +5,13 @@
 
 namespace quasar {
 
+#define BYTES_PER_MEGABYTE (1000 * 1000)
+
 constexpr double MILLISECONDS_IN_SECOND = 1e3;
 constexpr double MICROSECONDS_IN_SECOND = 1e6;
 constexpr double MICROSECONDS_IN_MILLISECOND = 1e3;
 constexpr double NANOSECONDS_IN_SECOND = 1e9;
 constexpr double NANOSECONDS_IN_MILLISECOND = 1e6;
-
-#define BYTES_PER_MEGABYTE (1000 * 1000)
 
 namespace timeutils {
 
@@ -75,7 +75,7 @@ inline double millisToSeconds(double millis) {
     return millis / MILLISECONDS_IN_SECOND;
 }
 
-}
+} // namespace timeutils
 
 } // namespace quasar
 
