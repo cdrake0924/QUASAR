@@ -44,10 +44,10 @@ void Recorder::setTargetFrameRate(int targetFrameRate) {
     frameCount = 0;
 }
 
-void Recorder::saveScreenshotToFile(const Path& filename, bool saveAsHDR) {
+void Recorder::saveScreenshotToFile(const Path& filename, bool saveToHDR) {
     effect.drawToRenderTarget(renderer, *this);
 
-    if (saveAsHDR) {
+    if (saveToHDR) {
         saveColorAsHDR(filename.withExtension(".hdr"));
     }
     else {
@@ -60,9 +60,6 @@ void Recorder::start() {
     frameCount = 0;
 
     recordingStartTime = timeutils::getTimeMillis();
-
-    std::ofstream pathFile(outputPath / "camera_path.txt");
-    pathFile.close();
 
     if (outputFormat == OutputFormat::MP4) {
         initializeFFmpeg();
@@ -224,16 +221,16 @@ void Recorder::saveFrames(int threadID) {
 
             FileIO::flipVerticallyOnWrite(true);
             if (outputFormat == OutputFormat::PNG) {
-                FileIO::saveAsPNG(fileNameBase.withExtension(".png"), width, height, 4, renderTargetData.data());
+                FileIO::saveToPNG(fileNameBase.withExtension(".png"), width, height, 4, renderTargetData.data());
             }
             else {
-                FileIO::saveAsJPG(fileNameBase.withExtension(".jpg"), width, height, 4, renderTargetData.data());
+                FileIO::saveToJPG(fileNameBase.withExtension(".jpg"), width, height, 4, renderTargetData.data());
             }
         }
 
         {
             std::lock_guard<std::mutex> lock(cameraPathMutex);
-            std::ofstream pathFile(outputPath / "camera_path.txt", std::ios::app);
+            std::ostringstream pathFile;
             pathFile << std::fixed << std::setprecision(4)
                      << frameData.position.x << " "
                      << frameData.position.y << " "
@@ -242,7 +239,7 @@ void Recorder::saveFrames(int threadID) {
                      << frameData.euler.y << " "
                      << frameData.euler.z << " "
                      << frameData.elapsedTime << std::endl;
-            pathFile.close();
+            FileIO::saveToTextFile(outputPath / "camera_path.txt", pathFile.str(), true);
         }
     }
 

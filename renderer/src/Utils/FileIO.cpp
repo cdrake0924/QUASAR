@@ -10,7 +10,72 @@ using namespace quasar;
 
 #ifdef __ANDROID__
 #define CHECK_ANDROID_ACTIVITY() if (activity == nullptr) { throw std::runtime_error("Android App Activity not set!"); }
+
+ANativeActivity* FileIO::activity = nullptr;
+
+void FileIO::registerIOSystem(ANativeActivity* activity) {
+    FileIO::activity = activity;
+}
+
+std::string FileIO::copyFileToCache(std::string filename) {
+    AAsset* asset = AAssetManager_open(getAssetManager(), filename.c_str(), AASSET_MODE_STREAMING);
+    if (!asset) {
+        throw std::runtime_error("Failed to open file " + filename);
+        return "";
+    }
+
+    std::string internalAppPath = activity->internalDataPath;
+    // Remove "files/" from end of path
+    internalAppPath = internalAppPath.substr(0, internalAppPath.find_last_of('/'));
+    internalAppPath += "/cache/";
+    std::string tempPath = internalAppPath + filename;
+
+    std::ofstream outFile(tempPath, std::ios::binary);
+    if (!outFile) {
+        throw std::runtime_error("Failed to create temp file: " + tempPath);
+        AAsset_close(asset);
+        return "";
+    }
+
+    char buffer[1024];
+    int bytesRead;
+    while ((bytesRead = AAsset_read(asset, buffer, sizeof(buffer))) > 0) {
+        outFile.write(buffer, bytesRead);
+    }
+
+    AAsset_close(asset);
+    outFile.close();
+    return tempPath;
+}
 #endif
+
+void FileIO::flipVerticallyOnLoad(bool flip) {
+    stbi_set_flip_vertically_on_load(flip);
+}
+
+void FileIO::flipVerticallyOnWrite(bool flip) {
+    stbi_flip_vertically_on_write(flip);
+}
+
+std::ifstream::pos_type FileIO::getFileSize(const std::string& filename) {
+#ifndef __ANDROID__
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+
+    std::ifstream::pos_type size = file.tellg();
+    file.close();
+    return size;
+#else
+    CHECK_ANDROID_ACTIVITY();
+
+    AAsset *file = AAssetManager_open(getAssetManager(), filename.c_str(), AASSET_MODE_BUFFER);
+    std::ifstream::pos_type size = AAsset_getLength(file);
+    AAsset_close(file);
+    return size;
+#endif
+}
 
 std::string FileIO::loadTextFile(const std::string& filename, uint* sizePtr) {
 #ifndef __ANDROID__
@@ -74,34 +139,6 @@ std::vector<char> FileIO::loadBinaryFile(const std::string& filename, uint* size
 #endif
 }
 
-std::ifstream::pos_type FileIO::getFileSize(const std::string& filename) {
-#ifndef __ANDROID__
-    std::ifstream file(filename, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filename);
-    }
-
-    std::ifstream::pos_type size = file.tellg();
-    file.close();
-    return size;
-#else
-    CHECK_ANDROID_ACTIVITY();
-
-    AAsset *file = AAssetManager_open(getAssetManager(), filename.c_str(), AASSET_MODE_BUFFER);
-    std::ifstream::pos_type size = AAsset_getLength(file);
-    AAsset_close(file);
-    return size;
-#endif
-}
-
-void FileIO::flipVerticallyOnLoad(bool flip) {
-    stbi_set_flip_vertically_on_load(flip);
-}
-
-void FileIO::flipVerticallyOnWrite(bool flip) {
-    stbi_flip_vertically_on_write(flip);
-}
-
 unsigned char* FileIO::loadImage(const std::string& filename, int* width, int* height, int* channels, int desiredChannels) {
 #ifndef __ANDROID__
     unsigned char* data = stbi_load(filename.c_str(), width, height, channels, desiredChannels);
@@ -152,64 +189,97 @@ float* FileIO::loadImageHDR(const std::string& filename, int* width, int* height
 #endif
 }
 
-void FileIO::freeImage(void* imageData) {
-    stbi_image_free(imageData);
+size_t FileIO::saveToTextFile(const std::string& filename, const std::string& data, bool append) {
+#ifndef __ANDROID__
+    std::ofstream file;
+    if (append) {
+        file.open(filename, std::ios::app);
+    } else {
+        file.open(filename);
+    }
+    if (!file) {
+        throw std::runtime_error("Failed to open file for writing: " + filename);
+    }
+
+    file << data;
+    file.close();
+    return data.size();
+#else
+    CHECK_ANDROID_ACTIVITY();
+
+    // If 'filename' is relative, write it under the app's internal data dir.
+    std::string outPath = filename;
+    if (filename.empty() || filename[0] != '/') {
+        outPath = std::string(activity->internalDataPath) + "/" + filename;
+    }
+
+    std::ofstream file(outPath);
+    if (!file) {
+        throw std::runtime_error("Failed to open file for writing: " + outPath);
+    }
+
+    file << data;
+    file.close();
+
+    return data.size();
+#endif
 }
 
-void FileIO::saveAsPNG(const std::string& filename, int width, int height, int channels, const void *data) {
+size_t FileIO::saveToBinaryFile(const std::string& filename, const void* data, size_t size, bool append) {
+#ifndef __ANDROID__
+    std::ofstream file;
+    if (append) {
+        file.open(filename, std::ios::app | std::ios::binary);
+    }
+    else {
+        file.open(filename, std::ios::binary);
+    }
+    if (!file) {
+        throw std::runtime_error("Failed to open file for writing: " + filename);
+    }
+
+    file.write(static_cast<const char*>(data), size);
+    file.close();
+    return size;
+#else
+    CHECK_ANDROID_ACTIVITY();
+
+    // If 'filename' is relative, write it under the app's internal data dir.
+    std::string outPath = filename;
+    if (filename.empty() || filename[0] != '/') {
+        outPath = std::string(activity->internalDataPath) + "/" + filename;
+    }
+
+    std::ofstream file(outPath, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Failed to open file for writing: " + outPath);
+    }
+
+    file.write(static_cast<const char*>(data), size);
+    file.close();
+
+    return size;
+#endif
+}
+
+void FileIO::saveToPNG(const std::string& filename, int width, int height, int channels, const void *data) {
     if (!stbi_write_png(filename.c_str(), width, height, channels, data, width * channels)) {
         throw std::runtime_error("Failed to save PNG image: " + filename);
     }
 }
 
-void FileIO::saveAsJPG(const std::string& filename, int width, int height, int channels, const void *data, int quality) {
+void FileIO::saveToJPG(const std::string& filename, int width, int height, int channels, const void *data, int quality) {
     if (!stbi_write_jpg(filename.c_str(), width, height, channels, data, quality)) {
         throw std::runtime_error("Failed to save JPG image: " + filename);
     }
 }
 
-void FileIO::saveAsHDR(const std::string& filename, int width, int height, int channels, const float *data) {
+void FileIO::saveToHDR(const std::string& filename, int width, int height, int channels, const float *data) {
     if (!stbi_write_hdr(filename.c_str(), width, height, channels, data)) {
         throw std::runtime_error("Failed to save HDR image: " + filename);
     }
 }
 
-#ifdef __ANDROID__
-ANativeActivity* FileIO::activity = nullptr;
-
-void FileIO::registerIOSystem(ANativeActivity* activity) {
-    FileIO::activity = activity;
+void FileIO::freeImage(void* imageData) {
+    stbi_image_free(imageData);
 }
-
-std::string FileIO::copyFileToCache(std::string filename) {
-    AAsset* asset = AAssetManager_open(getAssetManager(), filename.c_str(), AASSET_MODE_STREAMING);
-    if (!asset) {
-        throw std::runtime_error("Failed to open file " + filename);
-        return "";
-    }
-
-    std::string internalAppPath = activity->internalDataPath;
-    // Remove "files/" from end of path
-    internalAppPath = internalAppPath.substr(0, internalAppPath.find_last_of('/'));
-    internalAppPath += "/cache/";
-    std::string tempPath = internalAppPath + filename;
-
-    std::ofstream outFile(tempPath, std::ios::binary);
-    if (!outFile) {
-        throw std::runtime_error("Failed to create temp file: " + tempPath);
-        AAsset_close(asset);
-        return "";
-    }
-
-    char buffer[1024];
-    int bytesRead;
-    while ((bytesRead = AAsset_read(asset, buffer, sizeof(buffer))) > 0) {
-        outFile.write(buffer, bytesRead);
-    }
-
-    AAsset_close(asset);
-    outFile.close();
-
-    return tempPath;
-}
-#endif

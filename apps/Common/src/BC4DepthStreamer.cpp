@@ -112,14 +112,11 @@ size_t BC4DepthStreamer::applyCodec() {
 }
 
 void BC4DepthStreamer::saveToFile(const Path& filename) {
-    std::ofstream outFile(filename, std::ios::binary);
-    if (outFile.is_open()) {
-        outFile.write(compressedData.data(), compressedData.size());
-        outFile.close();
-    }
-    else {
-        spdlog::error("Failed to write compressed depth data to file: {}", filename.str());
-    }
+    double startTime = timeutils::getTimeMicros();
+    FileIO::saveToBinaryFile(filename.str(), compressedData.data(), compressedData.size());
+    spdlog::info("Saved {:.3f}MB in {:.3f}ms",
+                   static_cast<double>(compressedData.size()) / BYTES_PER_MEGABYTE,
+                     timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
 }
 
 void BC4DepthStreamer::sendFrame(pose_id_t poseID) {

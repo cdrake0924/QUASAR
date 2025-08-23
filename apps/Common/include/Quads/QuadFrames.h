@@ -33,14 +33,12 @@ public:
     }
 
     size_t saveToFiles(const Path& outputPath, int index = -1) {
-        std::string idxStr = (index != -1 ? "_" + std::to_string(index) : "");
+        std::string idxStr = (index != -1 ? std::to_string(index) : "");
 
         // Save quads
         double startTime = timeutils::getTimeMicros();
         Path quadsFileName = (outputPath / ("quads" + idxStr)).withExtension(".bin.zstd");
-        std::ofstream quadsFile = std::ofstream(quadsFileName, std::ios::binary);
-        quadsFile.write(quads.data(), quads.size());
-        quadsFile.close();
+        FileIO::saveToBinaryFile(quadsFileName, quads.data(), quads.size());
         spdlog::info("Saved {} quads ({:.3f}MB) in {:.3f}ms",
                        numQuads, static_cast<double>(quads.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -48,9 +46,7 @@ public:
         // Save depth offsets
         startTime = timeutils::getTimeMicros();
         Path depthOffsetsFileName = (outputPath / ("depthOffsets" + idxStr)).withExtension(".bin.zstd");
-        std::ofstream depthOffsetsFile = std::ofstream(depthOffsetsFileName, std::ios::binary);
-        depthOffsetsFile.write(depthOffsets.data(), depthOffsets.size());
-        depthOffsetsFile.close();
+        FileIO::saveToBinaryFile(depthOffsetsFileName, depthOffsets.data(), depthOffsets.size());
         spdlog::info("Saved {} depth offsets ({:.3f}MB) in {:.3f}ms",
                        numDepthOffsets, static_cast<double>(depthOffsets.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -59,7 +55,7 @@ public:
     }
 
     size_t loadFromFiles(const Path& inputPath, int index = -1) {
-        std::string idxStr = (index != -1 ? "_" + std::to_string(index) : "");
+        std::string idxStr = (index != -1 ? std::to_string(index) : "");
 
         // Load quads
         double startTime = timeutils::getTimeMicros();
@@ -107,14 +103,12 @@ public:
     }
 
     size_t saveToFiles(const Path& outputPath, int index = -1) {
-        std::string idxStr = (index != -1 ? "_" + std::to_string(index) : "");
+        std::string idxStr = (index != -1 ? std::to_string(index) : "");
 
         // Save updated quads
         double startTime = timeutils::getTimeMicros();
         Path updatedQuadsFileName = (outputPath / ("updatedQuads" + idxStr)).withExtension(".bin.zstd");
-        std::ofstream updatedQuadsFile = std::ofstream(updatedQuadsFileName, std::ios::binary);
-        updatedQuadsFile.write(quadsUpdated.data(), quadsUpdated.size());
-        updatedQuadsFile.close();
+        FileIO::saveToBinaryFile(updatedQuadsFileName, quadsUpdated.data(), quadsUpdated.size());
         spdlog::info("Saved {} updated quads ({:.3f}MB) in {:.3f}ms",
                        numQuadsUpdated, static_cast<double>(quadsUpdated.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -122,9 +116,7 @@ public:
         // Save updated depth offsets
         startTime = timeutils::getTimeMicros();
         Path updatedDepthOffsetsFileName = (outputPath / ("updatedDepthOffsets" + idxStr)).withExtension(".bin.zstd");
-        std::ofstream updatedDepthOffsetsFile = std::ofstream(updatedDepthOffsetsFileName, std::ios::binary);
-        updatedDepthOffsetsFile.write(depthOffsetsUpdated.data(), depthOffsetsUpdated.size());
-        updatedDepthOffsetsFile.close();
+        FileIO::saveToBinaryFile(updatedDepthOffsetsFileName, depthOffsetsUpdated.data(), depthOffsetsUpdated.size());
         spdlog::info("Saved {} updated depth offsets ({:.3f}MB) in {:.3f}ms",
                        numDepthOffsetsUpdated, static_cast<double>(depthOffsetsUpdated.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -132,9 +124,7 @@ public:
         // Save revealed quads
         startTime = timeutils::getTimeMicros();
         Path revealedQuadsFileName = (outputPath / ("revealedQuads" + idxStr)).withExtension(".bin.zstd");
-        std::ofstream revealedQuadsFile = std::ofstream(revealedQuadsFileName, std::ios::binary);
-        revealedQuadsFile.write(quadsRevealed.data(), quadsRevealed.size());
-        revealedQuadsFile.close();
+        FileIO::saveToBinaryFile(revealedQuadsFileName, quadsRevealed.data(), quadsRevealed.size());
         spdlog::info("Saved {} revealed quads ({:.3f}MB) in {:.3f}ms",
                         numQuadsRevealed, static_cast<double>(quadsRevealed.size()) / BYTES_PER_MEGABYTE,
                           timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -142,9 +132,7 @@ public:
         // Save revealed depth offsets
         startTime = timeutils::getTimeMicros();
         Path revealedDepthOffsetsFileName = (outputPath / ("revealedDepthOffsets" + idxStr)).withExtension(".bin.zstd");
-        std::ofstream revealedDepthOffsetsFile = std::ofstream(revealedDepthOffsetsFileName, std::ios::binary);
-        revealedDepthOffsetsFile.write(depthOffsetsRevealed.data(), depthOffsetsRevealed.size());
-        revealedDepthOffsetsFile.close();
+        FileIO::saveToBinaryFile(revealedDepthOffsetsFileName, depthOffsetsRevealed.data(), depthOffsetsRevealed.size());
         spdlog::info("Saved {} revealed depth offsets ({:.3f}MB) in {:.3f}ms",
                        numDepthOffsetsRevealed, static_cast<double>(depthOffsetsRevealed.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));

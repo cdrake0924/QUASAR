@@ -95,9 +95,9 @@ public:
     }
 
     void readPixels(unsigned char* data, bool readAsFloat = false);
-    void saveAsPNG(const std::string& filename);
-    void saveAsJPG(const std::string& filename, int quality = 95);
-    void saveAsHDR(const std::string& filename);
+    void saveToPNG(const std::string& filename);
+    void saveToJPG(const std::string& filename, int quality = 95);
+    void saveToHDR(const std::string& filename);
 #ifdef GL_CORE
     void saveDepthToFile(const std::string& filename);
 #endif

@@ -22,7 +22,7 @@ public:
         double timeToAppendQuadsMs = 0.0;
         double timeToFillQuadIndicesMs = 0.0;
         double timeToCreateVertIndMs = 0.0;
-        double timeToRenderMaskMs = 0.0;
+        double timeToUpdateRTsMs = 0.0;
         double timeToTransferMs = 0.0;
         double timeToCompressMs = 0.0;
     } stats;
@@ -42,8 +42,7 @@ public:
         FrameRenderTarget& resFrameMaskRT, FrameRenderTarget& resFrameRT,
         DeferredRenderer& remoteRenderer, Scene& remoteScene,
         Scene& currMeshScene, Scene& prevMeshScene, // Scenes that contain the resulting reconstructed meshes
-        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera
-    );
+        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera);
 
     void createResidualFrame(
         const FrameRenderTarget& resFrameMaskRT, const FrameRenderTarget& resFrameRT,

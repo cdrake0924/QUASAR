@@ -144,45 +144,38 @@ void Texture::readPixels(unsigned char* data, bool readAsFloat) {
     unbind();
 }
 
-void Texture::saveAsPNG(const std::string& filename) {
+void Texture::saveToPNG(const std::string& filename) {
     std::vector<unsigned char> data(width * height * 4);
     readPixels(data.data());
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveAsPNG(filename, width, height, 4, data.data());
+    FileIO::saveToPNG(filename, width, height, 4, data.data());
 }
 
-void Texture::saveAsJPG(const std::string& filename, int quality) {
+void Texture::saveToJPG(const std::string& filename, int quality) {
     std::vector<unsigned char> data(width * height * 4);
     readPixels(data.data());
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveAsJPG(filename, width, height, 4, data.data(), quality);
+    FileIO::saveToJPG(filename, width, height, 4, data.data(), quality);
 }
 
-void Texture::saveAsHDR(const std::string& filename) {
+void Texture::saveToHDR(const std::string& filename) {
     std::vector<float> data(width * height * 4);
     readPixels(reinterpret_cast<unsigned char*>(data.data()), true);
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveAsHDR(filename, width, height, 4, data.data());
+    FileIO::saveToHDR(filename, width, height, 4, data.data());
 }
 
 #ifdef GL_CORE
 void Texture::saveDepthToFile(const std::string& filename) {
-    std::ofstream depthFile;
-    depthFile.open(filename, std::ios::out | std::ios::binary);
-
     std::vector<float> data(width * height);
 
     bind(0);
     glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data.data());
     unbind();
 
-    if (depthFile.is_open()) {
-        depthFile.write(reinterpret_cast<const char*>(data.data()), width * height * sizeof(float));
-    }
-
-    depthFile.close();
+    FileIO::saveToBinaryFile(filename, data.data(), data.size());
 }
 #endif

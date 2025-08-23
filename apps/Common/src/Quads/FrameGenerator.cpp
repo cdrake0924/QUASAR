@@ -19,7 +19,11 @@ void FrameGenerator::createReferenceFrame(
 
     const glm::vec2 gBufferSize = glm::vec2(referenceFrameRT.width, referenceFrameRT.height);
 
-    // Create proxies from the current FrameRenderTarget
+    /*
+    ============================
+    Create proxies from the current FrameRenderTarget (which includes depth and normals)
+    ============================
+    */
     double startTime = timeutils::getTimeMicros();
     quadsGenerator.createProxiesFromRT(referenceFrameRT, remoteCamera);
     stats.timeToGenerateQuadsMs = quadsGenerator.stats.timeToGenerateQuadsMs;
@@ -55,7 +59,11 @@ void FrameGenerator::createReferenceFrame(
     stats.timeToCreateVertIndMs = mesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    // Wait for compression to finish and set resulting data sizes
+    /*
+    ============================
+    Wait for asynchronous compression to finish and set resulting data sizes
+    ============================
+    */
     if (compress) {
         resultFrame.quads.resize(quadsFuture.get());
         resultFrame.depthOffsets.resize(offsetsFuture.get());
@@ -69,48 +77,54 @@ void FrameGenerator::updateResidualRenderTargets(
     Scene& currMeshScene, Scene& prevMeshScene,
     const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera)
 {
-    stats = {};
+    stats.timeToUpdateRTsMs = 0.0;
 
     const glm::vec2 gBufferSize = glm::vec2(resFrameRT.width, resFrameRT.height);
 
-    // Generate frame from old camera pose using previous frame as a mask to capture scene changes
+    /*
+    ============================
+    Generate frame from old camera pose using previous frame as a mask to capture scene changes
+    ============================
+    */
     double startTime = timeutils::getTimeMicros();
-    {
-        // Fill depth buffer with previous generated mesh
-        remoteRenderer.pipeline.writeMaskState.disableColorWrites();
-        remoteRenderer.drawObjectsNoLighting(prevMeshScene, prevRemoteCamera);
 
-        // Use current generated mesh as a stencil mask
-        remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
-        remoteRenderer.pipeline.depthState.depthFunc = GL_EQUAL;
-        remoteRenderer.drawObjectsNoLighting(currMeshScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    // Fill depth buffer with previous generated mesh
+    remoteRenderer.pipeline.writeMaskState.disableColorWrites();
+    remoteRenderer.drawObjectsNoLighting(prevMeshScene, prevRemoteCamera);
 
-        // Render scene using stencil mask; this lets only content that is different pass
-        remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
-        remoteRenderer.pipeline.depthState.depthFunc = GL_LESS;
-        remoteRenderer.pipeline.writeMaskState.enableColorWrites();
-        remoteRenderer.drawObjects(remoteScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Use current generated mesh as a stencil mask
+    remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
+    remoteRenderer.pipeline.depthState.depthFunc = GL_EQUAL;
+    remoteRenderer.drawObjectsNoLighting(currMeshScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-        remoteRenderer.pipeline.stencilState.restoreStencilState();
-        remoteRenderer.copyToFrameRT(resFrameMaskRT); // Save result into a temporary render target
-    }
+    // Render scene using stencil mask; this lets only content that is different pass
+    remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
+    remoteRenderer.pipeline.depthState.depthFunc = GL_LESS;
+    remoteRenderer.pipeline.writeMaskState.enableColorWrites();
+    remoteRenderer.drawObjects(remoteScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Generate frame from new camera pose using current frame as a mask to capture disocclusions due to camera movement
-    {
-        // Use current generated mesh as a stencil mask
-        remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
-        remoteRenderer.pipeline.writeMaskState.disableColorWrites();
-        remoteRenderer.drawObjectsNoLighting(currMeshScene, currRemoteCamera);
+    remoteRenderer.pipeline.stencilState.restoreStencilState();
+    remoteRenderer.copyToFrameRT(resFrameMaskRT); // Save result into a temporary render target
 
-        // Render scene using stencil mask; this lets only content that is different pass
-        remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
-        remoteRenderer.pipeline.writeMaskState.enableColorWrites();
-        remoteRenderer.drawObjects(remoteScene, currRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    /*
+    ============================
+    Generate frame from new camera pose using current frame as a mask to capture disocclusions due to camera movement
+    ============================
+    */
+    // Use current generated mesh as a stencil mask
+    remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
+    remoteRenderer.pipeline.writeMaskState.disableColorWrites();
+    remoteRenderer.drawObjectsNoLighting(currMeshScene, currRemoteCamera);
 
-        remoteRenderer.pipeline.stencilState.restoreStencilState();
-        remoteRenderer.copyToFrameRT(resFrameRT);
-    }
-    stats.timeToRenderMaskMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    // Render scene using stencil mask; this lets only content that is different pass
+    remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
+    remoteRenderer.pipeline.writeMaskState.enableColorWrites();
+    remoteRenderer.drawObjects(remoteScene, currRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    remoteRenderer.pipeline.stencilState.restoreStencilState();
+    remoteRenderer.copyToFrameRT(resFrameRT);
+
+    stats.timeToUpdateRTsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void FrameGenerator::createResidualFrame(
@@ -120,6 +134,10 @@ void FrameGenerator::createResidualFrame(
     ResidualFrame& resultFrame,
     bool compress)
 {
+    double timeToUpdateRTsMs = stats.timeToUpdateRTsMs;
+    stats = {};
+    stats.timeToUpdateRTsMs = timeToUpdateRTsMs;
+
     const glm::vec2 gBufferSize = glm::vec2(resFrameRT.width, resFrameRT.height);
 
     /*

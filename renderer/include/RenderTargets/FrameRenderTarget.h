@@ -165,19 +165,19 @@ public:
 
     void saveColorAsPNG(const std::string& path) {
         bind();
-        colorTexture.saveAsPNG(path);
+        colorTexture.saveToPNG(path);
         unbind();
     }
 
     void saveColorAsJPG(const std::string& path, int quality = 95) {
         bind();
-        colorTexture.saveAsJPG(path, quality);
+        colorTexture.saveToJPG(path, quality);
         unbind();
     }
 
     void saveColorAsHDR(const std::string& path) {
         bind();
-        colorTexture.saveAsHDR(path);
+        colorTexture.saveToHDR(path);
         unbind();
     }
 };

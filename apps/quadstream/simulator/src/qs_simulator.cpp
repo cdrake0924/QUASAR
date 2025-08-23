@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
         static bool showFrameCaptureWindow = false;
         static bool showMeshCaptureWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveAsHDR = false;
+        static bool saveToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -433,17 +433,17 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path basePath = outputPath / fileNameBase;
 
-            ImGui::Checkbox("Save as HDR", &saveAsHDR);
+            ImGui::Checkbox("Save as HDR", &saveToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
                 Path mainPath = basePath.appendToName("." + time);
-                recorder.saveScreenshotToFile(mainPath, saveAsHDR);
+                recorder.saveScreenshotToFile(mainPath, saveToHDR);
 
                 for (int view = 1; view < maxViews; view++) {
                     Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
-                    if (saveAsHDR) {
+                    if (saveToHDR) {
                         quadstream.refFrameRTs[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {

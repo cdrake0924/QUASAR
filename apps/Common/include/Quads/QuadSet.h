@@ -63,10 +63,8 @@ public:
     Sizes mapToCPU(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
 #if defined(HAS_CUDA)
         double startTime = timeutils::getTimeMicros();
-
         quadBuffers.mapToCPU(outputQuads);
         depthOffsets.mapToCPU(outputDepthOffsets);
-
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
 #endif
@@ -80,19 +78,19 @@ public:
 #endif
 
     Sizes unmapFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
+        // Uncompress
+        std::future<size_t> offsetsFuture = depthOffsetCodec.decompressAsync(inputDepthOffsets, decompressedDepthOffsets);
+        std::future<size_t> quadsFuture = quadCodec.decompressAsync(inputQuads, decompressedQuads);
+
         double startTime = timeutils::getTimeMicros();
 
-        // Uncompress
-        std::future<size_t> quadsSizeFuture = quadCodec.decompressAsync(inputQuads, decompressedQuads);
-        std::future<size_t> offsetsSizeFuture = depthOffsetCodec.decompressAsync(inputDepthOffsets, decompressedDepthOffsets);
-
         // Wait for decompression, then copy to GPU
-        quadsSizeFuture.get();
+        quadsFuture.get();
         // Don't resize decompressedQuads here so we can reuse it with the max size
         // quadBuffers knows the number of proxies internally
         quadBuffers.unmapFromCPU(decompressedQuads);
 
-        offsetsSizeFuture.get();
+        offsetsFuture.get();
         depthOffsets.unmapFromCPU(decompressedDepthOffsets);
 
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);

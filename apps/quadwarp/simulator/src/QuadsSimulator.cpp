@@ -188,7 +188,7 @@ void QuadsSimulator::generateFrame(
             residualFrame
         );
 
-        stats.totalRenderTime += frameGenerator.stats.timeToRenderMaskMs;
+        stats.totalRenderTime += frameGenerator.stats.timeToUpdateRTsMs;
 
         stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
         stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
