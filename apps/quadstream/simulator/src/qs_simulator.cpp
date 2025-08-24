@@ -14,7 +14,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <QSSimulator.h>
+#include <QSStreamer.h>
 
 #include <PoseSendRecvSimulator.h>
 

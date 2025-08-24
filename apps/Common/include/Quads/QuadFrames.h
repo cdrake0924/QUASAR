@@ -1,6 +1,9 @@
 #ifndef QUAD_FRAME_H
 #define QUAD_FRAME_H
 
+#include <future>
+#include <algorithm>
+
 #include <spdlog/spdlog.h>
 
 #include <Path.h>
@@ -14,10 +17,8 @@ namespace quasar {
 
 class ReferenceFrame {
 public:
-    size_t numQuads;
-    size_t numDepthOffsets;
-    std::vector<char> quads;
-    std::vector<char> depthOffsets;
+    size_t numQuads, numDepthOffsets;
+    std::vector<char> quads, depthOffsets;
 
     size_t getTotalNumQuads() const {
         return numQuads;
@@ -30,6 +31,37 @@ public:
     }
     double getTotalDepthOffsetsSize() const {
         return depthOffsets.size();
+    }
+
+    std::future<size_t> compressAndStoreQuads(const std::vector<char>& uncompressedQuads) {
+        auto quadsFuture = refQuadsCodec.compressAsync(
+            uncompressedQuads.data(),
+            quads,
+            uncompressedQuads.size());
+        return quadsFuture;
+    }
+    std::future<size_t> compressAndStoreDepthOffsets(const std::vector<char>& uncompressedOffsets) {
+        auto offsetsFuture = refOffsetsCodec.compressAsync(
+            uncompressedOffsets.data(),
+            depthOffsets,
+            uncompressedOffsets.size());
+        return offsetsFuture;
+    }
+
+    std::future<size_t> decompressQuads(std::vector<char>& outputQuads) {
+        auto quadsFuture = refQuadsCodec.decompressAsync(quads, outputQuads);
+        return quadsFuture;
+    }
+    std::future<size_t> decompressDepthOffsets(std::vector<char>& outputOffsets) {
+        auto offsetsFuture = refOffsetsCodec.decompressAsync(depthOffsets, outputOffsets);
+        return offsetsFuture;
+    }
+
+    double getTimeToCompress() const {
+        return std::max(refQuadsCodec.stats.timeToCompressMs, refOffsetsCodec.stats.timeToCompressMs);
+    }
+    double getTimeToDecompress() const {
+        return std::max(refQuadsCodec.stats.timeToDecompressMs, refOffsetsCodec.stats.timeToDecompressMs);
     }
 
     size_t saveToFiles(const Path& outputPath, int index = -1) {
@@ -76,6 +108,10 @@ public:
 
         return quads.size() + depthOffsets.size();
     }
+
+private:
+    ZSTDCodec refQuadsCodec;
+    ZSTDCodec refOffsetsCodec;
 };
 
 class ResidualFrame {
@@ -100,6 +136,65 @@ public:
     }
     double getTotalDepthOffsetsSize() const {
         return quadsRevealed.size() + depthOffsetsRevealed.size();
+    }
+
+    std::future<size_t> compressAndStoreUpdatedQuads(const std::vector<char>& uncompressedQuads) {
+        auto quadsFuture = resQuadsUpdatedCodec.compressAsync(
+            uncompressedQuads.data(),
+            quadsUpdated,
+            uncompressedQuads.size());
+        return quadsFuture;
+    }
+    std::future<size_t> compressAndStoreRevealedQuads(const std::vector<char>& uncompressedQuads) {
+        auto quadsFuture = resQuadsRevealedCodec.compressAsync(
+            uncompressedQuads.data(),
+            quadsRevealed,
+            uncompressedQuads.size());
+        return quadsFuture;
+    }
+    std::future<size_t> compressAndStoreUpdatedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
+        auto offsetsFuture = resOffsetsUpdatedCodec.compressAsync(
+            uncompressedOffsets.data(),
+            depthOffsetsUpdated,
+            uncompressedOffsets.size());
+        return offsetsFuture;
+    }
+    std::future<size_t> compressAndStoreRevealedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
+        auto offsetsFuture = resOffsetsRevealedCodec.compressAsync(
+            uncompressedOffsets.data(),
+            depthOffsetsRevealed,
+            uncompressedOffsets.size());
+        return offsetsFuture;
+    }
+
+    std::future<size_t> decompressUpdatedQuads(std::vector<char>& outputQuads) {
+        auto quadsFuture = resQuadsUpdatedCodec.decompressAsync(quadsUpdated, outputQuads);
+        return quadsFuture;
+    }
+    std::future<size_t> decompressRevealedQuads(std::vector<char>& outputQuads) {
+        auto quadsFuture = resQuadsRevealedCodec.decompressAsync(quadsRevealed, outputQuads);
+        return quadsFuture;
+    }
+    std::future<size_t> decompressUpdatedDepthOffsets(std::vector<char>& outputOffsets) {
+        auto offsetsFuture = resOffsetsUpdatedCodec.decompressAsync(depthOffsetsUpdated, outputOffsets);
+        return offsetsFuture;
+    }
+    std::future<size_t> decompressRevealedDepthOffsets(std::vector<char>& outputOffsets) {
+        auto offsetsFuture = resOffsetsRevealedCodec.decompressAsync(depthOffsetsRevealed, outputOffsets);
+        return offsetsFuture;
+    }
+
+    double getTimeToCompress() const {
+        return std::max(
+            std::max(resQuadsUpdatedCodec.stats.timeToCompressMs, resOffsetsUpdatedCodec.stats.timeToCompressMs),
+            std::max(resQuadsRevealedCodec.stats.timeToCompressMs, resOffsetsRevealedCodec.stats.timeToCompressMs)
+        );
+    }
+    double getTimeToDecompress() const {
+        return std::max(
+            std::max(resQuadsUpdatedCodec.stats.timeToDecompressMs, resOffsetsUpdatedCodec.stats.timeToDecompressMs),
+            std::max(resQuadsRevealedCodec.stats.timeToDecompressMs, resOffsetsRevealedCodec.stats.timeToDecompressMs)
+        );
     }
 
     size_t saveToFiles(const Path& outputPath, int index = -1) {
@@ -140,6 +235,12 @@ public:
         return quadsUpdated.size() + depthOffsetsUpdated.size() +
                quadsRevealed.size() + depthOffsetsRevealed.size();
     }
+
+private:
+    ZSTDCodec resQuadsUpdatedCodec;
+    ZSTDCodec resOffsetsUpdatedCodec;
+    ZSTDCodec resQuadsRevealedCodec;
+    ZSTDCodec resOffsetsRevealedCodec;
 };
 
 } // namespace quasar

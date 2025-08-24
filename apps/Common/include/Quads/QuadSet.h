@@ -29,7 +29,6 @@ public:
 
     struct Stats {
         double timeToTransferMs = 0.0;
-        double timeToDecompressMs = 0.0;
     } stats;
 
     QuadBuffers quadBuffers;
@@ -39,8 +38,6 @@ public:
         : frameSize(frameSize)
         , quadBuffers(frameSize.x * frameSize.y)
         , depthOffsets(2u * frameSize) // 2x2 subpixels per pixel
-        , decompressedQuads(sizeof(uint) + quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
-        , decompressedDepthOffsets(depthOffsets.getSize().x * depthOffsets.getSize().y * 4 * sizeof(uint16_t))
     {}
 
     const glm::uvec2& getSize() const {
@@ -78,23 +75,10 @@ public:
 #endif
 
     Sizes unmapFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
-        // Uncompress
-        std::future<size_t> offsetsFuture = depthOffsetCodec.decompressAsync(inputDepthOffsets, decompressedDepthOffsets);
-        std::future<size_t> quadsFuture = quadCodec.decompressAsync(inputQuads, decompressedQuads);
-
         double startTime = timeutils::getTimeMicros();
-
-        // Wait for decompression, then copy to GPU
-        quadsFuture.get();
-        // Don't resize decompressedQuads here so we can reuse it with the max size
-        // quadBuffers knows the number of proxies internally
-        quadBuffers.unmapFromCPU(decompressedQuads);
-
-        offsetsFuture.get();
-        depthOffsets.unmapFromCPU(decompressedDepthOffsets);
-
+        quadBuffers.unmapFromCPU(inputQuads);
+        depthOffsets.unmapFromCPU(inputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-        stats.timeToDecompressMs = std::max(quadCodec.stats.timeToDecompressMs, depthOffsetCodec.stats.timeToDecompressMs);
 
         return {
             quadBuffers.numProxies,
@@ -109,9 +93,6 @@ private:
 
     ZSTDCodec quadCodec;
     ZSTDCodec depthOffsetCodec;
-
-    std::vector<char> decompressedQuads;
-    std::vector<char> decompressedDepthOffsets;
 };
 
 } // namespace quasar

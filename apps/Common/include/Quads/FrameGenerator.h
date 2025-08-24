@@ -54,14 +54,6 @@ public:
 private:
     QuadSet& quadSet;
 
-    ZSTDCodec refQuadsCodec;
-    ZSTDCodec refOffsetsCodec;
-
-    ZSTDCodec resQuadsUpdatedCodec;
-    ZSTDCodec resOffsetsUpdatedCodec;
-    ZSTDCodec resQuadsRevealedCodec;
-    ZSTDCodec resOffsetsRevealedCodec;
-
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;
     std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;

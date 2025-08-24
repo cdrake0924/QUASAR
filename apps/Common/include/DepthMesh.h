@@ -5,6 +5,7 @@
 #include <Shaders/ComputeShader.h>
 #include <Materials/UnlitMaterial.h>
 #include <RenderTargets/FrameRenderTarget.h>
+#include <Utils/TimeUtils.h>
 
 #include <shaders_common.h>
 
@@ -43,7 +44,7 @@ public:
     {}
 
     void update(const PerspectiveCamera& camera, const FrameRenderTarget& rt) {
-        meshFromDepthShader.startTiming();
+        double startTime = timeutils::getTimeMicros();
 
         meshFromDepthShader.bind();
         {
@@ -69,8 +70,7 @@ public:
                                      (depthMapSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
         meshFromDepthShader.memoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
 
-        meshFromDepthShader.endTiming();
-        stats.genDepthTime += meshFromDepthShader.getElapsedTime();
+        stats.genDepthTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     }
 
 private:

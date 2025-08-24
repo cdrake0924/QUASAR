@@ -7,7 +7,6 @@ using namespace quasar;
 DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string receiverURL)
     : receiverURL(receiverURL)
     , imageSize(params.width * params.height * sizeof(GLushort))
-    , streamer(receiverURL)
     , data(std::vector<char>(sizeof(pose_id_t) + imageSize))
     , RenderTarget(params)
     , renderTargetCopy({
@@ -28,9 +27,11 @@ DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string
 #if defined(HAS_CUDA)
     cudaGLImage.registerTexture(renderTargetCopy.colorTexture);
 
-    // Start data sending thread
-    running = true;
-    dataSendingThread = std::thread(&DepthStreamer::sendData, this);
+    if (!receiverURL.empty()) {
+        running = true;
+        streamer = std::make_unique<DataStreamerTCP>(receiverURL);
+        dataSendingThread = std::thread(&DepthStreamer::sendData, this);
+    }
 #endif
 }
 
@@ -129,7 +130,7 @@ void DepthStreamer::sendData() {
         stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         stats.bitrateMbps = ((data.size() + sizeof(pose_id_t)) * 8 / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
 
-        streamer.send(data);
+        streamer->send(data);
 
         prevTime = timeutils::getTimeMicros();
     }

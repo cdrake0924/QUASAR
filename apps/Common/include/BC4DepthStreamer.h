@@ -58,7 +58,7 @@ public:
 
 private:
     int targetFrameRate = 30;
-    DataStreamerTCP streamer;
+    std::unique_ptr<DataStreamerTCP> streamer;
 
     std::vector<char> data;
     std::vector<char> compressedData;

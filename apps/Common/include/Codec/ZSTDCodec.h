@@ -2,7 +2,6 @@
 #define ZSTD_CODEC_H
 
 #include <vector>
-#include <thread>
 
 #include <zstd.h>
 #include <Codec/Codec.h>

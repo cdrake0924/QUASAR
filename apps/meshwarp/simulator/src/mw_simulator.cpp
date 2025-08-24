@@ -544,7 +544,6 @@ int main(int argc, char** argv) {
             double startTime = window->getTime();
             double totalRenderTime = 0.0;
             double totalGenMeshTime = 0.0;
-            double totalCreateVertIndTime = 0.0;
             double totalCompressTime = 0.0;
 
             // "Send" pose to the server. this will wait until latency+/-jitter ms have passed
@@ -573,7 +572,6 @@ int main(int argc, char** argv) {
             totalCompressTime = bc4DepthStreamerRT.stats.timeToCompressMs;
 
             startTime = window->getTime();
-            meshFromBC4Shader.startTiming();
             meshFromBC4Shader.bind();
             {
                 meshFromBC4Shader.setBool("unlinearizeDepth", true);
@@ -599,14 +597,11 @@ int main(int argc, char** argv) {
                                        (adjustedWindowSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
             meshFromBC4Shader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT |
                                             GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
-            meshFromBC4Shader.endTiming();
             totalGenMeshTime += timeutils::secondsToMillis(window->getTime() - startTime);
-            totalCreateVertIndTime += meshFromBC4Shader.getElapsedTime();
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", totalRenderTime);
             spdlog::info("Create Mesh Time: {:.3f}ms", totalGenMeshTime);
-            spdlog::info("  Create Vert/Ind Time: {:.3f}ms", totalCreateVertIndTime);
             spdlog::info("Compress Time: {:.3f}ms", totalCompressTime);
             spdlog::info("Frame Size: {:.3f}MB", static_cast<float>(compressedSize) / BYTES_PER_MEGABYTE);
 

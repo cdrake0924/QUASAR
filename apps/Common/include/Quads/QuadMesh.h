@@ -12,7 +12,7 @@
 
 namespace quasar {
 
-#define MAX_NUM_PROXIES (1024 * 1024)
+#define MAX_NUM_PROXIES 500000
 
 #define VERTICES_IN_A_QUAD 4
 #define INDICES_IN_A_QUAD 6

@@ -18,7 +18,7 @@
 #include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
-#include <QRSimulator.h>
+#include <QRStreamer.h>
 #include <HoleFiller.h>
 
 #include <PoseSendRecvSimulator.h>

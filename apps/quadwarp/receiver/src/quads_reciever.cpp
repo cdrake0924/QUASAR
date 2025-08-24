@@ -13,8 +13,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <Quads/QuadFrames.h>
-#include <Quads/QuadMesh.h>
+#include <QuadsReceiver.h>
 
 using namespace quasar;
 
@@ -87,74 +86,24 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
-    QuadSet::Sizes totalSizes{};
-    uint totalTriangles = 0;
-    double loadFromFilesTime = 0.0;
-    double transferTime = 0.0;
-    double createMeshTime = 0.0;
-
-    Texture colorTexture({
-        .internalFormat = GL_RGB,
-        .format = GL_RGB,
-        .wrapS = GL_REPEAT,
-        .wrapT = GL_REPEAT,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
-    });
-
     QuadSet quadSet(windowSize);
-
-    // Create mesh
-    QuadMesh quadMesh(quadSet, colorTexture);
+    QuadsReceiver quadsReceiver(quadSet);
 
     // Create node and wireframe node
-    Node node(&quadMesh);
+    Node node(&quadsReceiver);
     node.frustumCulled = false;
     scene.addChildNode(&node);
 
-    Node nodeWireframe(&quadMesh);
+    QuadMaterial wireframeMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
+    Node nodeWireframe(&quadsReceiver);
     nodeWireframe.frustumCulled = false;
     nodeWireframe.wireframe = true;
     nodeWireframe.visible = false;
-    nodeWireframe.overrideMaterial = new QuadMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
+    nodeWireframe.overrideMaterial = &wireframeMaterial;
     scene.addChildNode(&nodeWireframe);
 
-    ReferenceFrame frame;
-
-    auto reloadProxies = [&]() {
-        totalSizes = {};
-        totalTriangles = 0;
-        loadFromFilesTime = 0.0;
-        transferTime = 0.0;
-        createMeshTime = 0.0;
-
-        // Load texture
-        std::string colorFileName = dataPath / "color.jpg";
-        colorTexture.loadFromFile(colorFileName, true, false);
-
-        // Load quads and depth offsets from files
-        double startTime = window->getTime();
-        frame.loadFromFiles(dataPath);
-        loadFromFilesTime = timeutils::secondsToMillis(window->getTime() - startTime);
-
-        // Copy data to GPU
-        startTime = window->getTime();
-        auto sizes = quadSet.unmapFromCPU(frame.quads, frame.depthOffsets);
-        transferTime = quadSet.stats.timeToTransferMs;
-
-        // Update mesh
-        const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
-        quadMesh.appendQuads(quadSet, gBufferSize);
-        quadMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
-        createMeshTime = quadMesh.stats.timeToCreateMeshMs;
-
-        auto meshBufferSizes = quadMesh.getBufferSizes();
-        totalTriangles = meshBufferSizes.numIndices / 3;
-        totalSizes += sizes;
-    };
-
     // Initial load
-    reloadProxies();
+    quadsReceiver.loadFromFiles(dataPath, remoteCamera);
 
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
@@ -199,12 +148,12 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            if (totalTriangles < 100000)
-                ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", totalTriangles);
-            else if (totalTriangles < 500000)
-                ImGui::TextColored(ImVec4(1,1,0,1), "Triangles Drawn: %d", totalTriangles);
+            if (quadsReceiver.stats.totalTriangles < 100000)
+                ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", quadsReceiver.stats.totalTriangles);
+            else if (quadsReceiver.stats.totalTriangles < 500000)
+                ImGui::TextColored(ImVec4(1,1,0,1), "Triangles Drawn: %d", quadsReceiver.stats.totalTriangles);
             else
-                ImGui::TextColored(ImVec4(1,0,0,1), "Triangles Drawn: %d", totalTriangles);
+                ImGui::TextColored(ImVec4(1,0,0,1), "Triangles Drawn: %d", quadsReceiver.stats.totalTriangles);
 
             if (renderStats.drawCalls < 200)
                 ImGui::TextColored(ImVec4(0,1,0,1), "Draw Calls: %d", renderStats.drawCalls);
@@ -214,11 +163,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quads: %ld (%.3f MB)",
-                               totalSizes.numQuads,
-                               totalSizes.quadsSize / BYTES_PER_MEGABYTE);
+                               quadsReceiver.stats.sizes.numQuads,
+                               quadsReceiver.stats.sizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %ld (%.3f MB)",
-                               totalSizes.numDepthOffsets,
-                               totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quadsReceiver.stats.sizes.numDepthOffsets,
+                               quadsReceiver.stats.sizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -234,9 +183,10 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", loadFromFilesTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", transferTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", createMeshTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quadsReceiver.stats.loadFromFilesTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quadsReceiver.stats.decompressTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quadsReceiver.stats.transferTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quadsReceiver.stats.createMeshTime);
 
             ImGui::Separator();
 
@@ -245,7 +195,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::Button("Reload Proxies", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                reloadProxies();
+                quadsReceiver.loadFromFiles(dataPath, remoteCamera);
             }
 
             ImGui::End();

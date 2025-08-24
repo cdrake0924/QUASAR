@@ -15,7 +15,6 @@ using namespace quasar;
 
 BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const std::string& receiverURL)
     : receiverURL(receiverURL)
-    , streamer(receiverURL)
     , width((params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE) // Round up to nearest multiple of BC4_BLOCK_SIZE
     , height((params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE)
     , compressedSize((width / BC4_BLOCK_SIZE) * (height / BC4_BLOCK_SIZE))
@@ -41,6 +40,7 @@ BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const
 
     if (!receiverURL.empty()) {
         running = true;
+        streamer = std::make_unique<DataStreamerTCP>(receiverURL);
         dataSendingThread = std::thread(&BC4DepthStreamer::sendData, this);
     }
 #endif
@@ -200,7 +200,7 @@ void BC4DepthStreamer::sendData() {
         }
 
         // Send compressed data
-        streamer.send(compressedData);
+        streamer->send(compressedData);
 
         stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         stats.bitrateMbps = ((compressedSize * 8) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
@@ -209,5 +209,3 @@ void BC4DepthStreamer::sendData() {
     }
 }
 #endif
-
-using namespace quasar;

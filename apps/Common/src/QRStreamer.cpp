@@ -1,4 +1,4 @@
-#include <QRSimulator.h>
+#include <QRStreamer.h>
 
 using namespace quasar;
 

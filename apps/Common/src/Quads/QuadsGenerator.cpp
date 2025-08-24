@@ -84,7 +84,7 @@ void QuadsGenerator::generateInitialQuadMap(
         }
     }
 
-    genQuadMapShader.startTiming();
+    double startTime = timeutils::getTimeMicros();
 
     genQuadMapShader.bind();
     {
@@ -124,8 +124,7 @@ void QuadsGenerator::generateInitialQuadMap(
                               (gBufferSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
     genQuadMapShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-    genQuadMapShader.endTiming();
-    stats.timeToGenerateQuadsMs = genQuadMapShader.getElapsedTime();
+    stats.timeToGenerateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadsGenerator::simplifyQuadMaps(const PerspectiveCamera& remoteCamera, const glm::vec2& gBufferSize) {
@@ -141,7 +140,7 @@ void QuadsGenerator::simplifyQuadMaps(const PerspectiveCamera& remoteCamera, con
         }
     }
 
-    simplifyQuadMapShader.startTiming();
+    double startTime = timeutils::getTimeMicros();
 
     simplifyQuadMapShader.bind();
     {
@@ -197,8 +196,7 @@ void QuadsGenerator::simplifyQuadMaps(const PerspectiveCamera& remoteCamera, con
     }
     simplifyQuadMapShader.memoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-    simplifyQuadMapShader.endTiming();
-    stats.timeToSimplifyQuadsMs = simplifyQuadMapShader.getElapsedTime();
+    stats.timeToSimplifyQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
@@ -214,7 +212,7 @@ void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
         }
     }
 
-    gatherQuadsShader.startTiming();
+    double startTime = timeutils::getTimeMicros();
 
     gatherQuadsShader.bind();
     {
@@ -243,8 +241,7 @@ void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
     }
     gatherQuadsShader.memoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
-    gatherQuadsShader.endTiming();
-    stats.timeToGatherQuadsMs = gatherQuadsShader.getElapsedTime();
+    stats.timeToGatherQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadsGenerator::createProxies(

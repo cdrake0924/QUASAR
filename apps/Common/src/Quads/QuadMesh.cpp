@@ -6,7 +6,7 @@
 #ifndef __ANDROID__
 #define THREADS_PER_LOCALGROUP 16
 #else
-#define THREADS_PER_LOCALGROUP 32
+#define THREADS_PER_LOCALGROUP 8
 #endif
 
 using namespace quasar;
@@ -78,14 +78,13 @@ QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxNumPro
 
 QuadMesh::BufferSizes QuadMesh::getBufferSizes() const {
     BufferSizes bufferSizes;
-
     meshSizesBuffer.bind();
     meshSizesBuffer.getData(&bufferSizes);
     return bufferSizes;
 }
 
 void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isRefFrame) {
-    appendQuadsShader.startTiming();
+    double startTime = timeutils::getTimeMicros();
 
     appendQuadsShader.bind();
     {
@@ -107,14 +106,13 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
     appendQuadsShader.dispatch(((quadSet.getNumQuads() + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     appendQuadsShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    appendQuadsShader.endTiming();
-    stats.timeToAppendQuadsMs = appendQuadsShader.getElapsedTime();
+    stats.timeToAppendQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     fillQuadIndices(quadSet, gBufferSize);
 }
 
 void QuadMesh::fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferSize) {
-    fillQuadIndicesShader.startTiming();
+    double startTime = timeutils::getTimeMicros();
 
     fillQuadIndicesShader.bind();
     {
@@ -134,12 +132,11 @@ void QuadMesh::fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferS
     fillQuadIndicesShader.dispatch((MAX_NUM_PROXIES + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     fillQuadIndicesShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-    fillQuadIndicesShader.endTiming();
-    stats.timeToGatherQuadsMs = fillQuadIndicesShader.getElapsedTime();
+    stats.timeToGatherQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera) {
-    createQuadMeshShader.startTiming();
+    double startTime = timeutils::getTimeMicros();
 
     createQuadMeshShader.bind();
     {
@@ -175,6 +172,5 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
                                   (quadSet.getSize().y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
     createQuadMeshShader.memoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
 
-    createQuadMeshShader.endTiming();
-    stats.timeToCreateMeshMs = createQuadMeshShader.getElapsedTime();
+    stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
