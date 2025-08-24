@@ -106,8 +106,13 @@ void BC4DepthStreamer::copyFrameToCPU(pose_id_t poseID, void* cudaPtr) {
 }
 
 size_t BC4DepthStreamer::applyCodec() {
+    double startTime = timeutils::getTimeMicros();
+
     size_t compressedSize = codec.compress(data.data(), compressedData, data.size());
     compressedData.resize(compressedSize);
+
+    stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.compressionRatio = static_cast<float>(data.size()) / compressedSize;
     return compressedSize;
 }
 
@@ -149,13 +154,8 @@ void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
 
     stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    startTime = timeutils::getTimeMicros();
-
     // Compress
     applyCodec();
-
-    stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-    stats.compressionRatio = static_cast<float>(data.size()) / compressedSize;
 
     streamer.send(compressedData);
 #endif
@@ -188,10 +188,7 @@ void BC4DepthStreamer::sendData() {
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startCopyTime);
 
         // Compress even further
-        time_t startCompressTime = timeutils::getTimeMicros();
         size_t compressedSize = applyCodec();
-        stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startCompressTime);
-        stats.compressionRatio = static_cast<float>(compressedSize) / (width * height * sizeof(float));
 
         double elapsedTimeSec = timeutils::microsToSeconds(timeutils::getTimeMicros() - prevTime);
         if (elapsedTimeSec < (1.0f / targetFrameRate)) {

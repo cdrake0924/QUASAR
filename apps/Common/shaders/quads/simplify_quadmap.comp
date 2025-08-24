@@ -7,11 +7,11 @@ layout(std430, binding = 0) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
 };
 
-layout(std430, binding = 1) readonly buffer DepthBufferInput {
+layout(std430, binding = 1) readonly buffer DepthsBufferInput {
     float depthsInput[];
 };
 
-layout(std430, binding = 2) buffer OffsetsBufferInput {
+layout(std430, binding = 2) buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
@@ -378,19 +378,19 @@ void mergeQuadMapData(
 
     // If the merged quad was not already flattened, and the new merged quad is flattened,
     // Clear the depth offsets for the merged quad
-    if (!prevFlattened && flattened) {
-        uint size = 1u << mergedQuadMapData.size;
-        for (uint idx = 0u; idx < size * size; idx++) {
-            uint i = idx % size;
-            uint j = idx / size;
+    // if (!prevFlattened && flattened) {
+    //     uint size = 1u << mergedQuadMapData.size;
+    //     for (uint idx = 0u; idx < size * size; idx++) {
+    //         uint i = idx % size;
+    //         uint j = idx / size;
 
-            ivec2 depthOffsetPixelCoords = 2 * ivec2(mergedQuadMapData.offset) + ivec2(i, j);
-            imageStore(depthOffsetsBuffer, depthOffsetPixelCoords + ivec2(0, 0), vec4(0.0));
-            imageStore(depthOffsetsBuffer, depthOffsetPixelCoords + ivec2(1, 0), vec4(0.0));
-            imageStore(depthOffsetsBuffer, depthOffsetPixelCoords + ivec2(0, 1), vec4(0.0));
-            imageStore(depthOffsetsBuffer, depthOffsetPixelCoords + ivec2(1, 1), vec4(0.0));
-        }
-    }
+    //         ivec2 depthOffsetPixelCoords = 2 * ivec2(mergedQuadMapData.offset) + ivec2(i, j);
+    //         storeDepthOffsets(depthOffsetPixelCoords + ivec2(0, 0), vec4(0.0));
+    //         storeDepthOffsets(depthOffsetPixelCoords + ivec2(1, 0), vec4(0.0));
+    //         storeDepthOffsets(depthOffsetPixelCoords + ivec2(0, 1), vec4(0.0));
+    //         storeDepthOffsets(depthOffsetPixelCoords + ivec2(1, 1), vec4(0.0));
+    //     }
+    // }
 
     mergedQuadMapData.flattened = flattened;
     mergedQuadMapData.normal = newProxyPlane.normal;

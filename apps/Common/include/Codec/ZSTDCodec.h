@@ -15,7 +15,7 @@ public:
     ZSTDCodec(
             uint32_t compressionLevel = ZSTD_CLEVEL_DEFAULT,
             uint32_t compressionStrategy = ZSTD_dfast,
-            uint32_t numWorkers = std::thread::hardware_concurrency() / 4,
+            uint32_t numWorkers = 0,
             uint32_t chunkSize = BYTES_PER_MEGABYTE)
         : compressionCtx(ZSTD_createCCtx())
         , decompressionCtx(ZSTD_createDCtx())
@@ -23,8 +23,10 @@ public:
         ZSTD_CCtx_setParameter(compressionCtx, ZSTD_c_compressionLevel, compressionLevel);
         ZSTD_CCtx_setParameter(compressionCtx, ZSTD_c_strategy, compressionStrategy);
 
-        ZSTD_CCtx_setParameter(compressionCtx, ZSTD_c_nbWorkers, numWorkers);
-        ZSTD_CCtx_setParameter(compressionCtx, ZSTD_c_jobSize, chunkSize);
+        if (numWorkers > 0) {
+            ZSTD_CCtx_setParameter(compressionCtx, ZSTD_c_nbWorkers, numWorkers);
+            ZSTD_CCtx_setParameter(compressionCtx, ZSTD_c_jobSize, chunkSize);
+        }
     }
 
     ~ZSTDCodec() override {

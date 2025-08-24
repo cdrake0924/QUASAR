@@ -37,15 +37,15 @@ layout(std430, binding = 5) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
 };
 
-layout(std430, binding = 6) readonly buffer DepthBufferInput {
+layout(std430, binding = 6) readonly buffer DepthsBufferInput {
     float depthsInput[];
 };
 
-layout(std430, binding = 7) readonly buffer OffsetsBufferInput {
+layout(std430, binding = 7) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 8) readonly buffer quadIndicesMap {
+layout(std430, binding = 8) readonly buffer QuadIndicesMap {
     uint quadIndices[];
 };
 

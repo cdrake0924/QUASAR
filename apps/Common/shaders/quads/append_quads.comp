@@ -12,11 +12,11 @@ layout(std430, binding = 2) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
 };
 
-layout(std430, binding = 3) readonly buffer DepthBufferInput {
+layout(std430, binding = 3) readonly buffer DepthsBufferInput {
     float depthsInput[];
 };
 
-layout(std430, binding = 4) readonly buffer OffsetsBufferInput {
+layout(std430, binding = 4) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 

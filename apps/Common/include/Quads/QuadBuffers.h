@@ -52,7 +52,7 @@ private:
 #if defined(HAS_CUDA)
     CudaGLBuffer cudaBufferNormalSphericals;
     CudaGLBuffer cudaBufferDepths;
-    CudaGLBuffer cudaBuffermetadatas;
+    CudaGLBuffer cudaBufferMetadatas;
 #endif
 };
 

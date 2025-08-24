@@ -28,7 +28,7 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
 #if defined(HAS_CUDA)
     , cudaBufferNormalSphericals(normalSphericalsBuffer)
     , cudaBufferDepths(depthsBuffer)
-    , cudaBuffermetadatas(metadatasBuffer)
+    , cudaBufferMetadatas(metadatasBuffer)
 #endif
     , maxDataSize(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked))
 {}
@@ -56,7 +56,7 @@ size_t QuadBuffers::mapToCPU(std::vector<char>& outputData) {
     CHECK_CUDA_ERROR(cudaMemcpy(outputData.data() + bufferOffset, cudaPtr, numProxies * sizeof(float), cudaMemcpyDeviceToHost));
     bufferOffset += numProxies * sizeof(float);
 
-    cudaPtr = cudaBuffermetadatas.getPtr();
+    cudaPtr = cudaBufferMetadatas.getPtr();
     CHECK_CUDA_ERROR(cudaMemcpy(outputData.data() + bufferOffset, cudaPtr, numProxies * sizeof(uint), cudaMemcpyDeviceToHost));
     bufferOffset += numProxies * sizeof(uint);
 #else
@@ -96,7 +96,7 @@ size_t QuadBuffers::unmapFromCPU(const std::vector<char>& inputData) {
     CHECK_CUDA_ERROR(cudaMemcpy(cudaPtr, inputData.data() + bufferOffset, numProxies * sizeof(float), cudaMemcpyHostToDevice));
     bufferOffset += numProxies * sizeof(float);
 
-    cudaPtr = cudaBuffermetadatas.getPtr();
+    cudaPtr = cudaBufferMetadatas.getPtr();
     CHECK_CUDA_ERROR(cudaMemcpy(cudaPtr, inputData.data() + bufferOffset, numProxies * sizeof(uint), cudaMemcpyHostToDevice));
     bufferOffset += numProxies * sizeof(uint);
 #else

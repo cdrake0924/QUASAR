@@ -473,7 +473,7 @@ int main(int argc, char** argv) {
     });
 
     double totalDT = 0.0;
-    double lastRenderTime = -INFINITY;
+    double lasttotalRenderTime = -INFINITY;
     bool updateClient = !saveImages;
     app.onRender([&](double now, double dt) {
         // Handle mouse input
@@ -530,7 +530,7 @@ int main(int argc, char** argv) {
         }
         totalDT += dt;
 
-        if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
+        if (rerenderIntervalMs > 0.0 && (now - lasttotalRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
             sendRemoteFrame = true;
         }
         if (sendRemoteFrame) {
@@ -539,7 +539,7 @@ int main(int argc, char** argv) {
                 remoteScene.updateAnimations(totalDT);
                 totalDT = 0.0;
             }
-            lastRenderTime = now;
+            lasttotalRenderTime = now;
 
             double startTime = window->getTime();
             double totalRenderTime = 0.0;
@@ -566,12 +566,11 @@ int main(int argc, char** argv) {
             toneMapper.drawToRenderTarget(remoteRenderer, renderTarget);
             showDepthEffect.drawToRenderTarget(remoteRenderer, bc4DepthStreamerRT);
 
-            totalRenderTime += timeutils::secondsToMillis(window->getTime() - startTime);
+            totalRenderTime = timeutils::secondsToMillis(window->getTime() - startTime);
 
             // Compress depth map to BC4 format with ZSTD
-            startTime = window->getTime();
             compressedSize = bc4DepthStreamerRT.compress(true);
-            totalCompressTime += timeutils::secondsToMillis(window->getTime() - startTime);
+            totalCompressTime = bc4DepthStreamerRT.stats.timeToCompressMs;
 
             startTime = window->getTime();
             meshFromBC4Shader.startTiming();

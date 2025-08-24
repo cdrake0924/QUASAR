@@ -11,11 +11,11 @@ layout(std430, binding = 1) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
 };
 
-layout(std430, binding = 2) readonly buffer DepthBufferInput {
+layout(std430, binding = 2) readonly buffer DepthsBufferInput {
     float depthsInput[];
 };
 
-layout(std430, binding = 3) readonly buffer OffsetsBufferInput {
+layout(std430, binding = 3) readonly buffer MetadataBufferInput {
     uint metadatasInput[];
 };
 
@@ -27,7 +27,7 @@ layout(std430, binding = 5) writeonly buffer DepthsBufferOutput {
     float depthsOutput[];
 };
 
-layout(std430, binding = 6) writeonly buffer OffsetsBufferOutput {
+layout(std430, binding = 6) writeonly buffer MetadataBufferOutput {
     uint metadatasOutput[];
 };
 
