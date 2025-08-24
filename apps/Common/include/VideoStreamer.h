@@ -5,11 +5,9 @@
 #include <gst/app/gstappsrc.h>
 
 #include <vector>
-#include <queue>
 #include <atomic>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <Utils/TimeUtils.h>
 #include <RenderTargets/RenderTarget.h>
@@ -70,21 +68,21 @@ private:
         pose_id_t poseID;
         cudaArray_t buffer;
     };
-    std::queue<CudaBuffer> cudaBufferQueue;
+    moodycamel::ConcurrentQueue<CudaBuffer> cudaBufferQueue;
 #else
-    pose_id_t poseID = -1;
-    std::vector<uint8_t> openglFrameData;
+    struct CPUBuffer {
+        pose_id_t poseID;
+        std::vector<uint8_t> data;
+    };
+    moodycamel::ConcurrentQueue<CPUBuffer> cpuBufferQueue;
 #endif
 
     std::vector<uint8_t> rgbaVideoFrameData;
 
     std::thread videoStreamerThread;
-    std::mutex m;
-    std::condition_variable cv;
-    bool frameReady = false;
 
     std::atomic_bool videoReady = false;
-    bool shouldTerminate = false;
+    std::atomic_bool shouldTerminate = false;
 
     GstElement* pipeline = nullptr;
     GstElement* appsrc = nullptr;

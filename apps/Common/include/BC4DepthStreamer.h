@@ -3,8 +3,8 @@
 
 #include <iomanip>
 #include <thread>
-#include <queue>
 #include <atomic>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <RenderTargets/RenderTarget.h>
 #include <Networking/DataStreamerTCP.h>
@@ -76,12 +76,9 @@ private:
         pose_id_t poseID;
         void* buffer;
     };
-    std::queue<CudaBuffer> cudaBufferQueue;
+    moodycamel::ConcurrentQueue<CudaBuffer> cudaBufferQueue;
 
     std::thread dataSendingThread;
-    std::mutex m;
-    std::condition_variable cv;
-    bool dataReady = false;
 
     std::atomic_bool running{false};
 

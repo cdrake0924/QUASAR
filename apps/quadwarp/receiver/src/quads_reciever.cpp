@@ -90,12 +90,12 @@ int main(int argc, char** argv) {
     QuadsReceiver quadsReceiver(quadSet);
 
     // Create node and wireframe node
-    Node node(&quadsReceiver);
+    Node node(&quadsReceiver.mesh);
     node.frustumCulled = false;
     scene.addChildNode(&node);
 
     QuadMaterial wireframeMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
-    Node nodeWireframe(&quadsReceiver);
+    Node nodeWireframe(&quadsReceiver.mesh);
     nodeWireframe.frustumCulled = false;
     nodeWireframe.wireframe = true;
     nodeWireframe.visible = false;

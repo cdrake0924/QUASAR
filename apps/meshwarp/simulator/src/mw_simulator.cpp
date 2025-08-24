@@ -20,11 +20,7 @@
 
 #include <shaders_common.h>
 
-#ifndef __ANDROID__
-#define THREADS_PER_LOCALGROUP 16
-#else
 #define THREADS_PER_LOCALGROUP 32
-#endif
 
 using namespace quasar;
 

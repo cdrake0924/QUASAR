@@ -194,7 +194,8 @@ size_t FileIO::saveToTextFile(const std::string& filename, const std::string& da
     std::ofstream file;
     if (append) {
         file.open(filename, std::ios::app);
-    } else {
+    }
+    else {
         file.open(filename);
     }
     if (!file) {

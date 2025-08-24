@@ -5,17 +5,13 @@
 
 #include <shaders_common.h>
 
-#ifndef __ANDROID__
-#define THREADS_PER_LOCALGROUP 16
-#else
 #define THREADS_PER_LOCALGROUP 32
-#endif
 
 using namespace quasar;
 
 BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const std::string& receiverURL)
     : receiverURL(receiverURL)
-    , width((params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE) // Round up to nearest multiple of BC4_BLOCK_SIZE
+    , width((params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE)
     , height((params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE)
     , compressedSize((width / BC4_BLOCK_SIZE) * (height / BC4_BLOCK_SIZE))
     , data(sizeof(pose_id_t) + compressedSize * sizeof(BC4Block))
@@ -24,7 +20,8 @@ BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const
         .computeCodeSize = SHADER_COMMON_BC4_COMPRESS_COMP_len,
         .defines = {
             "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-    }})
+        }
+    })
     , RenderTarget(params)
 {
     resize(width, height);
@@ -35,6 +32,7 @@ BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const
         .numElems = compressedSize,
         .usage = GL_DYNAMIC_DRAW,
     });
+
 #if defined(HAS_CUDA)
     cudaBufferBc4.registerBuffer(bc4CompressedBuffer);
 
@@ -55,8 +53,6 @@ BC4DepthStreamer::~BC4DepthStreamer() {
 void BC4DepthStreamer::close() {
 #if defined(HAS_CUDA)
     running = false;
-    dataReady = true;
-    cv.notify_one();
 
     if (dataSendingThread.joinable()) {
         dataSendingThread.join();
@@ -82,18 +78,18 @@ size_t BC4DepthStreamer::compress(bool compress) {
         copyFrameToCPU();
         return applyCodec();
     }
+
     return 0;
 }
 
 void BC4DepthStreamer::copyFrameToCPU(pose_id_t poseID, void* cudaPtr) {
-    // Copy pose ID to the beginning of data
     std::memcpy(data.data(), &poseID, sizeof(pose_id_t));
 
-    // Copy compressed BC4 data from GPU to CPU
 #if defined(HAS_CUDA)
     if (cudaPtr == nullptr) {
         cudaPtr = cudaBufferBc4.getPtr();
     }
+
     CHECK_CUDA_ERROR(cudaMemcpy(data.data() + sizeof(pose_id_t),
                                 cudaPtr,
                                 compressedSize * sizeof(BC4Block),
@@ -113,15 +109,17 @@ size_t BC4DepthStreamer::applyCodec() {
 
     stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     stats.compressionRatio = static_cast<float>(data.size()) / compressedSize;
+
     return compressedSize;
 }
 
 void BC4DepthStreamer::saveToFile(const Path& filename) {
     double startTime = timeutils::getTimeMicros();
     FileIO::saveToBinaryFile(filename.str(), compressedData.data(), compressedData.size());
+
     spdlog::info("Saved {:.3f}MB in {:.3f}ms",
-                   static_cast<double>(compressedData.size()) / BYTES_PER_MEGABYTE,
-                     timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
+                 static_cast<double>(compressedData.size()) / BYTES_PER_MEGABYTE,
+                 timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
 }
 
 void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
@@ -129,24 +127,13 @@ void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
 
 #if defined(HAS_CUDA)
     void* cudaPtr = cudaBufferBc4.getPtr();
-
-    {
-        std::lock_guard<std::mutex> lock(m);
-        CudaBuffer newBuffer;
-        newBuffer.poseID = poseID;
-        newBuffer.buffer = cudaPtr;
-        cudaBufferQueue.push(newBuffer);
-        dataReady = true;
-    }
-    cv.notify_one();
+    cudaBufferQueue.enqueue({ poseID, cudaPtr });
 #else
     double startTime = timeutils::getTimeMicros();
 
-    // Ensure data buffer has correct size
     size_t fullSize = sizeof(pose_id_t) + compressedSize * sizeof(BC4Block);
     data.resize(fullSize);
 
-    // Copy data
     std::memcpy(data.data(), &poseID, sizeof(pose_id_t));
     bc4CompressedBuffer.bind();
     bc4CompressedBuffer.getData(data.data() + sizeof(pose_id_t));
@@ -154,10 +141,9 @@ void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
 
     stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    // Compress
     applyCodec();
 
-    streamer.send(compressedData);
+    streamer->send(compressedData);
 #endif
 }
 
@@ -166,28 +152,19 @@ void BC4DepthStreamer::sendData() {
     time_t prevTime = timeutils::getTimeMicros();
 
     while (running) {
-        std::unique_lock<std::mutex> lock(m);
-        cv.wait(lock, [this] { return dataReady; });
-
-        if (!running) break;
-
-        dataReady = false;
-        CudaBuffer cudaBufferStruct = cudaBufferQueue.front();
-        void* cudaPtr = cudaBufferStruct.buffer;
-        cudaBufferQueue.pop();
-
-        lock.unlock();
-
-        time_t startCopyTime = timeutils::getTimeMicros();
-        {
-            // Copy pose ID to the beginning of data
-            std::memcpy(data.data(), &cudaBufferStruct.poseID, sizeof(pose_id_t));
-            // Copy compressed BC4 data from GPU to CPU
-            copyFrameToCPU(cudaBufferStruct.poseID, cudaPtr);
+        CudaBuffer cudaBufferStruct;
+        if (!cudaBufferQueue.try_dequeue(cudaBufferStruct)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
         }
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startCopyTime);
 
-        // Compress even further
+        time_t startTransferTime = timeutils::getTimeMicros();
+
+        std::memcpy(data.data(), &cudaBufferStruct.poseID, sizeof(pose_id_t));
+        copyFrameToCPU(cudaBufferStruct.poseID, cudaBufferStruct.buffer);
+
+        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTime);
+
         size_t compressedSize = applyCodec();
 
         double elapsedTimeSec = timeutils::microsToSeconds(timeutils::getTimeMicros() - prevTime);
@@ -199,11 +176,10 @@ void BC4DepthStreamer::sendData() {
             );
         }
 
-        // Send compressed data
         streamer->send(compressedData);
 
         stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
-        stats.bitrateMbps = ((compressedSize * 8) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
+        stats.bitrateMbps = ((compressedSize * 8.0) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
 
         prevTime = timeutils::getTimeMicros();
     }

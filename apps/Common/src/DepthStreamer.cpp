@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-
 #include <DepthStreamer.h>
 
 using namespace quasar;
@@ -43,10 +42,6 @@ void DepthStreamer::close() {
 #if defined(HAS_CUDA)
     running = false;
 
-    // Send dummy to unblock thread
-    dataReady = true;
-    cv.notify_one();
-
     if (dataSendingThread.joinable()) {
         dataSendingThread.join();
     }
@@ -59,19 +54,11 @@ void DepthStreamer::sendFrame(pose_id_t poseID) {
     blitToRenderTarget(renderTargetCopy);
     unbind();
 
-    // Add cuda buffer to queue
     cudaGLImage.map();
     cudaArray_t cudaBuffer = cudaGLImage.getArrayMapped();
     cudaGLImage.unmap();
-    {
-        // Lock mutex
-        std::lock_guard<std::mutex> lock(m);
-        cudaBufferQueue.push({ poseID, cudaBuffer });
 
-        // Tell thread to send data
-        dataReady = true;
-    }
-    cv.notify_one();
+    cudaBufferQueue.enqueue({ poseID, cudaBuffer });
 #else
     this->poseID = poseID;
 
@@ -81,7 +68,7 @@ void DepthStreamer::sendFrame(pose_id_t poseID) {
     glReadPixels(0, 0, width, height, GL_RED, GL_UNSIGNED_SHORT, data.data() + sizeof(pose_id_t));
     unbind();
 
-    streamer.send(data);
+    streamer->send(data);
 #endif
 }
 
@@ -89,44 +76,35 @@ void DepthStreamer::sendFrame(pose_id_t poseID) {
 void DepthStreamer::sendData() {
     float prevTime = timeutils::getTimeMicros();
 
-    while (true) {
-        std::unique_lock<std::mutex> lock(m);
-        cv.wait(lock, [this] { return dataReady; });
-
-        if (running) {
-            dataReady = false;
-        }
-        else {
-            break;
+    while (running) {
+        CudaBuffer cudaBufferStruct;
+        if (!cudaBufferQueue.try_dequeue(cudaBufferStruct)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
         }
 
-        // Copy depth buffer to data
-        CudaBuffer cudaBufferStruct = cudaBufferQueue.front();
         cudaArray_t cudaBuffer = cudaBufferStruct.buffer;
         pose_id_t poseIDToSend = cudaBufferStruct.poseID;
 
-        cudaBufferQueue.pop();
+        time_t startTransferTime = timeutils::getTimeMicros();
 
-        lock.unlock();
+        std::memcpy(data.data(), &poseIDToSend, sizeof(pose_id_t));
 
-        time_t startCopyTime = timeutils::getTimeMicros();
-        {
-            std::memcpy(data.data(), &poseIDToSend, sizeof(pose_id_t));
-            CHECK_CUDA_ERROR(cudaMemcpy2DFromArray(data.data() + sizeof(pose_id_t), width * sizeof(GLushort),
-                                                   cudaBuffer,
-                                                   0, 0, width * sizeof(GLushort), height,
-                                                   cudaMemcpyDeviceToHost));
-        }
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startCopyTime);
+        CHECK_CUDA_ERROR(cudaMemcpy2DFromArray(data.data() + sizeof(pose_id_t),
+                                               width * sizeof(GLushort),
+                                               cudaBuffer,
+                                               0, 0,
+                                               width * sizeof(GLushort), height,
+                                               cudaMemcpyDeviceToHost));
+
+        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTime);
 
         double elapsedTimeSec = timeutils::microsToSeconds(timeutils::getTimeMicros() - prevTime);
         if (elapsedTimeSec < (1.0f / targetFrameRate)) {
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(
-                    (int)timeutils::secondsToMicros(1.0f / targetFrameRate - elapsedTimeSec)
-                )
-            );
+            std::this_thread::sleep_for(std::chrono::microseconds(
+                (int)timeutils::secondsToMicros(1.0f / targetFrameRate - elapsedTimeSec)));
         }
+
         stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         stats.bitrateMbps = ((data.size() + sizeof(pose_id_t)) * 8 / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
 

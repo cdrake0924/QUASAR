@@ -20,10 +20,6 @@ DataStreamerUDP::~DataStreamerUDP() {
 void DataStreamerUDP::close() {
     running = false;
 
-    // Send dummy packet to unblock thread
-    dataReady = true;
-    cv.notify_one();
-
     if (dataSendingThread.joinable()) {
         dataSendingThread.join();
     }
@@ -36,15 +32,9 @@ int DataStreamerUDP::send(const uint8_t* data) {
         packet.ID = packetID++;
         packet.dataID = dataID;
         packet.size = std::min(PACKET_DATA_SIZE_UDP, maxDataSize - i);
-        std::memcpy(packet.data, data + i, PACKET_DATA_SIZE_UDP);
+        std::memcpy(packet.data, data + i, packet.size);
 
-        {
-            std::lock_guard<std::mutex> lock(m);
-            packets.push(packet);
-
-            dataReady = true;
-        }
-        cv.notify_one();
+        packets.enqueue(packet);
     }
 
     dataID++;
@@ -57,25 +47,19 @@ int DataStreamerUDP::sendPacket(DataPacketUDP* packet) {
 }
 
 void DataStreamerUDP::sendData() {
-    while (true) {
-        std::unique_lock<std::mutex> lock(m);
-        cv.wait(lock, [this] { return dataReady; });
-
-        if (running) {
-            dataReady = false;
-        }
-        else {
-            break;
+    while (running) {
+        DataPacketUDP packet;
+        if (!packets.try_dequeue(packet)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
         }
 
-        DataPacketUDP packet = packets.front();
         int sent = sendPacket(&packet);
         if (sent < 0) {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                continue; // retry if the socket is non-blocking and send would block
+                continue;
             }
         }
-        packets.pop();
     }
 
     socket.close();

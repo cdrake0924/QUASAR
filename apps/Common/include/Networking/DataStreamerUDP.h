@@ -3,12 +3,9 @@
 
 #include <thread>
 #include <atomic>
-#include <mutex>
-#include <condition_variable>
-#include <queue>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <Utils/TimeUtils.h>
-
 #include <Networking/DataPacketUDP.h>
 #include <Networking/Socket.h>
 
@@ -31,15 +28,12 @@ private:
     SocketUDP socket;
 
     std::thread dataSendingThread;
-    std::mutex m;
-    std::condition_variable cv;
-    bool dataReady = false;
 
     std::atomic_bool running{false};
 
     packet_id_t dataID = 0;
 
-    std::queue<DataPacketUDP> packets;
+    moodycamel::ConcurrentQueue<DataPacketUDP> packets;
 
     int sendPacket(DataPacketUDP* packet);
     void sendData();

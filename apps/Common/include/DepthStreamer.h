@@ -2,11 +2,13 @@
 #define DEPTH_STREAMER_H
 
 #include <thread>
+#include <atomic>
+#include <vector>
+#include <memory>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <RenderTargets/RenderTarget.h>
-
 #include <Networking/DataStreamerTCP.h>
-
 #include <CameraPose.h>
 
 #if defined(HAS_CUDA)
@@ -56,13 +58,9 @@ private:
         pose_id_t poseID;
         cudaArray_t buffer;
     };
-    std::queue<CudaBuffer> cudaBufferQueue;
+    moodycamel::ConcurrentQueue<CudaBuffer> cudaBufferQueue;
 
     std::thread dataSendingThread;
-    std::mutex m;
-    std::condition_variable cv;
-    bool dataReady = false;
-
     std::atomic_bool running{false};
 
     void sendData();

@@ -9,7 +9,7 @@
 
 namespace quasar {
 
-class QuadsReceiver : public QuadMesh {
+class QuadsReceiver {
 public:
     struct Stats {
         uint totalTriangles = 0;
@@ -21,6 +21,7 @@ public:
     } stats;
 
     ReferenceFrame frame;
+    QuadMesh mesh;
 
     QuadsReceiver(QuadSet& quadSet)
         : quadSet(quadSet)
@@ -32,7 +33,7 @@ public:
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
         })
-        , QuadMesh(quadSet, colorTexture)
+        , mesh(quadSet, colorTexture)
         , uncompressedQuads(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
         , uncompressedOffsets(quadSet.depthOffsets.getSize().x * quadSet.depthOffsets.getSize().y * 4 * sizeof(uint16_t))
     {}
@@ -66,11 +67,11 @@ public:
         // Update mesh
         const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
         startTime = timeutils::getTimeMicros();
-        appendQuads(quadSet, gBufferSize);
-        createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
+        mesh.appendQuads(quadSet, gBufferSize);
+        mesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
         stats.createMeshTime = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        auto meshBufferSizes = getBufferSizes();
+        auto meshBufferSizes = mesh.getBufferSizes();
         stats.totalTriangles = meshBufferSizes.numIndices / 3;
         stats.sizes += sizes;
     }

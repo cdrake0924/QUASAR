@@ -41,7 +41,6 @@ VideoStreamer::VideoStreamer(
 
     gst_init(nullptr, nullptr);
 
-    // Parse host and port
     auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
     std::string encoderName;
@@ -79,7 +78,6 @@ VideoStreamer::VideoStreamer(
                  "do-timestamp", TRUE,
                  nullptr);
 
-    // Add pad probe to rtph264pay (pay0)
     GstElement* payloader = gst_bin_get_by_name(GST_BIN(pipeline), payloaderName.c_str());
     GstPad* srcPad = gst_element_get_static_pad(payloader, "src");
     gst_pad_add_probe(srcPad, GST_PAD_PROBE_TYPE_BUFFER,
@@ -103,10 +101,6 @@ VideoStreamer::VideoStreamer(
 
 VideoStreamer::~VideoStreamer() {
     shouldTerminate = true;
-    videoReady = false;
-
-    frameReady = true;
-    cv.notify_one();
 
     if (videoStreamerThread.joinable())
         videoStreamerThread.join();
@@ -142,26 +136,18 @@ void VideoStreamer::sendFrame(pose_id_t poseID) {
     blitToRenderTarget(*renderTargetCopy);
     unbind();
 
-    // Add cuda buffer to queue
     cudaGLImage.map();
     cudaArray_t cudaBuffer = cudaGLImage.getArrayMapped();
     cudaGLImage.unmap();
-    {
-        // Lock mutex
-        std::lock_guard<std::mutex> lock(m);
-        cudaBufferQueue.push({ poseID, cudaBuffer });
-#else
-    {
-        std::lock_guard<std::mutex> lock(m);
-        this->poseID = poseID;
 
-        bind();
-        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, openglFrameData.data());
-        unbind();
+    cudaBufferQueue.enqueue({ poseID, cudaBuffer });
+#else
+    bind();
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, openglFrameData.data());
+    unbind();
+
+    cpuBufferQueue.enqueue({ poseID, openglFrameData });
 #endif
-        frameReady = true;
-    }
-    cv.notify_one();
 }
 
 void VideoStreamer::packPoseIDIntoVideoFrame(pose_id_t poseID) {
@@ -183,24 +169,21 @@ void VideoStreamer::encodeAndSendFrames() {
     time_t prevTime = timeutils::getTimeMicros();
     time_t lastBitrateCalcTime = prevTime;
 
-    while (true) {
+    while (!shouldTerminate) {
         double frameIntervalSec = 1.0 / targetFrameRate;
         time_t frameStart = timeutils::getTimeMicros();
 
-        std::unique_lock<std::mutex> lock(m);
-        cv.wait(lock, [this]() { return frameReady || shouldTerminate; });
-
-        if (shouldTerminate) break;
-        frameReady = false;
-
-        time_t startCopyTime = timeutils::getTimeMicros();
 #if defined(HAS_CUDA)
-        auto cudaStruct = cudaBufferQueue.front();
+        CudaBuffer cudaStruct;
+        if (!cudaBufferQueue.try_dequeue(cudaStruct)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+
         pose_id_t poseIDToSend = cudaStruct.poseID;
         cudaArray_t cudaBuffer = cudaStruct.buffer;
-        cudaBufferQueue.pop();
 
-        lock.unlock();
+        time_t startTransferTime = timeutils::getTimeMicros();
 
         CHECK_CUDA_ERROR(cudaMemcpy2DFromArray(rgbaVideoFrameData.data(),
                                                videoWidth * 4,
@@ -209,19 +192,25 @@ void VideoStreamer::encodeAndSendFrames() {
                                                width * 4, height,
                                                cudaMemcpyDeviceToHost));
 #else
-        pose_id_t poseIDToSend = this->poseID;
+        CPUBuffer cpuStruct;
+        if (!cpuBufferQueue.try_dequeue(cpuStruct)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+
+        pose_id_t poseIDToSend = cpuStruct.poseID;
+        time_t startTransferTime = timeutils::getTimeMicros();
+
         for (int row = 0; row < height; ++row) {
             std::memcpy(&rgbaVideoFrameData[row * videoWidth * 4],
-                        &openglFrameData[row * width * 4],
+                        &cpuStruct.data[row * width * 4],
                         width * 4);
         }
-        lock.unlock();
 #endif
-        // Pack the pose ID into the video frame
-        packPoseIDIntoVideoFrame(poseIDToSend);
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startCopyTime);
 
-        // Push to GStreamer
+        packPoseIDIntoVideoFrame(poseIDToSend);
+        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTime);
+
         time_t startEncode = timeutils::getTimeMicros();
 
         GstBuffer* buffer = gst_buffer_new_allocate(nullptr, rgbaVideoFrameData.size(), nullptr);
@@ -247,7 +236,6 @@ void VideoStreamer::encodeAndSendFrames() {
 
         stats.timeToEncodeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startEncode);
 
-        // Bitrate calculation from pad probe
         time_t now = timeutils::getTimeMicros();
         time_t deltaSec = timeutils::microsToSeconds(now - lastBitrateCalcTime);
         if (deltaSec > 0.1) {
@@ -258,7 +246,6 @@ void VideoStreamer::encodeAndSendFrames() {
 
         stats.timeToSendMs = timeutils::microsToMillis(frameEnd - frameStart);
 
-        // sleep to maintain target frame rate
         double elapsedTimeSec = timeutils::microsToSeconds(frameEnd - frameStart);
         if (elapsedTimeSec < frameIntervalSec) {
             std::this_thread::sleep_for(std::chrono::microseconds(
@@ -269,3 +256,4 @@ void VideoStreamer::encodeAndSendFrames() {
         prevTime = timeutils::getTimeMicros();
     }
 }
+

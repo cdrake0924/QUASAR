@@ -18,6 +18,7 @@ DataStreamerTCP::DataStreamerTCP(std::string url, int maxDataSize, bool nonBlock
 }
 
 DataStreamerTCP::~DataStreamerTCP() {
+    shouldTerminate = true;
     ready = false;
 
     if (dataSendingThread.joinable()) {
@@ -30,19 +31,12 @@ int DataStreamerTCP::send(std::vector<char>& data, bool copy) {
         return -1;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(m);
-
-        if (copy) {
-            datas.push(data);
-        }
-        else {
-            datas.push(std::move(data));
-        }
-
-        dataReady = true;
+    if (copy) {
+        datas.enqueue(data);
     }
-    cv.notify_one();
+    else {
+        datas.enqueue(std::move(data));
+    }
 
     return data.size();
 }
@@ -51,7 +45,7 @@ void DataStreamerTCP::sendData() {
     socket.bind(url);
     socket.listen(1);
 
-    while (true) {
+    while (!shouldTerminate) {
         if ((clientSocketID = socket.accept()) < 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
@@ -61,49 +55,35 @@ void DataStreamerTCP::sendData() {
         }
     }
 
-    while (ready) {
-        std::unique_lock<std::mutex> lock(m);
-        cv.wait(lock, [this] { return dataReady; });
-
-        if (ready) {
-            dataReady = false;
+    while (ready && !shouldTerminate) {
+        std::vector<char> data;
+        if (!datas.try_dequeue(data)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
         }
-        else {
-            break;
-        }
-
-        std::vector<char> data = std::move(datas.front());
-        datas.pop();
 
         int startSendTime = timeutils::getTimeMicros();
 
-        // Add header
         int dataSize = data.size();
         std::vector<char> header(sizeof(dataSize));
         std::memcpy(header.data(), &dataSize, sizeof(dataSize));
 
-        // Send header
         int totalSent = 0;
         while (totalSent < header.size()) {
             int sent = socket.sendToClient(clientSocketID, header.data() + totalSent, header.size() - totalSent, 0);
             if (sent < 0) {
-                if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                    continue; // retry if the socket is non-blocking and send would block
-                }
+                if (errno == EWOULDBLOCK || errno == EAGAIN) continue;
             }
             else {
                 totalSent += sent;
             }
         }
 
-        // Send data
         totalSent = 0;
         while (totalSent < data.size()) {
             int sent = socket.sendToClient(clientSocketID, data.data() + totalSent, data.size() - totalSent, 0);
             if (sent < 0) {
-                if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                    continue; // retry if the socket is non-blocking and send would block
-                }
+                if (errno == EWOULDBLOCK || errno == EAGAIN) continue;
             }
             else {
                 totalSent += sent;
@@ -111,7 +91,7 @@ void DataStreamerTCP::sendData() {
         }
 
         stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startSendTime);
-        stats.bitrateMbps = ((sizeof(dataSize) + data.size() * 8) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
+        stats.bitrateMbps = ((sizeof(dataSize) + data.size() * 8.0) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
     }
 
     socket.close();

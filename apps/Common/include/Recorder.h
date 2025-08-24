@@ -11,14 +11,12 @@ extern "C" {
 }
 
 #include <thread>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
 #include <atomic>
 #include <chrono>
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <BS_thread_pool/BS_thread_pool.hpp>
 
@@ -109,11 +107,11 @@ private:
     std::atomic<bool> running{false};
     std::atomic<int> frameCount{0};
     std::unique_ptr<BS::thread_pool<>> saveThreadPool;
-    std::queue<FrameData> frameQueue;
-    std::mutex queueMutex;
+
+    moodycamel::ConcurrentQueue<FrameData> frameQueue;
+
     std::mutex cameraPathMutex;
     std::mutex swsMutex;
-    std::condition_variable queueCV;
 
     int64_t recordingStartTime;
 #if defined(HAS_CUDA)
