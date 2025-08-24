@@ -18,7 +18,7 @@
 #include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
-#include <QRStreamer.h>
+#include <QUASARStreamer.h>
 #include <HoleFiller.h>
 
 #include <PoseSendRecvSimulator.h>
@@ -60,9 +60,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (verbose) {
-        spdlog::set_level(spdlog::level::debug);
-    }
+    if (verbose) spdlog::set_level(spdlog::level::debug);
 
     // Parse size
     std::string sizeStr = args::get(sizeIn);
@@ -122,7 +120,7 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(remoteWindowSize);
     FrameGenerator frameGenerator(quadSet);
-    QRSimulator quasar(quadSet, maxLayersWideFOV, remoteRenderer, remoteScene, remoteCameraCenter, frameGenerator);
+    QUASARStreamer quasar(quadSet, maxLayersWideFOV, remoteRenderer, remoteScene, remoteCameraCenter, frameGenerator);
 
     quasar.addMeshesToScene(localScene);
 

@@ -4,7 +4,6 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
 #include <Path.h>
@@ -53,9 +52,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (verbose) {
-        spdlog::set_level(spdlog::level::debug);
-    }
+    if (verbose) spdlog::set_level(spdlog::level::debug);
 
     // Parse size
     std::string sizeStr = args::get(sizeIn);

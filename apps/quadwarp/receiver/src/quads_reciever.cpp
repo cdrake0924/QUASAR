@@ -6,10 +6,8 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
-#include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
@@ -38,9 +36,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (verbose) {
-        spdlog::set_level(spdlog::level::debug);
-    }
+    if (verbose) spdlog::set_level(spdlog::level::debug);
 
     // Parse size
     std::string sizeStr = args::get(sizeIn);
@@ -64,12 +60,6 @@ int main(int argc, char** argv) {
 
     Scene scene;
     PerspectiveCamera camera(windowSize);
-    PerspectiveCamera remoteCamera(windowSize);
-    remoteCamera.setPosition({ 0.0f, 3.0f, 10.0f });
-    remoteCamera.updateViewMatrix();
-
-    float remoteFOV = args::get(remoteFOVIn);
-    remoteCamera.setFovyDegrees(remoteFOV);
 
     // Post processing
     ToneMapper toneMapper(false);
@@ -87,15 +77,16 @@ int main(int argc, char** argv) {
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
     QuadSet quadSet(windowSize);
-    QuadsReceiver quadsReceiver(quadSet);
+    float remoteFOV = args::get(remoteFOVIn);
+    QuadsReceiver quadsReceiver(quadSet, remoteFOV);
 
     // Create node and wireframe node
-    Node node(&quadsReceiver.mesh);
+    Node node(&quadsReceiver.getMesh());
     node.frustumCulled = false;
     scene.addChildNode(&node);
 
     QuadMaterial wireframeMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
-    Node nodeWireframe(&quadsReceiver.mesh);
+    Node nodeWireframe(&quadsReceiver.getMesh());
     nodeWireframe.frustumCulled = false;
     nodeWireframe.wireframe = true;
     nodeWireframe.visible = false;
@@ -103,7 +94,7 @@ int main(int argc, char** argv) {
     scene.addChildNode(&nodeWireframe);
 
     // Initial load
-    quadsReceiver.loadFromFiles(dataPath, remoteCamera);
+    quadsReceiver.loadFromFiles(dataPath);
 
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
@@ -195,7 +186,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::Button("Reload Proxies", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                quadsReceiver.loadFromFiles(dataPath, remoteCamera);
+                quadsReceiver.loadFromFiles(dataPath);
             }
 
             ImGui::End();

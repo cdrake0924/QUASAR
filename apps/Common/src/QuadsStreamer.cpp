@@ -57,7 +57,7 @@ QuadsSimulator::QuadsSimulator(
         .magFilter = GL_NEAREST,
     })
     // We can use less vertices and indicies for the mask since it will be sparse
-    , resFrameMesh(quadSet, resFrameRT.colorTexture, MAX_NUM_PROXIES / 4)
+    , resFrameMesh(quadSet, resFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })

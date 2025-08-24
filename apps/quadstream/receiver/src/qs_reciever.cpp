@@ -6,28 +6,14 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
-#include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <Quads/QuadFrames.h>
-#include <Quads/QuadMesh.h>
+#include <QuadStreamReceiver.h>
 
 using namespace quasar;
-
-const std::vector<glm::vec3> offsets = {
-    glm::vec3(-1.0f, +1.0f, -1.0f), // Top-left
-    glm::vec3(+1.0f, +1.0f, -1.0f), // Top-right
-    glm::vec3(+1.0f, -1.0f, -1.0f), // Bottom-right
-    glm::vec3(-1.0f, -1.0f, -1.0f), // Bottom-left
-    glm::vec3(-1.0f, +1.0f, +1.0f), // Top-left
-    glm::vec3(+1.0f, +1.0f, +1.0f), // Top-right
-    glm::vec3(+1.0f, -1.0f, +1.0f), // Bottom-right
-    glm::vec3(-1.0f, -1.0f, +1.0f), // Bottom-left
-};
 
 const std::vector<glm::vec4> colors = {
     glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), // primary view color is yellow
@@ -98,38 +84,6 @@ int main(int argc, char** argv) {
     Scene scene;
     PerspectiveCamera camera(windowSize);
 
-    float remoteFOV = args::get(remoteFOVIn);
-    std::vector<PerspectiveCamera> remoteCameras; remoteCameras.reserve(maxViews);
-    for (int view = 0; view < maxViews; view++) {
-        remoteCameras.emplace_back(windowSize);
-        remoteCameras[view].setFovyDegrees(remoteFOV);
-    }
-    PerspectiveCamera& remoteCameraCenter = remoteCameras[0];
-    remoteCameraCenter.setPosition({ 0.0f, 3.0f, 10.0f });
-    remoteCameraCenter.updateViewMatrix();
-
-    float viewBoxSize = args::get(viewBoxSizeIn);
-    for (int view = 1; view < maxViews - 1; view++) {
-        const glm::vec3& offset = offsets[view - 1];
-        const glm::vec3& right = remoteCameraCenter.getRightVector();
-        const glm::vec3& up = remoteCameraCenter.getUpVector();
-        const glm::vec3& forward = remoteCameraCenter.getForwardVector();
-
-        glm::vec3 worldOffset =
-            right   * offset.x * viewBoxSize / 2.0f +
-            up      * offset.y * viewBoxSize / 2.0f +
-            forward * -offset.z * viewBoxSize / 2.0f;
-
-        remoteCameras[view].setViewMatrix(remoteCameraCenter.getViewMatrix());
-        remoteCameras[view].setPosition(remoteCameraCenter.getPosition() + worldOffset);
-        remoteCameras[view].updateViewMatrix();
-    }
-
-    // Make last camera have a larger fov
-    float remoteFOVWide = args::get(remoteFOVWideIn);
-    remoteCameras[maxViews-1].setFovyDegrees(remoteFOVWide);
-    remoteCameras[maxViews-1].setViewMatrix(remoteCameraCenter.getViewMatrix());
-
     // Post processing
     ToneMapper toneMapper(false);
 
@@ -145,42 +99,21 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
-    QuadSet::Sizes totalSizes{};
-    uint totalTriangles = 0;
-    double loadFromFilesTime = 0.0;
-    double transferTime = 0.0;
-    double createMeshTime = 0.0;
-
-    std::vector<Texture> colorTextures; colorTextures.reserve(maxViews);
-    TextureFileCreateParams params = {
-        .wrapS = GL_REPEAT,
-        .wrapT = GL_REPEAT,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
-        .flipVertically = true,
-    };
-    for (int view = 0; view < maxViews; view++) {
-        Path colorFileName = dataPath.appendToName("color" + std::to_string(view));
-        params.path = colorFileName.withExtension(".jpg");
-        colorTextures.emplace_back(params);
-    }
-
     QuadSet quadSet(windowSize);
+    float remoteFOV = args::get(remoteFOVIn);
+    float remoteFOVWide = args::get(remoteFOVWideIn);
+    float viewBoxSize = args::get(viewBoxSizeIn);
+    QuadStreamReceiver quadstreamReceiver(quadSet, maxViews, remoteFOV, remoteFOVWide, viewBoxSize);
 
-    std::vector<QuadMesh> meshes; meshes.reserve(maxViews);
-    std::vector<Node> nodes; nodes.reserve(maxViews);
-    std::vector<Node> nodeWireframes; nodeWireframes.reserve(maxViews);
-
+    // Create node and wireframe node
+    std::vector<Node> nodes(maxViews);
+    std::vector<Node> nodeWireframes(maxViews);
     for (int view = 0; view < maxViews; view++) {
-        // Create mesh
-        meshes.emplace_back(quadSet, colorTextures[view]);
-
-        // Create node and wireframe node
-        nodes.emplace_back(&meshes[view]);
+        nodes[view].setEntity(&quadstreamReceiver.getMesh(view));
         nodes[view].frustumCulled = false;
         scene.addChildNode(&nodes[view]);
 
-        nodeWireframes.emplace_back(&meshes[view]);
+        nodeWireframes[view].setEntity(&quadstreamReceiver.getMesh(view));
         nodeWireframes[view].frustumCulled = false;
         nodeWireframes[view].wireframe = true;
         nodeWireframes[view].visible = false;
@@ -188,44 +121,8 @@ int main(int argc, char** argv) {
         scene.addChildNode(&nodeWireframes[view]);
     }
 
-    std::vector<ReferenceFrame> frames(maxViews);
-
-    auto reloadData = [&]() {
-        totalTriangles = 0;
-        totalSizes = {};
-        loadFromFilesTime = 0.0;
-        transferTime = 0.0;
-        createMeshTime = 0.0;
-
-        for (int view = 0; view < maxViews; ++view) {
-            // Load texture from file (flip as per params)
-            Path colorPath = dataPath / ("color" + std::to_string(view) + ".jpg");
-            colorTextures[view].loadFromFile(colorPath.str(), true, false);
-
-            // Load quads and depth offsets
-            double startTime = window->getTime();
-            frames[view].loadFromFiles(dataPath, view);
-            loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
-
-            // Copy data to GPU
-            startTime = window->getTime();
-            auto sizes = quadSet.unmapFromCPU(frames[view].quads, frames[view].depthOffsets);
-            transferTime += quadSet.stats.timeToTransferMs;
-
-            // Update mesh
-            const glm::uvec2 gBufferSize(colorTextures[view].width, colorTextures[view].height);
-            meshes[view].appendQuads(quadSet, glm::vec2(gBufferSize));
-            meshes[view].createMeshFromProxies(quadSet, glm::vec2(gBufferSize), remoteCameras[view]);
-            createMeshTime += meshes[view].stats.timeToCreateMeshMs;
-
-            auto meshBufferSizes = meshes[view].getBufferSizes();
-            totalTriangles += meshBufferSizes.numIndices / 3;
-            totalSizes += sizes;
-        }
-    };
-
     // Initial load
-    reloadData();
+    quadstreamReceiver.loadFromFiles(dataPath);
 
     bool* showViews = new bool[maxViews];
     for (int i = 0; i < maxViews; ++i) {
@@ -274,12 +171,12 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            if (totalTriangles < 100000)
-                ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", totalTriangles);
-            else if (totalTriangles < 500000)
-                ImGui::TextColored(ImVec4(1,1,0,1), "Triangles Drawn: %d", totalTriangles);
+            if (quadstreamReceiver.stats.totalTriangles < 100000)
+                ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", quadstreamReceiver.stats.totalTriangles);
+            else if (quadstreamReceiver.stats.totalTriangles < 500000)
+                ImGui::TextColored(ImVec4(1,1,0,1), "Triangles Drawn: %d", quadstreamReceiver.stats.totalTriangles);
             else
-                ImGui::TextColored(ImVec4(1,0,0,1), "Triangles Drawn: %d", totalTriangles);
+                ImGui::TextColored(ImVec4(1,0,0,1), "Triangles Drawn: %d", quadstreamReceiver.stats.totalTriangles);
 
             if (renderStats.drawCalls < 200)
                 ImGui::TextColored(ImVec4(0,1,0,1), "Draw Calls: %d", renderStats.drawCalls);
@@ -289,11 +186,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quads: %ld (%.3f MB)",
-                               totalSizes.numQuads,
-                               totalSizes.quadsSize / BYTES_PER_MEGABYTE);
+                               quadstreamReceiver.stats.sizes.numQuads,
+                               quadstreamReceiver.stats.sizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %ld (%.3f MB)",
-                               totalSizes.numDepthOffsets,
-                               totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quadstreamReceiver.stats.sizes.numDepthOffsets,
+                               quadstreamReceiver.stats.sizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -309,9 +206,10 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", loadFromFilesTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", transferTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", createMeshTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quadstreamReceiver.stats.loadFromFilesTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quadstreamReceiver.stats.decompressTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quadstreamReceiver.stats.transferTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quadstreamReceiver.stats.createMeshTime);
 
             ImGui::Separator();
 
@@ -325,7 +223,7 @@ int main(int argc, char** argv) {
 
             const int columns = 3;
             for (int i = 0; i < maxViews; i++) {
-                ImGui::Checkbox(("Show Layer " + std::to_string(i)).c_str(), &showViews[i]);
+                ImGui::Checkbox(("Show View " + std::to_string(i)).c_str(), &showViews[i]);
                 if ((i + 1) % columns != 0) {
                     ImGui::SameLine();
                 }
@@ -334,7 +232,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::Button("Reload Data", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                reloadData();
+                quadstreamReceiver.loadFromFiles(dataPath);
             }
 
             ImGui::End();

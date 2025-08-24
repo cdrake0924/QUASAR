@@ -1,5 +1,5 @@
-#ifndef QS_SIMULATOR_H
-#define QS_SIMULATOR_H
+#ifndef QUADSTREAM_SIMULATOR_H
+#define QUADSTREAM_SIMULATOR_H
 
 #include <DepthMesh.h>
 #include <Quads/FrameGenerator.h>
@@ -8,12 +8,12 @@
 
 namespace quasar {
 
-class QSSimulator {
+class QuadStreamStreamer {
 public:
     uint maxViews;
 
-    uint maxVertices = MAX_NUM_PROXIES * NUM_SUB_QUADS * VERTICES_IN_A_QUAD;
-    uint maxIndices = MAX_NUM_PROXIES * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
+    uint maxVertices = MAX_QUADS_PER_MESH * NUM_SUB_QUADS * VERTICES_IN_A_QUAD;
+    uint maxIndices = MAX_QUADS_PER_MESH * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
     uint maxVerticesDepth;
 
     // Reference frame -- QS has no temporal compression (i.e. no residual frames)
@@ -45,14 +45,14 @@ public:
         QuadSet::Sizes totalSizes;
     } stats;
 
-    QSSimulator(
+    QuadStreamStreamer(
         QuadSet& quadSet,
         uint maxViews,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
         const PerspectiveCamera& remoteCamera,
         FrameGenerator& frameGenerator);
-    ~QSSimulator() = default;
+    ~QuadStreamStreamer() = default;
 
     uint getNumTriangles() const;
 
@@ -101,4 +101,4 @@ private:
 
 } // namespace quasar
 
-#endif // QS_SIMULATOR_H
+#endif // QUADSTREAM_SIMULATOR_H

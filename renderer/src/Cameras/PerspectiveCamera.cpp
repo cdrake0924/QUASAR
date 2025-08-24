@@ -8,6 +8,7 @@ PerspectiveCamera::PerspectiveCamera()
 
 PerspectiveCamera::PerspectiveCamera(float fovyDeg, float aspect, float near, float far) {
     setProjectionMatrix(glm::radians(fovyDeg), aspect, near, far);
+    updateViewMatrix();
     updateCameraOrientation();
 }
 
@@ -19,9 +20,9 @@ PerspectiveCamera::PerspectiveCamera(const glm::uvec2& windowSize)
     : PerspectiveCamera(DEFAULT_FOV_DEG, (float)windowSize.x / (float)windowSize.y, DEFAULT_NEAR, DEFAULT_FAR)
 {}
 
-
 PerspectiveCamera::PerspectiveCamera(const glm::mat4& proj) {
     setProjectionMatrix(proj);
+    updateViewMatrix();
     updateCameraOrientation();
 }
 

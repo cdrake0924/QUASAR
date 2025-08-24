@@ -6,15 +6,12 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
-#include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <Quads/QuadFrames.h>
-#include <Quads/QuadMesh.h>
+#include <QUASARReceiver.h>
 
 using namespace quasar;
 
@@ -56,9 +53,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (verbose) {
-        spdlog::set_level(spdlog::level::debug);
-    }
+    if (verbose) spdlog::set_level(spdlog::level::debug);
 
     // Parse size
     std::string sizeStr = args::get(sizeIn);
@@ -85,20 +80,6 @@ int main(int argc, char** argv) {
 
     Scene scene;
     PerspectiveCamera camera(windowSize);
-    PerspectiveCamera remoteCamera(windowSize);
-    remoteCamera.setPosition({ 0.0f, 3.0f, 10.0f });
-    remoteCamera.updateViewMatrix();
-
-    float remoteFOV = args::get(remoteFOVIn);
-    remoteCamera.setFovyDegrees(remoteFOV);
-
-    PerspectiveCamera remoteCameraWideFov(windowSize);
-    remoteCameraWideFov.setFovyDegrees(120.0f);
-    remoteCameraWideFov.setViewMatrix(remoteCamera.getViewMatrix());
-
-     // Make last camera have a larger fov
-    float remoteFOVWide = args::get(remoteFOVWideIn);
-    remoteCameraWideFov.setFovyDegrees(remoteFOVWide);
 
     // Post processing
     ToneMapper toneMapper(false);
@@ -115,42 +96,20 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
-    QuadSet::Sizes totalSizes{};
-    uint totalTriangles = 0;
-    double loadFromFilesTime = 0.0;
-    double transferTime = 0.0;
-    double createMeshTime = 0.0;
-
-    std::vector<Texture> colorTextures; colorTextures.reserve(maxLayers);
-    TextureFileCreateParams params = {
-        .wrapS = GL_REPEAT,
-        .wrapT = GL_REPEAT,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
-        .flipVertically = true,
-    };
-    for (int layer = 0; layer < maxLayers; layer++) {
-        Path colorFileName = dataPath.appendToName("color" + std::to_string(layer));
-        params.path = colorFileName.withExtension(".jpg");
-        colorTextures.emplace_back(params);
-    }
-
     QuadSet quadSet(windowSize);
+    float remoteFOV = args::get(remoteFOVIn);
+    float remoteFOVWide = args::get(remoteFOVWideIn);
+    QUASARReceiver quasarReceiver(quadSet, maxLayers, remoteFOV, remoteFOVWide);
 
-    std::vector<QuadMesh> meshes; meshes.reserve(maxLayers);
-    std::vector<Node> nodes; nodes.reserve(maxLayers);
-    std::vector<Node> nodeWireframes; nodeWireframes.reserve(maxLayers);
-
+    // Create node and wireframe node
+    std::vector<Node> nodes(maxLayers);
+    std::vector<Node> nodeWireframes(maxLayers);
     for (int layer = 0; layer < maxLayers; layer++) {
-        // Create mesh
-        meshes.emplace_back(quadSet, colorTextures[layer]);
-
-        // Create node and wireframe node
-        nodes.emplace_back(&meshes[layer]);
+        nodes[layer].setEntity(&quasarReceiver.getMesh(layer));
         nodes[layer].frustumCulled = false;
         scene.addChildNode(&nodes[layer]);
 
-        nodeWireframes.emplace_back(&meshes[layer]);
+        nodeWireframes[layer].setEntity(&quasarReceiver.getMesh(layer));
         nodeWireframes[layer].frustumCulled = false;
         nodeWireframes[layer].wireframe = true;
         nodeWireframes[layer].visible = false;
@@ -158,46 +117,8 @@ int main(int argc, char** argv) {
         scene.addChildNode(&nodeWireframes[layer]);
     }
 
-    std::vector<ReferenceFrame> frames(maxLayers);
-
-    auto reloadData = [&]() {
-        totalSizes = {};
-        totalTriangles = 0;
-        loadFromFilesTime = 0.0;
-        transferTime = 0.0;
-        createMeshTime = 0.0;
-
-        for (int layer = 0; layer < maxLayers; ++layer) {
-            // Load texture
-            Path colorPath = dataPath / ("color" + std::to_string(layer) + ".jpg");
-            colorTextures[layer].loadFromFile(colorPath.str(), true, false);
-
-            // Load quads and depth offsets
-            double startTime = window->getTime();
-            frames[layer].loadFromFiles(dataPath, layer);
-            loadFromFilesTime += timeutils::secondsToMillis(window->getTime() - startTime);
-
-            // Copy data to GPU
-            startTime = window->getTime();
-            auto sizes = quadSet.unmapFromCPU(frames[layer].quads, frames[layer].depthOffsets);
-            transferTime += quadSet.stats.timeToTransferMs;
-
-            // Update mesh
-            const glm::uvec2& gBufferSize = glm::uvec2(colorTextures[layer].width, colorTextures[layer].height);
-            auto& cameraToUse = (!disableWideFov && layer == maxLayers - 1) ? remoteCameraWideFov : remoteCamera;
-            meshes[layer].appendQuads(quadSet, gBufferSize);
-            meshes[layer].createMeshFromProxies(quadSet, gBufferSize, cameraToUse);
-            createMeshTime += meshes[layer].stats.timeToCreateMeshMs;
-
-
-            auto meshBufferSizes = meshes[layer].getBufferSizes();
-            totalTriangles += meshBufferSizes.numIndices / 3;
-            totalSizes += sizes;
-        }
-    };
-
     // Initial load
-    reloadData();
+    quasarReceiver.loadFromFiles(dataPath);
 
     bool* showLayers = new bool[maxLayers];
     for (int i = 0; i < maxLayers; ++i) {
@@ -247,12 +168,12 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            if (totalTriangles < 100000)
-                ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", totalTriangles);
-            else if (totalTriangles < 500000)
-                ImGui::TextColored(ImVec4(1,1,0,1), "Triangles Drawn: %d", totalTriangles);
+            if (quasarReceiver.stats.totalTriangles < 100000)
+                ImGui::TextColored(ImVec4(0,1,0,1), "Triangles Drawn: %d", quasarReceiver.stats.totalTriangles);
+            else if (quasarReceiver.stats.totalTriangles < 500000)
+                ImGui::TextColored(ImVec4(1,1,0,1), "Triangles Drawn: %d", quasarReceiver.stats.totalTriangles);
             else
-                ImGui::TextColored(ImVec4(1,0,0,1), "Triangles Drawn: %d", totalTriangles);
+                ImGui::TextColored(ImVec4(1,0,0,1), "Triangles Drawn: %d", quasarReceiver.stats.totalTriangles);
 
             if (renderStats.drawCalls < 200)
                 ImGui::TextColored(ImVec4(0,1,0,1), "Draw Calls: %d", renderStats.drawCalls);
@@ -262,11 +183,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quads: %ld (%.3f MB)",
-                               totalSizes.numQuads,
-                               totalSizes.quadsSize / BYTES_PER_MEGABYTE);
+                               quasarReceiver.stats.sizes.numQuads,
+                               quasarReceiver.stats.sizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %ld (%.3f MB)",
-                               totalSizes.numDepthOffsets,
-                               totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quasarReceiver.stats.sizes.numDepthOffsets,
+                               quasarReceiver.stats.sizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -282,9 +203,10 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", loadFromFilesTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", transferTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", createMeshTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quasarReceiver.stats.loadFromFilesTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quasarReceiver.stats.decompressTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quasarReceiver.stats.transferTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quasarReceiver.stats.createMeshTime);
 
             ImGui::Separator();
 
@@ -305,7 +227,7 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::Button("Reload Data", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                reloadData();
+                quasarReceiver.loadFromFiles(dataPath);
             }
 
             ImGui::End();

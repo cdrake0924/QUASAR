@@ -14,7 +14,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <QSStreamer.h>
+#include <QuadStreamStreamer.h>
 
 #include <PoseSendRecvSimulator.h>
 
@@ -64,9 +64,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (verbose) {
-        spdlog::set_level(spdlog::level::debug);
-    }
+    if (verbose) spdlog::set_level(spdlog::level::debug);
 
     // Parse size
     std::string sizeStr = args::get(sizeIn);
@@ -136,7 +134,7 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(remoteWindowSize);
     FrameGenerator frameGenerator(quadSet);
-    QSSimulator quadstream(quadSet, maxViews, remoteRenderer, remoteScene, remoteCameraCenter, frameGenerator);
+    QuadStreamStreamer quadstream(quadSet, maxViews, remoteRenderer, remoteScene, remoteCameraCenter, frameGenerator);
 
     quadstream.addMeshesToScene(localScene);
 

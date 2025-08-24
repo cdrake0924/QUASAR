@@ -21,10 +21,10 @@ public:
     } stats;
 
     ReferenceFrame frame;
-    QuadMesh mesh;
 
-    QuadsReceiver(QuadSet& quadSet)
+    QuadsReceiver(QuadSet& quadSet, float remoteFOV)
         : quadSet(quadSet)
+        , remoteCamera(quadSet.getSize())
         , colorTexture({
             .internalFormat = GL_RGB,
             .format = GL_RGB,
@@ -36,10 +36,22 @@ public:
         , mesh(quadSet, colorTexture)
         , uncompressedQuads(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
         , uncompressedOffsets(quadSet.depthOffsets.getSize().x * quadSet.depthOffsets.getSize().y * 4 * sizeof(uint16_t))
-    {}
+    {
+        remoteCamera.setFovyDegrees(remoteFOV);
+    }
     ~QuadsReceiver() = default;
 
-    void loadFromFiles(const Path& dataPath, const PerspectiveCamera& remoteCamera) {
+    QuadMesh& getMesh() {
+        return mesh;
+    }
+
+    PerspectiveCamera& getRemoteCamera() {
+        return remoteCamera;
+    }
+
+    void loadFromFiles(const Path& dataPath) {
+        stats = {};
+
         // Load texture
         std::string colorFileName = dataPath / "color.jpg";
 #ifndef GL_ES
@@ -52,36 +64,38 @@ public:
         // Load quads and depth offsets from files and decompress (nonblocking)
         double startTime = timeutils::getTimeMicros();
         frame.loadFromFiles(dataPath);
-        stats.loadFromFilesTime = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.loadFromFilesTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         startTime = timeutils::getTimeMicros();
         auto offsetsFuture = frame.decompressDepthOffsets(uncompressedOffsets);
         auto quadsFuture = frame.decompressQuads(uncompressedQuads);
         quadsFuture.get(); offsetsFuture.get();
-        stats.decompressTime = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.decompressTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // Copy data to GPU
         auto sizes = quadSet.unmapFromCPU(uncompressedQuads, uncompressedOffsets);
-        stats.transferTime = quadSet.stats.timeToTransferMs;
+        stats.transferTime += quadSet.stats.timeToTransferMs;
 
         // Update mesh
         const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
         startTime = timeutils::getTimeMicros();
         mesh.appendQuads(quadSet, gBufferSize);
         mesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
-        stats.createMeshTime = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.createMeshTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         auto meshBufferSizes = mesh.getBufferSizes();
-        stats.totalTriangles = meshBufferSizes.numIndices / 3;
+        stats.totalTriangles += meshBufferSizes.numIndices / 3;
         stats.sizes += sizes;
     }
 
 private:
     QuadSet& quadSet;
 
-    QuadMaterial quadMaterial;
+    PerspectiveCamera remoteCamera;
 
+    QuadMaterial quadMaterial;
     Texture colorTexture;
+    QuadMesh mesh;
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;

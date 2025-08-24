@@ -2,9 +2,9 @@
 #define DEPTH_VIDEO_TEXTURE_H
 
 #include <deque>
+#include <mutex>
 
 #include <Texture.h>
-
 #include <Networking/DataReceiverTCP.h>
 #include <Utils/TimeUtils.h>
 #include <CameraPose.h>

@@ -6,13 +6,13 @@
 #ifndef __ANDROID__
 #define THREADS_PER_LOCALGROUP 32
 #else
-#define THREADS_PER_LOCALGROUP 8
+#define THREADS_PER_LOCALGROUP 16
 #endif
 
 using namespace quasar;
 
-QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxNumProxies)
-    : maxProxies(maxNumProxies)
+QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxQuadsPerMesh)
+    : maxProxies(maxQuadsPerMesh)
     , currentQuadBuffers(maxProxies)
     , meshSizesBuffer({
         .target = GL_SHADER_STORAGE_BUFFER,
@@ -66,8 +66,8 @@ QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxNumPro
         }
     })
     , Mesh({
-        .maxVertices = maxNumProxies * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
-        .maxIndices = maxNumProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
+        .maxVertices = maxQuadsPerMesh * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
+        .maxIndices = maxQuadsPerMesh * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
         .vertexSize = sizeof(QuadVertex),
         .attributes = QuadVertex::getVertexInputAttributes(),
         .material = new QuadMaterial({ .baseColorTexture = &colorTexture }),
@@ -129,7 +129,7 @@ void QuadMesh::fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferS
 
         fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadIndicesMap);
     }
-    fillQuadIndicesShader.dispatch((MAX_NUM_PROXIES + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
+    fillQuadIndicesShader.dispatch((MAX_QUADS_PER_MESH + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     fillQuadIndicesShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     stats.timeToGatherQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);

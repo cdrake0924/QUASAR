@@ -1,8 +1,8 @@
-#include <QRStreamer.h>
+#include <QUASARStreamer.h>
 
 using namespace quasar;
 
-QRSimulator::QRSimulator(
+QUASARStreamer::QUASARStreamer(
         QuadSet& quadSet,
         uint maxLayers,
         DeferredRenderer& remoteRenderer,
@@ -50,7 +50,7 @@ QRSimulator::QRSimulator(
     })
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
-    , resFrameMesh(quadSet, resFrameRT.colorTexture, MAX_NUM_PROXIES / 4)
+    , resFrameMesh(quadSet, resFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
 {
@@ -130,8 +130,8 @@ QRSimulator::QRSimulator(
     }
 
     for (int layer = 0; layer < numHidLayers; layer++) {
-        // We can use less vertices and indicies for the hidden layers since they will be sparse
-        meshesHidLayer.emplace_back(quadSet, frameRTsHidLayer[layer].colorTexture, MAX_NUM_PROXIES / 4);
+        // We can use less vertices and indicies for the hidden layers since they will be sparser
+        meshesHidLayer.emplace_back(quadSet, frameRTsHidLayer[layer].colorTexture, MAX_QUADS_PER_MESH / 4);
 
         nodesHidLayer.emplace_back(&meshesHidLayer[layer]);
         nodesHidLayer[layer].frustumCulled = false;
@@ -161,7 +161,7 @@ QRSimulator::QRSimulator(
     sceneWideFov.addChildNode(&resFrameNode);
 }
 
-uint QRSimulator::getNumTriangles() const {
+uint QUASARStreamer::getNumTriangles() const {
     auto refMeshSizes = refFrameMeshes[currMeshIndex].getBufferSizes();
     uint numTriangles = refMeshSizes.numIndices / 3; // Each triangle has 3 indices
     for (const auto& mesh : meshesHidLayer) {
@@ -171,7 +171,7 @@ uint QRSimulator::getNumTriangles() const {
     return numTriangles;
 }
 
-void QRSimulator::addMeshesToScene(Scene& localScene) {
+void QUASARStreamer::addMeshesToScene(Scene& localScene) {
     for (int i = 0; i < meshScenes.size(); i++) {
         localScene.addChildNode(&refFrameNodesLocal[i]);
         localScene.addChildNode(&refFrameWireframesLocal[i]);
@@ -187,7 +187,7 @@ void QRSimulator::addMeshesToScene(Scene& localScene) {
     }
 }
 
-void QRSimulator::generateFrame(
+void QUASARStreamer::generateFrame(
     const PerspectiveCamera& remoteCameraCenter, const PerspectiveCamera& remoteCameraWideFov, Scene& remoteScene,
     DeferredRenderer& remoteRenderer,
     DepthPeelingRenderer& remoteRendererDP,
@@ -369,7 +369,7 @@ void QRSimulator::generateFrame(
     }
 }
 
-size_t QRSimulator::saveToFile(const Path& outputPath) {
+size_t QUASARStreamer::saveToFile(const Path& outputPath) {
     size_t totalOutputSize = 0;
     for (int layer = 0; layer < maxLayers; layer++) {
         // Save color

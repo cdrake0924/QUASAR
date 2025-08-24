@@ -2,6 +2,7 @@
 #define DATA_RECEIVER_TCP_H
 
 #include <vector>
+#include <atomic>
 #include <thread>
 #include <string>
 #include <functional>

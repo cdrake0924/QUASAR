@@ -1,8 +1,8 @@
-#include <QSStreamer.h>
+#include <QuadStreamStreamer.h>
 
 using namespace quasar;
 
-QSSimulator::QSSimulator(
+QuadStreamStreamer::QuadStreamStreamer(
         QuadSet& quadSet,
         uint maxViews,
         DeferredRenderer& remoteRenderer,
@@ -64,7 +64,8 @@ QSSimulator::QSSimulator(
         copyRTs.emplace_back(rtParams);
 
         // We can use less vertices and indicies for the additional views since they will be sparser
-        refFrameMeshes.emplace_back(quadSet, refFrameRTs[view].colorTexture, MAX_NUM_PROXIES / (view == 0 || view != maxViews - 1 ? 1 : 4));
+        uint maxProxies = (view == 0 || view == maxViews - 1) ? MAX_QUADS_PER_MESH : MAX_QUADS_PER_MESH / 4;
+        refFrameMeshes.emplace_back(quadSet, refFrameRTs[view].colorTexture, maxProxies);
         refFrameNodesLocal.emplace_back(&refFrameMeshes[view]);
         refFrameNodesLocal[view].frustumCulled = false;
 
@@ -87,7 +88,7 @@ QSSimulator::QSSimulator(
     }
 }
 
-uint QSSimulator::getNumTriangles() const {
+uint QuadStreamStreamer::getNumTriangles() const {
     uint numTriangles = 0;
     for (const auto& mesh : refFrameMeshes) {
         auto size = mesh.getBufferSizes();
@@ -96,7 +97,7 @@ uint QSSimulator::getNumTriangles() const {
     return numTriangles;
 }
 
-void QSSimulator::addMeshesToScene(Scene& localScene) {
+void QuadStreamStreamer::addMeshesToScene(Scene& localScene) {
     for (int view = 0; view < maxViews; view++) {
         localScene.addChildNode(&refFrameNodesLocal[view]);
         localScene.addChildNode(&refFrameWireframesLocal[view]);
@@ -104,7 +105,7 @@ void QSSimulator::addMeshesToScene(Scene& localScene) {
     }
 }
 
-void QSSimulator::generateFrame(
+void QuadStreamStreamer::generateFrame(
     const std::vector<PerspectiveCamera> remoteCameras, Scene& remoteScene,
     DeferredRenderer& remoteRenderer,
     bool showNormals, bool showDepth)
@@ -188,7 +189,7 @@ void QSSimulator::generateFrame(
     }
 }
 
-size_t QSSimulator::saveToFile(const Path& outputPath) {
+size_t QuadStreamStreamer::saveToFile(const Path& outputPath) {
     size_t totalOutputSize = 0;
     for (int view = 0; view < maxViews; view++) {
         // Save color

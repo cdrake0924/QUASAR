@@ -9,12 +9,12 @@
 
 namespace quasar {
 
-class QRSimulator {
+class QUASARStreamer {
 public:
     uint maxLayers;
 
-    uint maxVertices = MAX_NUM_PROXIES * NUM_SUB_QUADS * VERTICES_IN_A_QUAD;
-    uint maxIndices = MAX_NUM_PROXIES * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
+    uint maxVertices = MAX_QUADS_PER_MESH * NUM_SUB_QUADS * VERTICES_IN_A_QUAD;
+    uint maxIndices = MAX_QUADS_PER_MESH * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
     uint maxVerticesDepth;
 
     // Reference frame
@@ -68,14 +68,14 @@ public:
         QuadSet::Sizes totalSizes;
     } stats;
 
-    QRSimulator(
+    QUASARStreamer(
         QuadSet& quadSet,
         uint maxLayers,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
         const PerspectiveCamera& remoteCamera,
         FrameGenerator& frameGenerator);
-    ~QRSimulator() = default;
+    ~QUASARStreamer() = default;
 
     uint getNumTriangles() const;
 

@@ -12,7 +12,7 @@
 #ifndef __ANDROID__
 #define THREADS_PER_LOCALGROUP 32
 #else
-#define THREADS_PER_LOCALGROUP 8
+#define THREADS_PER_LOCALGROUP 16
 #endif
 
 namespace quasar {
