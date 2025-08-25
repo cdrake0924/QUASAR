@@ -54,12 +54,7 @@ public:
 
         // Load texture
         std::string colorFileName = dataPath / "color.jpg";
-#ifndef GL_ES
-        bool gammaCorrected = false;
-#else
-        bool gammaCorrected = true;
-#endif
-        colorTexture.loadFromFile(colorFileName, true, gammaCorrected);
+        colorTexture.loadFromFile(colorFileName, true, false);
 
         // Load quads and depth offsets from files and decompress (nonblocking)
         double startTime = timeutils::getTimeMicros();

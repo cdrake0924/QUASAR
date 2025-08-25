@@ -216,15 +216,21 @@ struct GraphicsPipeline {
             glDisable(GL_POLYGON_OFFSET_FILL);
         }
 
-#ifdef GL_CORE
         // SRGB Framebuffer Configuration
         if (rasterState.sRGB) {
+#ifdef GL_CORE
             glEnable(GL_FRAMEBUFFER_SRGB);
+#else
+            glEnable(GL_FRAMEBUFFER_SRGB_EXT);
+#endif
         }
         else {
+#ifdef GL_CORE
             glDisable(GL_FRAMEBUFFER_SRGB);
-        }
+#else
+            glDisable(GL_FRAMEBUFFER_SRGB_EXT);
 #endif
+        }
 
         // Color Write Mask Configuration
         glColorMask(writeMaskState.red, writeMaskState.green, writeMaskState.blue, writeMaskState.alpha);

@@ -89,12 +89,7 @@ public:
         for (int view = 0; view < maxViews; view++) {
             // Load texture
             Path colorFileName = dataPath / ("color" + std::to_string(view) + ".jpg");
-#ifndef GL_ES
-            bool gammaCorrected = false;
-#else
-        bool gammaCorrected = true;
-#endif
-            colorTextures[view].loadFromFile(colorFileName, true, gammaCorrected);
+            colorTextures[view].loadFromFile(colorFileName, true, false);
 
             // Load quads and depth offsets from files and decompress (nonblocking)
             double startTime = timeutils::getTimeMicros();
