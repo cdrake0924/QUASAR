@@ -45,9 +45,11 @@ VideoStreamer::VideoStreamer(
 
     std::string encoderName;
 #if defined(HAS_CUDA)
-        encoderName = "nvh264enc preset=4 rc-mode=cbr zerolatency=true";
+    encoderName = "nvh264enc preset=4 rc-mode=cbr zerolatency=true "
+                  "gop-size=" + std::to_string(targetFrameRate);
 #else
-        encoderName = "x264enc";
+    encoderName = "x264enc speed-preset=superfast tune=zerolatency "
+                  "key-int-max=" + std::to_string(targetFrameRate);
 #endif
 
     int bitrateKbps = targetBitRate / 1000;

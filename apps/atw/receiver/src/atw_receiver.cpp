@@ -332,7 +332,5 @@ int main(int argc, char** argv) {
     // Run app loop (blocking)
     app.run();
 
-    spdlog::info("Exiting...");
-
     return 0;
 }

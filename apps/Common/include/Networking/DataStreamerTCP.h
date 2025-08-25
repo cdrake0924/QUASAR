@@ -1,6 +1,7 @@
 #ifndef DATA_STREAMER_TCP_H
 #define DATA_STREAMER_TCP_H
 
+#include <vector>
 #include <thread>
 #include <atomic>
 #include <concurrentqueue/concurrentqueue.h>

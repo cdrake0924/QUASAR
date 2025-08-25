@@ -4,10 +4,11 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 
-#include <vector>
+#include <deque>
 #include <atomic>
 #include <thread>
-#include <concurrentqueue/concurrentqueue.h>
+#include <mutex>
+#include <condition_variable>
 
 #include <Utils/TimeUtils.h>
 #include <Texture.h>
@@ -57,15 +58,14 @@ private:
     bool shouldTerminate = false;
 
     std::thread videoReceiverThread;
+    std::mutex m;
+    std::condition_variable cv;
 
     struct FrameData {
         pose_id_t poseID;
-        std::vector<char> buffer;
+        std::vector<char> buffer; // raw RGB frame
     };
-    moodycamel::ConcurrentQueue<FrameData> frameQueue;
-
-    FrameData latestFrame;
-    std::vector<FrameData> frameBuffer;
+    std::deque<FrameData> frames;
 
     GstElement* pipeline = nullptr;
     GstElement* appsink = nullptr;

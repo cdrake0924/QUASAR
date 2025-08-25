@@ -36,6 +36,7 @@ VideoTexture::VideoTexture(
     GST_PLUGIN_STATIC_REGISTER(playback);
 #endif
 
+    // Parse host and port
     auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
     std::string decoderName = "avdec_h264";
@@ -86,6 +87,7 @@ VideoTexture::VideoTexture(
 
 VideoTexture::~VideoTexture() {
     shouldTerminate = true;
+    videoReady = false;
 
     if (videoReceiverThread.joinable())
         videoReceiverThread.join();
@@ -97,7 +99,9 @@ VideoTexture::~VideoTexture() {
 }
 
 pose_id_t VideoTexture::getLatestPoseID() {
-    return latestFrame.poseID;
+    std::lock_guard<std::mutex> lock(m);
+    if (frames.empty()) return -1;
+    return frames.back().poseID;
 }
 
 void VideoTexture::resize(uint width, uint height) {
@@ -125,24 +129,33 @@ void VideoTexture::receiveFrame() {
     while (!shouldTerminate) {
         time_t frameStart = timeutils::getTimeMicros();
 
+        // Get a sample from appsink
         sample = gst_app_sink_try_pull_sample(GST_APP_SINK(appsink), GST_SECOND / 2);
         if (!sample) continue;
 
+        // Get video dimensions from the sample
         GstCaps* caps = gst_sample_get_caps(sample);
         GstStructure* s = gst_caps_get_structure(caps, 0);
         gst_structure_get_int(s, "width", (int*)&videoWidth);
         gst_structure_get_int(s, "height", (int*)&videoHeight);
 
+        // Get the buffer from the sample
         buffer = gst_sample_get_buffer(sample);
         if (!gst_buffer_map(buffer, &map, GST_MAP_READ)) {
             gst_sample_unref(sample);
             continue;
         }
 
+        // Read the pose ID from the frame
         pose_id_t poseID = unpackPoseIDFromFrame(map.data, videoWidth, videoHeight);
         std::vector<char> frameData(map.data, map.data + map.size);
 
-        frameQueue.enqueue({ poseID, std::move(frameData) });
+        {
+            std::unique_lock<std::mutex> lock(m);
+            frames.push_back({poseID, std::move(frameData)});
+            if (frames.size() > maxQueueSize)
+                frames.pop_front();
+        }
 
         gst_buffer_unmap(buffer, &map);
         gst_sample_unref(sample);
@@ -152,6 +165,7 @@ void VideoTexture::receiveFrame() {
 
         stats.timeToReceiveMs = timeutils::microsToMillis(frameEnd - frameStart);
 
+        // Bitrate calculation from pad probe
         time_t now = timeutils::getTimeMicros();
         time_t deltaSec = timeutils::microsToSeconds(now - lastBitrateCalcTime);
         if (deltaSec > 0.1) {
@@ -173,7 +187,7 @@ pose_id_t VideoTexture::unpackPoseIDFromFrame(const uint8_t* data, int width, in
         int votes = 0;
         for (int j = 0; j < numVotes; j++) {
             int index = j * width * 3 + (width - 1 - i) * 3;
-            uint8_t value = data[index];
+            uint8_t value = data[index]; // Red channel
             if (value > 127)
                 votes++;
         }
@@ -184,31 +198,23 @@ pose_id_t VideoTexture::unpackPoseIDFromFrame(const uint8_t* data, int width, in
 }
 
 pose_id_t VideoTexture::draw(pose_id_t poseID) {
-    if (!videoReady)
+    std::lock_guard<std::mutex> lock(m);
+    if (!videoReady || frames.empty())
         return -1;
 
-    FrameData frame;
-    bool found = false;
-
-    frameBuffer.clear();
-    while (frameQueue.try_dequeue(frame)) {
-        frameBuffer.push_back(frame);
-        if (poseID != -1 && frame.poseID == poseID) {
-            latestFrame = frame;
-            found = true;
+    FrameData& frameData = frames.back();
+    if (poseID != -1) {
+        for (auto& f : frames) {
+            if (f.poseID == poseID) {
+                frameData = f;
+                break;
+            }
         }
     }
 
-    if (!frameBuffer.empty() && (poseID == -1 || !found)) {
-        latestFrame = frameBuffer.back();
-    }
-
-    if (latestFrame.buffer.empty())
-        return -1;
-
     glPixelStorei(GL_UNPACK_ROW_LENGTH, videoWidth);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, latestFrame.buffer.data());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, frameData.buffer.data());
 
-    prevPoseID = latestFrame.poseID;
-    return latestFrame.poseID;
+    prevPoseID = frameData.poseID;
+    return frameData.poseID;
 }

@@ -51,7 +51,11 @@ private:
     int targetFrameRate;
     int targetBitRate;
 
+#if defined(HAS_CUDA)
+    std::string format = "NV12";
+#else
     std::string format = "I420";
+#endif
     std::string appSrcName = "oglsrc0";
     std::string payloaderName = "pay0";
 
@@ -75,6 +79,8 @@ private:
         std::vector<uint8_t> data;
     };
     moodycamel::ConcurrentQueue<CPUBuffer> cpuBufferQueue;
+
+    std::vector<uint8_t> openglFrameData;
 #endif
 
     std::vector<uint8_t> rgbaVideoFrameData;
