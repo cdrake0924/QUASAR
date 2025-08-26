@@ -13,7 +13,7 @@ class QuadStreamReceiver {
 public:
     struct Stats {
         uint totalTriangles = 0;
-        double loadFromFilesTime = 0.0;
+        double loadTime = 0.0;
         double decompressTime = 0.0;
         double transferTime = 0.0;
         double createMeshTime = 0.0;
@@ -85,7 +85,7 @@ public:
     }
 
     void loadFromFiles(const Path& dataPath) {
-        stats = {};
+        stats = { 0 };
         for (int view = 0; view < maxViews; view++) {
             // Load texture
             Path colorFileName = dataPath / ("color" + std::to_string(view) + ".jpg");
@@ -94,7 +94,7 @@ public:
             // Load quads and depth offsets from files and decompress (nonblocking)
             double startTime = timeutils::getTimeMicros();
             frames[view].loadFromFiles(dataPath, view);
-            stats.loadFromFilesTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+            stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             startTime = timeutils::getTimeMicros();
             auto offsetsFuture = frames[view].decompressDepthOffsets(uncompressedOffsets);

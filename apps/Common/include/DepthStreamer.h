@@ -60,8 +60,8 @@ private:
     };
     moodycamel::ConcurrentQueue<CudaBuffer> cudaBufferQueue;
 
-    std::thread dataSendingThread;
     std::atomic_bool running{false};
+    std::thread dataSendingThread;
 
     void sendData();
 #else

@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(remoteWindowSize);
     FrameGenerator frameGenerator(quadSet);
-    QuadsSimulator quadwarp(quadSet, remoteRenderer, remoteScene, remoteCamera, frameGenerator);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, remoteCamera, frameGenerator);
 
     // Add meshes to local scene
     quadwarp.addMeshesToScene(localScene);
@@ -135,7 +135,6 @@ int main(int argc, char** argv) {
         cameraAnimator.copyPoseToCamera(remoteCamera);
     }
 
-    bool saveToFile = false;
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
@@ -172,7 +171,7 @@ int main(int argc, char** argv) {
         static bool showMeshCaptureWindow = false;
         static bool showFramePreviewWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -367,12 +366,12 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path filename = (outputPath / fileNameBase).appendToName("." + time);
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, saveToHDR);
+                recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
             ImGui::End();
@@ -429,10 +428,7 @@ int main(int argc, char** argv) {
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
             if (ImGui::Button("Save Proxies")) {
-                preventCopyingLocalPose = true;
-                sendReferenceFrame = true;
-                runAnimations = false;
-                saveToFile = true;
+                quadwarp.writeToFile(outputPath);
             }
 
             ImGui::End();
@@ -564,15 +560,9 @@ int main(int argc, char** argv) {
                                                   quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
             spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
 
-            // Save to file if requested
-            if (saveToFile) {
-                quadwarp.saveToFile(outputPath);
-            }
-
             preventCopyingLocalPose = false;
             sendReferenceFrame = false;
             sendResidualFrame = false;
-            saveToFile = false;
         }
 
         poseSendRecvSimulator.update(now);

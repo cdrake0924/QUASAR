@@ -242,13 +242,13 @@ public:
 
     void saveColorAsPNG(const std::string& path) {
         bind();
-        albedoTexture.saveToPNG(path);
+        albedoTexture.writeToPNG(path);
         unbind();
     }
 
     void saveColorAsHDR(const std::string& path) {
         bind();
-        albedoTexture.saveToHDR(path);
+        albedoTexture.writeToHDR(path);
         unbind();
     }
 };

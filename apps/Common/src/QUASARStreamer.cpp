@@ -369,7 +369,7 @@ void QUASARStreamer::generateFrame(
     }
 }
 
-size_t QUASARStreamer::saveToFile(const Path& outputPath) {
+size_t QUASARStreamer::writeToFile(const Path& outputPath) {
     size_t totalOutputSize = 0;
     for (int layer = 0; layer < maxLayers; layer++) {
         // Save color
@@ -377,7 +377,7 @@ size_t QUASARStreamer::saveToFile(const Path& outputPath) {
         copyRTs[layer].saveColorAsJPG(colorFileName.withExtension(".jpg"));
 
         // Save proxies
-        totalOutputSize += referenceFrames[layer].saveToFiles(outputPath, layer);
+        totalOutputSize += referenceFrames[layer].writeToFiles(outputPath, layer);
     }
     return totalOutputSize;
 }

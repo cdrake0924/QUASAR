@@ -13,7 +13,7 @@ class QUASARReceiver {
 public:
     struct Stats {
         uint totalTriangles = 0;
-        double loadFromFilesTime = 0.0;
+        double loadTime = 0.0;
         double decompressTime = 0.0;
         double transferTime = 0.0;
         double createMeshTime = 0.0;
@@ -69,7 +69,7 @@ public:
     }
 
     void loadFromFiles(const Path& dataPath) {
-        stats = {};
+        stats = { 0 };
         for (int layer = 0; layer < maxLayers; layer++) {
             // Load texture
             Path colorFileName = dataPath / ("color" + std::to_string(layer) + ".jpg");
@@ -78,7 +78,7 @@ public:
             // Load quads and depth offsets from files and decompress (nonblocking)
             double startTime = timeutils::getTimeMicros();
             frames[layer].loadFromFiles(dataPath, layer);
-            stats.loadFromFilesTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+            stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             startTime = timeutils::getTimeMicros();
             auto offsetsFuture = frames[layer].decompressDepthOffsets(uncompressedOffsets);

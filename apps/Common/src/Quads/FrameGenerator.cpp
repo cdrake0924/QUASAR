@@ -14,7 +14,7 @@ void FrameGenerator::createReferenceFrame(
     ReferenceFrame& resultFrame,
     bool compress)
 {
-    stats = {};
+    stats = { 0 };
 
     const glm::vec2 gBufferSize = glm::vec2(referenceFrameRT.width, referenceFrameRT.height);
 
@@ -128,7 +128,7 @@ void FrameGenerator::createResidualFrame(
     bool compress)
 {
     double timeToUpdateRTsMs = stats.timeToUpdateRTsMs;
-    stats = {};
+    stats = { 0 };
     stats.timeToUpdateRTsMs = timeToUpdateRTsMs;
 
     const glm::vec2 gBufferSize = glm::vec2(resFrameRT.width, resFrameRT.height);

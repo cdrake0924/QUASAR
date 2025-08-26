@@ -63,7 +63,7 @@ public:
         DeferredRenderer& remoteRenderer,
         bool showNormals = false, bool showDepth = false);
 
-    size_t saveToFile(const Path& outputPath);
+    size_t writeToFile(const Path& outputPath);
 
 private:
     const std::vector<glm::vec4> colors = {

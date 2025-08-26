@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
         static bool showLayerPreviews = true;
         static bool showFrameCaptureWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -232,17 +232,17 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path basePath = outputPath / fileNameBase;
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
                 Path mainPath = basePath.appendToName("." + time);
-                recorder.saveScreenshotToFile(mainPath, saveToHDR);
+                recorder.saveScreenshotToFile(mainPath, writeToHDR);
 
                 for (int view = 1; view < renderer.maxLayers; view++) {
                     Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
-                    if (saveToHDR) {
+                    if (writeToHDR) {
                         renderer.peelingLayers[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {

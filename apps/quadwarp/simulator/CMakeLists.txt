@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(QuadsSimulator)
+project(QuadsStreamer)
 
 set(TARGET quads_simulator)
 

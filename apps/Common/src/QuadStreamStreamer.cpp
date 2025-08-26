@@ -189,14 +189,14 @@ void QuadStreamStreamer::generateFrame(
     }
 }
 
-size_t QuadStreamStreamer::saveToFile(const Path& outputPath) {
+size_t QuadStreamStreamer::writeToFile(const Path& outputPath) {
     size_t totalOutputSize = 0;
     for (int view = 0; view < maxViews; view++) {
         // Save color
         Path colorFileName = outputPath / ("color" + std::to_string(view));
         copyRTs[view].saveColorAsJPG(colorFileName.withExtension(".jpg"));
 
-        totalOutputSize += referenceFrames[view].saveToFiles(outputPath, view);
+        totalOutputSize += referenceFrames[view].writeToFiles(outputPath, view);
     }
     return totalOutputSize;
 }

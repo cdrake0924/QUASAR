@@ -34,7 +34,7 @@ BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const
     });
 
 #if defined(HAS_CUDA)
-    cudaBufferBc4.registerBuffer(bc4CompressedBuffer);
+    cudaBufferBC4.registerBuffer(bc4CompressedBuffer);
 
     if (!receiverURL.empty()) {
         running = true;
@@ -88,14 +88,14 @@ void BC4DepthStreamer::copyToCPU(pose_id_t poseID, void* cudaPtr) {
 #if defined(HAS_CUDA)
     if (cudaPtr == nullptr) {
         CudaGLBuffer::registerHostBuffer(data.data(), sizeof(pose_id_t) + compressedSize * sizeof(BC4Block));
-        cudaBufferBc4.copyToHostAsync(data.data() + sizeof(pose_id_t), compressedSize * sizeof(BC4Block));
-        cudaBufferBc4.synchronize();
+        cudaBufferBC4.copyToHostAsync(data.data() + sizeof(pose_id_t), compressedSize * sizeof(BC4Block));
+        cudaBufferBC4.synchronize();
         CudaGLBuffer::unregisterHostBuffer(data.data());
     }
     else {
         CudaGLBuffer::registerHostBuffer(data.data(), sizeof(pose_id_t) + compressedSize * sizeof(BC4Block));
-        cudaBufferBc4.synchronize();
-        cudaStream_t stream = cudaBufferBc4.getStream();
+        cudaBufferBC4.synchronize();
+        cudaStream_t stream = cudaBufferBC4.getStream();
         CHECK_CUDA_ERROR(cudaMemcpyAsync(data.data() + sizeof(pose_id_t),
                                          cudaPtr,
                                          compressedSize * sizeof(BC4Block),
@@ -123,9 +123,9 @@ size_t BC4DepthStreamer::applyCodec() {
     return compressedSize;
 }
 
-void BC4DepthStreamer::saveToFile(const Path& filename) {
+void BC4DepthStreamer::writeToFile(const Path& filename) {
     double startTime = timeutils::getTimeMicros();
-    FileIO::saveToBinaryFile(filename.str(), compressedData.data(), compressedData.size());
+    FileIO::writeToBinaryFile(filename.str(), compressedData.data(), compressedData.size());
 
     spdlog::info("Saved {:.3f}MB in {:.3f}ms",
                  static_cast<double>(compressedData.size()) / BYTES_PER_MEGABYTE,
@@ -136,7 +136,7 @@ void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
     compress();
 
 #if defined(HAS_CUDA)
-    void* cudaPtr = cudaBufferBc4.getPtr();
+    void* cudaPtr = cudaBufferBC4.getPtr();
     cudaBufferQueue.enqueue({ poseID, cudaPtr });
 #else
     double startTime = timeutils::getTimeMicros();

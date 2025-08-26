@@ -54,7 +54,7 @@ public:
 
     size_t compress(bool compress = false);
     void sendFrame(pose_id_t poseID);
-    void saveToFile(const Path& filename);
+    void writeToFile(const Path& filename);
 
 private:
     int targetFrameRate = 30;
@@ -70,7 +70,7 @@ private:
     void copyToCPU(pose_id_t poseID = -1, void* cudaPtr = nullptr);
 
 #if defined(HAS_CUDA)
-    CudaGLBuffer cudaBufferBc4;
+    CudaGLBuffer cudaBufferBC4;
 
     struct CudaBuffer {
         pose_id_t poseID;
@@ -78,9 +78,8 @@ private:
     };
     moodycamel::ConcurrentQueue<CudaBuffer> cudaBufferQueue;
 
-    std::thread dataSendingThread;
-
     std::atomic_bool running{false};
+    std::thread dataSendingThread;
 
     void sendData();
 #else

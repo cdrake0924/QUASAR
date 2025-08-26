@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
         cameraAnimator.copyPoseToCamera(remoteCameraCenter);
     }
 
-    bool saveToFile = false;
+    bool writeToFile = false;
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
         static bool showFrameCaptureWindow = false;
         static bool showMeshCaptureWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -431,17 +431,17 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path basePath = outputPath / fileNameBase;
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
                 Path mainPath = basePath.appendToName("." + time);
-                recorder.saveScreenshotToFile(mainPath, saveToHDR);
+                recorder.saveScreenshotToFile(mainPath, writeToHDR);
 
                 for (int view = 1; view < maxViews; view++) {
                     Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
-                    if (saveToHDR) {
+                    if (writeToHDR) {
                         quadstream.refFrameRTs[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
@@ -507,7 +507,7 @@ int main(int argc, char** argv) {
                 preventCopyingLocalPose = true;
                 sendRemoteFrame = true;
                 runAnimations = false;
-                saveToFile = true;
+                writeToFile = true;
             }
 
             ImGui::End();
@@ -639,13 +639,13 @@ int main(int argc, char** argv) {
             spdlog::info("Num Proxies: {}Proxies", quadstream.stats.totalSizes.numQuads);
 
             // Save to file if requested
-            if (saveToFile) {
-                quadstream.saveToFile(outputPath);
+            if (writeToFile) {
+                quadstream.writeToFile(outputPath);
             }
 
             preventCopyingLocalPose = false;
             sendRemoteFrame = false;
-            saveToFile = false;
+            writeToFile = false;
         }
 
         poseSendRecvSimulator.update(now);

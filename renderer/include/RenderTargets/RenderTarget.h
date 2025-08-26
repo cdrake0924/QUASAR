@@ -81,19 +81,19 @@ public:
 
     void saveColorAsPNG(const std::string& path) {
         bind();
-        colorTexture.saveToPNG(path);
+        colorTexture.writeToPNG(path);
         unbind();
     }
 
-    void saveColorAsJPG(const std::string& path, int quality = 95) {
+    void saveColorAsJPG(const std::string& path, int quality = 85) {
         bind();
-        colorTexture.saveToJPG(path, quality);
+        colorTexture.writeToJPG(path, quality);
         unbind();
     }
 
     void saveColorAsHDR(const std::string& path) {
         bind();
-        colorTexture.saveToHDR(path);
+        colorTexture.writeToHDR(path);
         unbind();
     }
 };

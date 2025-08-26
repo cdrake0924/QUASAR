@@ -2,6 +2,7 @@
 #define TEXTURE_H
 
 #include <string>
+#include <vector>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -95,12 +96,13 @@ public:
     }
 
     void readPixels(unsigned char* data, bool readAsFloat = false);
-    void saveToPNG(const std::string& filename);
-    void saveToJPG(const std::string& filename, int quality = 95);
-    void saveToHDR(const std::string& filename);
+    void writeToPNG(const std::string& filename);
+    void writeToJPG(const std::string& filename, int quality = 85);
+    void writeToHDR(const std::string& filename);
 #ifdef GL_CORE
     void saveDepthToFile(const std::string& filename);
 #endif
+    void saveJPGToMemory(std::vector<unsigned char>& outputData, int quality = 85);
 
 protected:
     GLenum target;

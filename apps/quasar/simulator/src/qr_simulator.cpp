@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
-    bool saveToFile = false;
+    bool writeToFile = false;
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
         static bool showMeshCaptureWindow = false;
         static bool showFramePreviewWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -430,17 +430,17 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path basePath = outputPath / fileNameBase;
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
                 Path mainPath = basePath.appendToName("." + time);
-                recorder.saveScreenshotToFile(mainPath, saveToHDR);
+                recorder.saveScreenshotToFile(mainPath, writeToHDR);
 
                 for (int layer = 0; layer < maxLayersWideFOV - 1; layer++) {
                     Path viewPath = basePath.appendToName(".layer" + std::to_string(layer + 1) + "." + time);
-                    if (saveToHDR) {
+                    if (writeToHDR) {
                         quasar.frameRTsHidLayer[layer].saveColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
@@ -506,7 +506,7 @@ int main(int argc, char** argv) {
                 preventCopyingLocalPose = true;
                 sendReferenceFrame = true;
                 runAnimations = false;
-                saveToFile = true;
+                writeToFile = true;
             }
 
             ImGui::End();
@@ -647,14 +647,14 @@ int main(int argc, char** argv) {
             spdlog::info("Num Proxies: {}Proxies", quasar.stats.totalSizes.numQuads);
 
             // Save to file if requested
-            if (saveToFile) {
-                quasar.saveToFile(outputPath);
+            if (writeToFile) {
+                quasar.writeToFile(outputPath);
             }
 
             preventCopyingLocalPose = false;
             sendReferenceFrame = false;
             sendResidualFrame = false;
-            saveToFile = false;
+            writeToFile = false;
         }
 
         poseSendRecvSimulator.update(now);

@@ -17,6 +17,11 @@ namespace quasar {
 
 class ReferenceFrame {
 public:
+    struct Header {
+        uint32_t quadsSize;
+        uint32_t depthOffsetsSize;
+    };
+
     size_t numQuads, numDepthOffsets;
     std::vector<char> quads, depthOffsets;
 
@@ -64,13 +69,13 @@ public:
         return std::max(refQuadsCodec.stats.timeToDecompressMs, refOffsetsCodec.stats.timeToDecompressMs);
     }
 
-    size_t saveToFiles(const Path& outputPath, int index = -1) {
+    size_t writeToFiles(const Path& outputPath, int index = -1) {
         std::string idxStr = (index != -1 ? std::to_string(index) : "");
 
         // Save quads
         double startTime = timeutils::getTimeMicros();
         Path quadsFileName = (outputPath / ("quads" + idxStr)).withExtension(".bin.zstd");
-        FileIO::saveToBinaryFile(quadsFileName, quads.data(), quads.size());
+        FileIO::writeToBinaryFile(quadsFileName, quads.data(), quads.size());
         spdlog::info("Saved {} quads ({:.3f}MB) in {:.3f}ms",
                        numQuads, static_cast<double>(quads.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -78,12 +83,32 @@ public:
         // Save depth offsets
         startTime = timeutils::getTimeMicros();
         Path depthOffsetsFileName = (outputPath / ("depthOffsets" + idxStr)).withExtension(".bin.zstd");
-        FileIO::saveToBinaryFile(depthOffsetsFileName, depthOffsets.data(), depthOffsets.size());
+        FileIO::writeToBinaryFile(depthOffsetsFileName, depthOffsets.data(), depthOffsets.size());
         spdlog::info("Saved {} depth offsets ({:.3f}MB) in {:.3f}ms",
                        numDepthOffsets, static_cast<double>(depthOffsets.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
 
         return quads.size() + depthOffsets.size();
+    }
+
+    size_t writeToMemory(std::vector<char>& outputData) {
+        size_t outputSize = quads.size() + depthOffsets.size();
+        outputData.resize(outputSize);
+
+        Header header{
+            .quadsSize = static_cast<uint32_t>(quads.size()),
+            .depthOffsetsSize = static_cast<uint32_t>(depthOffsets.size())
+        };
+
+        char* ptr = outputData.data();
+        // Write header
+        std::memcpy(ptr, &header, sizeof(Header));
+        // Write quads
+        std::copy(quads.begin(), quads.end(), ptr + sizeof(Header));
+        // Write depth offsets
+        std::copy(depthOffsets.begin(), depthOffsets.end(), ptr + sizeof(Header) + quads.size());
+
+        return outputSize;
     }
 
     size_t loadFromFiles(const Path& inputPath, int index = -1) {
@@ -105,6 +130,35 @@ public:
         spdlog::info("Loaded depth offsets ({:.3f}MB) in {:.3f}ms",
                        static_cast<double>(depthOffsets.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
+
+        return quads.size() + depthOffsets.size();
+    }
+
+    size_t loadFromMemory(const std::vector<char>& inputData) {
+        const char* ptr = inputData.data();
+
+        // Read header
+        Header header;
+        std::memcpy(&header, ptr, sizeof(Header));
+        ptr += sizeof(Header);
+
+        // Sanity check
+        if (inputData.size() < header.quadsSize + header.depthOffsetsSize) {
+            throw std::runtime_error("Input data size " +
+                                      std::to_string(inputData.size()) +
+                                      " is smaller than expected from header " +
+                                      std::to_string(header.quadsSize + header.depthOffsetsSize));
+        }
+
+        // Read quads
+        quads.resize(header.quadsSize);
+        std::memcpy(quads.data(), ptr, header.quadsSize);
+        ptr += header.quadsSize;
+
+        // Read depth offsets
+        depthOffsets.resize(header.depthOffsetsSize);
+        std::memcpy(depthOffsets.data(), ptr, header.depthOffsetsSize);
+        ptr += header.depthOffsetsSize;
 
         return quads.size() + depthOffsets.size();
     }
@@ -197,13 +251,13 @@ public:
         );
     }
 
-    size_t saveToFiles(const Path& outputPath, int index = -1) {
+    size_t writeToFiles(const Path& outputPath, int index = -1) {
         std::string idxStr = (index != -1 ? std::to_string(index) : "");
 
         // Save updated quads
         double startTime = timeutils::getTimeMicros();
         Path updatedQuadsFileName = (outputPath / ("updatedQuads" + idxStr)).withExtension(".bin.zstd");
-        FileIO::saveToBinaryFile(updatedQuadsFileName, quadsUpdated.data(), quadsUpdated.size());
+        FileIO::writeToBinaryFile(updatedQuadsFileName, quadsUpdated.data(), quadsUpdated.size());
         spdlog::info("Saved {} updated quads ({:.3f}MB) in {:.3f}ms",
                        numQuadsUpdated, static_cast<double>(quadsUpdated.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -211,7 +265,7 @@ public:
         // Save updated depth offsets
         startTime = timeutils::getTimeMicros();
         Path updatedDepthOffsetsFileName = (outputPath / ("updatedDepthOffsets" + idxStr)).withExtension(".bin.zstd");
-        FileIO::saveToBinaryFile(updatedDepthOffsetsFileName, depthOffsetsUpdated.data(), depthOffsetsUpdated.size());
+        FileIO::writeToBinaryFile(updatedDepthOffsetsFileName, depthOffsetsUpdated.data(), depthOffsetsUpdated.size());
         spdlog::info("Saved {} updated depth offsets ({:.3f}MB) in {:.3f}ms",
                        numDepthOffsetsUpdated, static_cast<double>(depthOffsetsUpdated.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -219,7 +273,7 @@ public:
         // Save revealed quads
         startTime = timeutils::getTimeMicros();
         Path revealedQuadsFileName = (outputPath / ("revealedQuads" + idxStr)).withExtension(".bin.zstd");
-        FileIO::saveToBinaryFile(revealedQuadsFileName, quadsRevealed.data(), quadsRevealed.size());
+        FileIO::writeToBinaryFile(revealedQuadsFileName, quadsRevealed.data(), quadsRevealed.size());
         spdlog::info("Saved {} revealed quads ({:.3f}MB) in {:.3f}ms",
                         numQuadsRevealed, static_cast<double>(quadsRevealed.size()) / BYTES_PER_MEGABYTE,
                           timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
@@ -227,13 +281,29 @@ public:
         // Save revealed depth offsets
         startTime = timeutils::getTimeMicros();
         Path revealedDepthOffsetsFileName = (outputPath / ("revealedDepthOffsets" + idxStr)).withExtension(".bin.zstd");
-        FileIO::saveToBinaryFile(revealedDepthOffsetsFileName, depthOffsetsRevealed.data(), depthOffsetsRevealed.size());
+        FileIO::writeToBinaryFile(revealedDepthOffsetsFileName, depthOffsetsRevealed.data(), depthOffsetsRevealed.size());
         spdlog::info("Saved {} revealed depth offsets ({:.3f}MB) in {:.3f}ms",
                        numDepthOffsetsRevealed, static_cast<double>(depthOffsetsRevealed.size()) / BYTES_PER_MEGABYTE,
                          timeutils::microsToMillis(timeutils::getTimeMicros() - startTime));
 
         return quadsUpdated.size() + depthOffsetsUpdated.size() +
                quadsRevealed.size() + depthOffsetsRevealed.size();
+    }
+
+    size_t writeToMemory(std::vector<char>& outputData) {
+        size_t outputSize = quadsUpdated.size() + depthOffsetsUpdated.size() + quadsRevealed.size() + depthOffsetsRevealed.size();
+        outputData.resize(outputSize);
+
+        // Save updated quads
+        std::copy(quadsUpdated.begin(), quadsUpdated.end(), outputData.begin());
+        // Save updated depth offsets
+        std::copy(depthOffsetsUpdated.begin(), depthOffsetsUpdated.end(), outputData.begin() + quadsUpdated.size());
+        // Save revealed quads
+        std::copy(quadsRevealed.begin(), quadsRevealed.end(), outputData.begin() + quadsUpdated.size() + depthOffsetsUpdated.size());
+        // Save revealed depth offsets
+        std::copy(depthOffsetsRevealed.begin(), depthOffsetsRevealed.end(), outputData.begin() + quadsUpdated.size() + depthOffsetsUpdated.size() + quadsRevealed.size());
+
+        return outputData.size();
     }
 
 private:

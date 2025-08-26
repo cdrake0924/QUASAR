@@ -27,9 +27,8 @@ public:
 private:
     SocketUDP socket;
 
-    std::thread dataSendingThread;
-
     std::atomic_bool running{false};
+    std::thread dataSendingThread;
 
     packet_id_t dataID = 0;
 

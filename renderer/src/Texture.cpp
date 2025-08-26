@@ -133,6 +133,10 @@ void Texture::loadFromFile(const std::string& path, bool flipVertically, bool ga
 }
 
 void Texture::resize(uint width, uint height) {
+    if (this->width == width && this->height == height) {
+        return;
+    }
+
     this->width = width;
     this->height = height;
     loadFromData(nullptr, true);
@@ -144,28 +148,28 @@ void Texture::readPixels(unsigned char* data, bool readAsFloat) {
     unbind();
 }
 
-void Texture::saveToPNG(const std::string& filename) {
+void Texture::writeToPNG(const std::string& filename) {
     std::vector<unsigned char> data(width * height * 4);
     readPixels(data.data());
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveToPNG(filename, width, height, 4, data.data());
+    FileIO::writeToPNG(filename, width, height, 4, data.data());
 }
 
-void Texture::saveToJPG(const std::string& filename, int quality) {
+void Texture::writeToJPG(const std::string& filename, int quality) {
     std::vector<unsigned char> data(width * height * 4);
     readPixels(data.data());
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveToJPG(filename, width, height, 4, data.data(), quality);
+    FileIO::writeToJPG(filename, width, height, 4, data.data(), quality);
 }
 
-void Texture::saveToHDR(const std::string& filename) {
+void Texture::writeToHDR(const std::string& filename) {
     std::vector<float> data(width * height * 4);
     readPixels(reinterpret_cast<unsigned char*>(data.data()), true);
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveToHDR(filename, width, height, 4, data.data());
+    FileIO::writeToHDR(filename, width, height, 4, data.data());
 }
 
 #ifdef GL_CORE
@@ -176,6 +180,14 @@ void Texture::saveDepthToFile(const std::string& filename) {
     glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data.data());
     unbind();
 
-    FileIO::saveToBinaryFile(filename, data.data(), data.size());
+    FileIO::writeToBinaryFile(filename, data.data(), data.size());
 }
 #endif
+
+void Texture::saveJPGToMemory(std::vector<unsigned char>& outputData, int quality) {
+    outputData.resize(width * height * 4);
+    readPixels(outputData.data());
+
+    FileIO::flipVerticallyOnWrite(true);
+    FileIO::saveJPGToMemory(outputData, width, height, 4, outputData.data(), quality);
+}

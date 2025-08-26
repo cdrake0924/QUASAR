@@ -11,9 +11,14 @@ namespace quasar {
 
 class QuadsReceiver {
 public:
+    struct Header {
+        uint32_t colorSize;
+        uint32_t geometrySize;
+    };
+
     struct Stats {
         uint totalTriangles = 0;
-        double loadFromFilesTime = 0.0;
+        double loadTime = 0.0;
         double decompressTime = 0.0;
         double transferTime = 0.0;
         double createMeshTime = 0.0;
@@ -50,18 +55,70 @@ public:
     }
 
     void loadFromFiles(const Path& dataPath) {
-        stats = {};
+        stats = { 0 };
+
+        double startTime = timeutils::getTimeMicros();
 
         // Load texture
         std::string colorFileName = dataPath / "color.jpg";
         colorTexture.loadFromFile(colorFileName, true, false);
 
-        // Load quads and depth offsets from files and decompress (nonblocking)
-        double startTime = timeutils::getTimeMicros();
+        // Load quads and depth offsets from files
         frame.loadFromFiles(dataPath);
-        stats.loadFromFilesTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        startTime = timeutils::getTimeMicros();
+        // Decompress and update mesh
+        updateGeometry();
+    }
+
+    void loadFromMemory(const std::vector<char>& inputData) {
+        stats = { 0 };
+
+        double startTime = timeutils::getTimeMicros();
+
+        const char* ptr = inputData.data();
+
+        // Read header
+        Header header;
+        std::memcpy(&header, ptr, sizeof(Header));
+        ptr += sizeof(Header);
+
+        // Sanity check
+        if (inputData.size() < header.colorSize + header.geometrySize) {
+            throw std::runtime_error("Input data size " +
+                                      std::to_string(inputData.size()) +
+                                      " is smaller than expected from header " +
+                                      std::to_string(header.colorSize + header.geometrySize));
+        }
+
+        // Read color data
+        colorData.resize(header.colorSize);
+        std::memcpy(colorData.data(), ptr, header.colorSize);
+        ptr += header.colorSize;
+
+        // Read geometry data
+        geometryData.resize(header.geometrySize);
+        std::memcpy(geometryData.data(), ptr, header.geometrySize);
+        ptr += header.geometrySize;
+
+        updateColorTexture();
+        frame.loadFromMemory(geometryData);
+        stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+
+        // Decompress and update mesh
+        updateGeometry();
+    }
+
+    void updateColorTexture() {
+        int colorWidth, colorHeight, colorChannels;
+        FileIO::flipVerticallyOnLoad(true);
+        unsigned char* data = FileIO::loadImageFromMemory(colorData.data(), colorData.size(), &colorWidth, &colorHeight, &colorChannels);
+        colorTexture.resize(colorWidth, colorHeight);
+        colorTexture.loadFromData(data);
+    }
+
+    void updateGeometry() {
+        double startTime = timeutils::getTimeMicros();
         auto offsetsFuture = frame.decompressDepthOffsets(uncompressedOffsets);
         auto quadsFuture = frame.decompressQuads(uncompressedQuads);
         quadsFuture.get(); offsetsFuture.get();
@@ -94,6 +151,9 @@ private:
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;
+
+    std::vector<unsigned char> colorData;
+    std::vector<char> geometryData;
 };
 
 } // namespace quasar

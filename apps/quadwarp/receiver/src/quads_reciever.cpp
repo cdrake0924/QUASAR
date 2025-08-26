@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
         static bool showFPS = true;
         static bool showUI = true;
         static bool showFrameCaptureWindow = false;
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static char fileNameBase[256] = "screenshot";
 
         ImGui::NewFrame();
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load from disk: %.3f ms", quadsReceiver.stats.loadFromFilesTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load from disk: %.3f ms", quadsReceiver.stats.loadTime);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quadsReceiver.stats.decompressTime);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quadsReceiver.stats.transferTime);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quadsReceiver.stats.createMeshTime);
@@ -202,12 +202,12 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path filename = (dataPath / fileNameBase).appendToName("." + time);
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, saveToHDR);
+                recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
             ImGui::End();

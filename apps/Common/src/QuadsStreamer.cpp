@@ -2,16 +2,18 @@
 
 using namespace quasar;
 
-QuadsSimulator::QuadsSimulator(
+QuadsStreamer::QuadsStreamer(
         QuadSet& quadSet,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
         const PerspectiveCamera& remoteCamera,
-        FrameGenerator& frameGenerator)
+        FrameGenerator& frameGenerator,
+        const std::string& receiverURL)
     : quadSet(quadSet)
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
     , frameGenerator(frameGenerator)
+    , receiverURL(receiverURL)
     , refFrameRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
@@ -101,15 +103,19 @@ QuadsSimulator::QuadsSimulator(
     depthNode.frustumCulled = false;
     depthNode.visible = false;
     depthNode.primativeType = GL_POINTS;
+
+    if (!receiverURL.empty()) {
+        streamer = std::make_unique<DataStreamerTCP>(receiverURL);
+    }
 }
 
-uint QuadsSimulator::getNumTriangles() const {
+uint QuadsStreamer::getNumTriangles() const {
     auto refMeshSizes = refFrameMeshes[currMeshIndex].getBufferSizes();
     auto maskMeshSizes = resFrameMesh.getBufferSizes();
     return (refMeshSizes.numIndices + maskMeshSizes.numIndices) / 3; // Each triangle has 3 indices
 }
 
-void QuadsSimulator::addMeshesToScene(Scene& localScene) {
+void QuadsStreamer::addMeshesToScene(Scene& localScene) {
     for (int i = 0; i < 2; i++) {
         localScene.addChildNode(&refFrameNodesLocal[i]);
         localScene.addChildNode(&refFrameWireframesLocal[i]);
@@ -119,15 +125,15 @@ void QuadsSimulator::addMeshesToScene(Scene& localScene) {
     localScene.addChildNode(&depthNode);
 }
 
-void QuadsSimulator::generateFrame(
+void QuadsStreamer::generateFrame(
     const PerspectiveCamera& remoteCamera, Scene& remoteScene,
     DeferredRenderer& remoteRenderer,
     bool createResidualFrame, bool showNormals, bool showDepth)
 {
-    auto& remoteCameraToUse = createResidualFrame ? remoteCameraPrev : remoteCamera;
-
     // Reset stats
     stats = { 0 };
+
+    auto& remoteCameraToUse = createResidualFrame ? remoteCameraPrev : remoteCamera;
 
     // Render remote scene normally
     double startTime = timeutils::getTimeMicros();
@@ -230,13 +236,44 @@ void QuadsSimulator::generateFrame(
         stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
         stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
     }
+
+    if (streamer) {
+        writeToMemory(compressedData);
+        streamer->send(compressedData);
+    }
 }
 
-size_t QuadsSimulator::saveToFile(const Path& outputPath) {
+size_t QuadsStreamer::writeToFile(const Path& outputPath) {
     // Save color
-    Path colorFileName = outputPath / "color";
-    copyRT.saveColorAsJPG(colorFileName.withExtension(".jpg"));
+    Path colorFileName = (outputPath / "color").withExtension(".jpg");
+    copyRT.saveColorAsJPG(colorFileName);
 
     // Save proxies
-    return referenceFrame.saveToFiles(outputPath);
+    return referenceFrame.writeToFiles(outputPath);
+}
+
+size_t QuadsStreamer::writeToMemory(std::vector<char>& outputData) {
+    std::vector<unsigned char> colorData;
+    copyRT.saveColorJPGToMemory(colorData);
+
+    std::vector<char> geometryData;
+    referenceFrame.writeToMemory(geometryData);
+
+    QuadsReceiver::Header header{
+        static_cast<uint32_t>(colorData.size()),
+        static_cast<uint32_t>(geometryData.size())
+    };
+
+    spdlog::info("Saving color size: {}", header.colorSize);
+    spdlog::info("Saving geometry size: {}", header.geometrySize);
+
+    outputData.resize(sizeof(QuadsReceiver::Header) + colorData.size() + geometryData.size());
+    char* ptr = outputData.data();
+    std::memcpy(ptr, &header, sizeof(header));
+    ptr += sizeof(header);
+    std::memcpy(ptr, colorData.data(), colorData.size());
+    ptr += colorData.size();
+    std::memcpy(ptr, geometryData.data(), geometryData.size());
+
+    return outputData.size();
 }

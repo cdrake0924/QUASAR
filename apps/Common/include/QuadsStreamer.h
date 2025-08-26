@@ -3,12 +3,14 @@
 
 #include <DepthMesh.h>
 #include <Quads/FrameGenerator.h>
+#include <QuadsReceiver.h>
+#include <Networking/DataStreamerTCP.h>
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 
 namespace quasar {
 
-class QuadsSimulator {
+class QuadsStreamer {
 public:
     // Reference frame
     FrameRenderTarget refFrameRT;
@@ -34,6 +36,8 @@ public:
     DepthMesh depthMesh;
     Node depthNode;
 
+    std::string receiverURL;
+
     struct Stats {
         double totalRenderTime = 0.0;
         double totalCreateProxiesTime = 0.0;
@@ -49,13 +53,14 @@ public:
         QuadSet::Sizes totalSizes;
     } stats;
 
-    QuadsSimulator(
+    QuadsStreamer(
         QuadSet& quadSet,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
         const PerspectiveCamera& remoteCamera,
-        FrameGenerator& frameGenerator);
-    ~QuadsSimulator() = default;
+        FrameGenerator& frameGenerator,
+        const std::string& receiverURL = "");
+    ~QuadsStreamer() = default;
 
     uint getNumTriangles() const;
 
@@ -66,7 +71,8 @@ public:
         DeferredRenderer& remoteRenderer,
         bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
 
-    size_t saveToFile(const Path& outputPath);
+    size_t writeToFile(const Path& outputPath);
+    size_t writeToMemory(std::vector<char>& outputData);
 
 private:
     const std::vector<glm::vec4> colors = {
@@ -96,12 +102,14 @@ private:
     // Holds a copy of the current frame
     FrameRenderTarget copyRT;
 
-    // Shaders
-    ToneMapper toneMapper;
-    ShowNormalsEffect showNormalsEffect;
-
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;
+
+    std::vector<char> compressedData;
+    std::unique_ptr<DataStreamerTCP> streamer;
+
+    ToneMapper toneMapper;
+    ShowNormalsEffect showNormalsEffect;
 };
 
 } // namespace quasar

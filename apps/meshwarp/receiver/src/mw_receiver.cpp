@@ -182,7 +182,7 @@ int main(int argc, char** argv) {
         static bool showFPS = true;
         static bool showUI = true;
         static bool showFrameCaptureWindow = false;
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static char fileNameBase[256] = "screenshot";
         static bool showVideoPreview = true;
 
@@ -315,12 +315,12 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path filename = (outputPath / fileNameBase).appendToName("." + time);
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, saveToHDR);
+                recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
             ImGui::End();
