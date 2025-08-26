@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
-project(QuadsSimulator)
+project(QuadsStreamer)
 
-set(TARGET quads_simulator)
+set(TARGET quads_streamer)
 
 set(PUBLIC_HDR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

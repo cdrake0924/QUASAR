@@ -13,7 +13,7 @@ namespace quasar {
 class QuadsReceiver {
 public:
     struct Header {
-        uint16_t cameraSize;
+        uint32_t cameraSize;
         uint32_t colorSize;
         uint32_t geometrySize;
     };

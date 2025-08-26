@@ -92,21 +92,23 @@ public:
     }
 
     size_t writeToMemory(std::vector<char>& outputData) {
-        size_t outputSize = quads.size() + depthOffsets.size();
-        outputData.resize(outputSize);
-
         Header header{
-            .quadsSize = static_cast<uint32_t>(quads.size()),
-            .depthOffsetsSize = static_cast<uint32_t>(depthOffsets.size())
+            static_cast<uint32_t>(quads.size()),
+            static_cast<uint32_t>(depthOffsets.size())
         };
+        size_t outputSize = sizeof(header) + quads.size() + depthOffsets.size();
+        outputData.resize(outputSize);
 
         char* ptr = outputData.data();
         // Write header
         std::memcpy(ptr, &header, sizeof(Header));
+        ptr += sizeof(Header);
         // Write quads
-        std::copy(quads.begin(), quads.end(), ptr + sizeof(Header));
+        std::memcpy(ptr, quads.data(), quads.size());
+        ptr += quads.size();
         // Write depth offsets
-        std::copy(depthOffsets.begin(), depthOffsets.end(), ptr + sizeof(Header) + quads.size());
+        std::memcpy(ptr, depthOffsets.data(), depthOffsets.size());
+        ptr += depthOffsets.size();
 
         return outputSize;
     }

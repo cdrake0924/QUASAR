@@ -27,6 +27,7 @@ public:
     ~DataStreamerTCP();
 
     int send(std::vector<char>& data, bool copy = false);
+    void stop();
 
 private:
     SocketTCP socket;

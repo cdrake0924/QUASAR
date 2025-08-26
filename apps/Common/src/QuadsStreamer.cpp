@@ -276,7 +276,7 @@ size_t QuadsStreamer::writeToMemory(std::vector<char>& outputData) {
     referenceFrame.writeToMemory(geometryData);
 
     QuadsReceiver::Header header{
-        static_cast<uint16_t>(cameraData.size()),
+        static_cast<uint32_t>(cameraData.size()),
         static_cast<uint32_t>(colorData.size()),
         static_cast<uint32_t>(geometryData.size())
     };

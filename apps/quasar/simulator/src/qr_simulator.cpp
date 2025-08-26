@@ -353,6 +353,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
                 rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+                runAnimations = true;
             }
 
             float windowWidth = ImGui::GetContentRegionAvail().x;

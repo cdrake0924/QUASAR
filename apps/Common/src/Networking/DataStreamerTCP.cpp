@@ -18,6 +18,10 @@ DataStreamerTCP::DataStreamerTCP(std::string url, int maxDataSize, bool nonBlock
 }
 
 DataStreamerTCP::~DataStreamerTCP() {
+    stop();
+}
+
+void DataStreamerTCP::stop() {
     shouldTerminate = true;
     ready = false;
 
