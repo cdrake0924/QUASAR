@@ -95,6 +95,7 @@ int main(int argc, char** argv) {
 
     // Initial load
     quadsReceiver.loadFromFiles(dataPath);
+    quadsReceiver.copyPoseToCamera(camera);
 
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {

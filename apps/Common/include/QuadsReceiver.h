@@ -2,6 +2,7 @@
 #define QUADS_RECEIVER_H
 
 #include <Path.h>
+#include <CameraPose.h>
 #include <Quads/QuadSet.h>
 #include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
@@ -12,6 +13,7 @@ namespace quasar {
 class QuadsReceiver {
 public:
     struct Header {
+        uint16_t cameraSize;
         uint32_t colorSize;
         uint32_t geometrySize;
     };
@@ -54,10 +56,20 @@ public:
         return remoteCamera;
     }
 
+    void copyPoseToCamera(PerspectiveCamera& camera) {
+        camera.setProjectionMatrix(cameraPose.mono.proj);
+        camera.setViewMatrix(cameraPose.mono.view);
+    }
+
     void loadFromFiles(const Path& dataPath) {
         stats = { 0 };
 
         double startTime = timeutils::getTimeMicros();
+
+        // Load camera data
+        std::string cameraFileName = dataPath / "camera.bin";
+        cameraPose.loadFromFile(cameraFileName);
+        copyPoseToCamera(remoteCamera);
 
         // Load texture
         std::string colorFileName = dataPath / "color.jpg";
@@ -70,6 +82,11 @@ public:
         // Decompress and update mesh
         updateGeometry();
     }
+    // void loadFromFiles(const Path& dataPath) {
+    //     stats = { 0 };
+    //     std::vector<char> data = FileIO::loadBinaryFile(dataPath / "compressed.bin.zstd");
+    //     loadFromMemory(data);
+    // }
 
     void loadFromMemory(const std::vector<char>& inputData) {
         stats = { 0 };
@@ -84,12 +101,17 @@ public:
         ptr += sizeof(Header);
 
         // Sanity check
-        if (inputData.size() < header.colorSize + header.geometrySize) {
+        if (inputData.size() < header.cameraSize + header.colorSize + header.geometrySize) {
             throw std::runtime_error("Input data size " +
                                       std::to_string(inputData.size()) +
                                       " is smaller than expected from header " +
                                       std::to_string(header.colorSize + header.geometrySize));
         }
+
+        // Read camera data
+        cameraPose.loadFromMemory(ptr, header.cameraSize);
+        copyPoseToCamera(remoteCamera);
+        ptr += header.cameraSize;
 
         // Read color data
         colorData.resize(header.colorSize);
@@ -115,6 +137,7 @@ public:
         unsigned char* data = FileIO::loadImageFromMemory(colorData.data(), colorData.size(), &colorWidth, &colorHeight, &colorChannels);
         colorTexture.resize(colorWidth, colorHeight);
         colorTexture.loadFromData(data);
+        FileIO::freeImage(data);
     }
 
     void updateGeometry() {
@@ -144,6 +167,7 @@ private:
     QuadSet& quadSet;
 
     PerspectiveCamera remoteCamera;
+    Pose cameraPose;
 
     QuadMaterial quadMaterial;
     Texture colorTexture;

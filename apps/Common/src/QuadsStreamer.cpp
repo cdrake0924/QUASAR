@@ -12,6 +12,7 @@ QuadsStreamer::QuadsStreamer(
     : quadSet(quadSet)
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
+    , remoteCamera(remoteCamera)
     , frameGenerator(frameGenerator)
     , receiverURL(receiverURL)
     , refFrameRT({
@@ -64,7 +65,6 @@ QuadsStreamer::QuadsStreamer(
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
 {
-    remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
     meshScenes.resize(2);
@@ -126,8 +126,7 @@ void QuadsStreamer::addMeshesToScene(Scene& localScene) {
 }
 
 void QuadsStreamer::generateFrame(
-    const PerspectiveCamera& remoteCamera, Scene& remoteScene,
-    DeferredRenderer& remoteRenderer,
+    DeferredRenderer& remoteRenderer, Scene& remoteScene,
     bool createResidualFrame, bool showNormals, bool showDepth)
 {
     // Reset stats
@@ -244,6 +243,15 @@ void QuadsStreamer::generateFrame(
 }
 
 size_t QuadsStreamer::writeToFile(const Path& outputPath) {
+    // writeToMemory(compressedData);
+    // FileIO::writeToBinaryFile(outputPath / "compressed.bin.zstd", compressedData.data(), compressedData.size());
+
+    // Save camera
+    Path cameraFileName = (outputPath / "camera").withExtension(".bin");
+    cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
+    cameraPose.setViewMatrix(remoteCamera.getViewMatrix());
+    cameraPose.writeToFile(cameraFileName);
+
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
     copyRT.saveColorAsJPG(colorFileName);
@@ -253,27 +261,45 @@ size_t QuadsStreamer::writeToFile(const Path& outputPath) {
 }
 
 size_t QuadsStreamer::writeToMemory(std::vector<char>& outputData) {
+    // Save camera data
+    std::vector<char> cameraData;
+    cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
+    cameraPose.setViewMatrix(remoteCamera.getViewMatrix());
+    cameraPose.writeToMemory(cameraData);
+
+    // Save color data
     std::vector<unsigned char> colorData;
     copyRT.saveColorJPGToMemory(colorData);
 
+    // Save geometry data
     std::vector<char> geometryData;
     referenceFrame.writeToMemory(geometryData);
 
     QuadsReceiver::Header header{
+        static_cast<uint16_t>(cameraData.size()),
         static_cast<uint32_t>(colorData.size()),
         static_cast<uint32_t>(geometryData.size())
     };
 
-    spdlog::info("Saving color size: {}", header.colorSize);
-    spdlog::info("Saving geometry size: {}", header.geometrySize);
+    outputData.resize(sizeof(header) + cameraData.size() + colorData.size() + geometryData.size());
 
-    outputData.resize(sizeof(QuadsReceiver::Header) + colorData.size() + geometryData.size());
+    spdlog::info("Writing camera size: {}", header.cameraSize);
+    spdlog::info("Writing color size: {}", header.colorSize);
+    spdlog::info("Writing geometry size: {}", header.geometrySize);
+
     char* ptr = outputData.data();
+    // Write header
     std::memcpy(ptr, &header, sizeof(header));
     ptr += sizeof(header);
+    // Write camera data
+    std::memcpy(ptr, cameraData.data(), cameraData.size());
+    ptr += cameraData.size();
+    // Write color data
     std::memcpy(ptr, colorData.data(), colorData.size());
     ptr += colorData.size();
+    // Write geometry data
     std::memcpy(ptr, geometryData.data(), geometryData.size());
+    ptr += geometryData.size();
 
     return outputData.size();
 }

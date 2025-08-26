@@ -2,6 +2,8 @@
 #define CAMERA_POSE_H
 
 #include <glm/glm.hpp>
+#include <Path.h>
+#include <Utils/FileIO.h>
 
 namespace quasar {
 
@@ -46,6 +48,33 @@ struct Pose {
     void setProjectionMatrices(const glm::mat4 (&projs)[2]) {
         stereo.projL = projs[0];
         stereo.projR = projs[1];
+    }
+
+    size_t writeToFile(const Path& outputPath) const {
+        return FileIO::writeToBinaryFile(outputPath, this, sizeof(Pose));
+    }
+
+    size_t writeToMemory(std::vector<char>& outputData) const {
+        outputData.resize(sizeof(Pose));
+        std::memcpy(outputData.data(), this, sizeof(Pose));
+        return sizeof(Pose);
+    }
+
+    size_t loadFromFile(const Path& inputPath) {
+        std::vector<char> data = FileIO::loadBinaryFile(inputPath);
+        std::memcpy(this, data.data(), sizeof(Pose));
+        return sizeof(Pose);
+    }
+
+    size_t loadFromMemory(const char* inputData, size_t inputSize) {
+        if (inputSize < sizeof(Pose)) {
+            throw std::runtime_error("Input data size " +
+                                      std::to_string(inputSize) +
+                                      " is smaller than Pose size " +
+                                      std::to_string(sizeof(Pose)));
+        }
+        std::memcpy(this, inputData, sizeof(Pose));
+        return sizeof(Pose);
     }
 };
 

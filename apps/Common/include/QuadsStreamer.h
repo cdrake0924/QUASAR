@@ -4,6 +4,7 @@
 #include <DepthMesh.h>
 #include <Quads/FrameGenerator.h>
 #include <QuadsReceiver.h>
+#include <CameraPose.h>
 #include <Networking/DataStreamerTCP.h>
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
@@ -67,8 +68,7 @@ public:
     void addMeshesToScene(Scene& localScene);
 
     void generateFrame(
-        const PerspectiveCamera& remoteCamera, Scene& remoteScene,
-        DeferredRenderer& remoteRenderer,
+        DeferredRenderer& remoteRenderer, Scene& remoteScene,
         bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
 
     size_t writeToFile(const Path& outputPath);
@@ -94,7 +94,10 @@ private:
     DeferredRenderer& remoteRenderer;
     Scene& remoteScene;
 
+    const PerspectiveCamera& remoteCamera;
     PerspectiveCamera remoteCameraPrev;
+
+    Pose cameraPose;
 
     // Scenes with resulting meshes
     std::vector<Scene> meshScenes;
