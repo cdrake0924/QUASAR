@@ -72,7 +72,7 @@ public:
         bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
 
     size_t writeToFile(const Path& outputPath);
-    size_t writeToMemory(std::vector<char>& outputData);
+    size_t writeToMemory(bool isResidualFrame, std::vector<char>& outputData);
 
 private:
     const std::vector<glm::vec4> colors = {

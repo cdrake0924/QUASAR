@@ -39,8 +39,8 @@ void FrameGenerator::createReferenceFrame(
     // Compress proxies (nonblocking)
     std::future<size_t> quadsFuture, offsetsFuture;
     if (compress) {
-        quadsFuture = resultFrame.compressAndStoreQuads(uncompressedQuads);
         offsetsFuture = resultFrame.compressAndStoreDepthOffsets(uncompressedOffsets);
+        quadsFuture = resultFrame.compressAndStoreQuads(uncompressedQuads);
     }
 
     // Using GPU buffers, create mesh from proxies
@@ -151,8 +151,8 @@ void FrameGenerator::createResidualFrame(
     // Compress proxies (asynchronous)
     std::future<size_t> quadsUpdatedFuture, offsetsUpdatedFuture;
     if (compress) {
-        quadsUpdatedFuture = resultFrame.compressAndStoreUpdatedQuads(uncompressedQuadsUpdated);
         offsetsUpdatedFuture = resultFrame.compressAndStoreUpdatedDepthOffsets(uncompressedOffsetsUpdated);
+        quadsUpdatedFuture = resultFrame.compressAndStoreUpdatedQuads(uncompressedQuadsUpdated);
     }
 
     // Using GPU buffers, create mesh using proxies
@@ -182,8 +182,8 @@ void FrameGenerator::createResidualFrame(
     // Compress proxies (asynchronous)
     std::future<size_t> quadsRevealedFuture, offsetsRevealedFuture;
     if (compress) {
-        quadsRevealedFuture = resultFrame.compressAndStoreRevealedQuads(uncompressedQuadsRevealed);
         offsetsRevealedFuture = resultFrame.compressAndStoreRevealedDepthOffsets(uncompressedOffsetsRevealed);
+        quadsRevealedFuture = resultFrame.compressAndStoreRevealedQuads(uncompressedQuadsRevealed);
     }
 
     // Using GPU buffers, create mesh using proxies
@@ -201,10 +201,10 @@ void FrameGenerator::createResidualFrame(
     ============================
     */
     if (compress) {
-        resultFrame.quadsUpdated.resize(quadsUpdatedFuture.get());
         resultFrame.depthOffsetsUpdated.resize(offsetsUpdatedFuture.get());
-        resultFrame.quadsRevealed.resize(quadsRevealedFuture.get());
         resultFrame.depthOffsetsRevealed.resize(offsetsRevealedFuture.get());
+        resultFrame.quadsUpdated.resize(quadsUpdatedFuture.get());
+        resultFrame.quadsRevealed.resize(quadsRevealedFuture.get());
         stats.timeToCompressMs = resultFrame.getTimeToCompress();
     }
 }

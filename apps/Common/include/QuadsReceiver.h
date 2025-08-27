@@ -5,7 +5,6 @@
 
 #include <Path.h>
 #include <CameraPose.h>
-#include <Quads/QuadSet.h>
 #include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 #include <Quads/QuadMaterial.h>
@@ -16,6 +15,7 @@ namespace quasar {
 class QuadsReceiver : public DataReceiverTCP {
 public:
     struct Header {
+        bool isReferenceFrame;
         uint32_t cameraSize;
         uint32_t colorSize;
         uint32_t geometrySize;
@@ -31,7 +31,6 @@ public:
     } stats;
 
     std::string streamerURL;
-    ReferenceFrame frame;
 
     QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL = "");
     ~QuadsReceiver() = default;
@@ -48,7 +47,7 @@ public:
     void loadFromMemory(const std::vector<char>& inputData);
 
 private:
-    void updateGeometry();
+    void updateGeometry(bool isReferenceFrame);
 
 private:
     QuadSet& quadSet;
@@ -59,10 +58,16 @@ private:
     Texture colorTexture;
     QuadMesh mesh;
 
+    ReferenceFrame referenceFrame;
+    ResidualFrame residualFrame;
+
     std::mutex m;
     std::deque<std::vector<char>> frames;
 
     std::vector<char> uncompressedQuads, uncompressedOffsets;
+    std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
+    std::vector<char> uncompressedQuadsUpdated, uncompressedOffsetsUpdated;
+
     std::vector<unsigned char> colorData;
     std::vector<char> geometryData;
 };

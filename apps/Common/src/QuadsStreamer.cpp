@@ -238,7 +238,7 @@ void QuadsStreamer::generateFrame(
     }
 
     if (!receiverURL.empty()) {
-        writeToMemory(compressedData);
+        writeToMemory(createResidualFrame, compressedData);
         send(compressedData);
     }
 }
@@ -258,7 +258,7 @@ size_t QuadsStreamer::writeToFile(const Path& outputPath) {
     return referenceFrame.writeToFiles(outputPath);
 }
 
-size_t QuadsStreamer::writeToMemory(std::vector<char>& outputData) {
+size_t QuadsStreamer::writeToMemory(bool isResidualFrame, std::vector<char>& outputData) {
     // Save camera data
     std::vector<char> cameraData;
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
@@ -271,9 +271,15 @@ size_t QuadsStreamer::writeToMemory(std::vector<char>& outputData) {
 
     // Save geometry data
     std::vector<char> geometryData;
-    referenceFrame.writeToMemory(geometryData);
+    if (!isResidualFrame) {
+        referenceFrame.writeToMemory(geometryData);
+    }
+    else {
+        residualFrame.writeToMemory(geometryData);
+    }
 
     QuadsReceiver::Header header{
+        !isResidualFrame,
         static_cast<uint32_t>(cameraData.size()),
         static_cast<uint32_t>(colorData.size()),
         static_cast<uint32_t>(geometryData.size())

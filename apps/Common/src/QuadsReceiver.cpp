@@ -69,10 +69,10 @@ void QuadsReceiver::loadFromFiles(const Path& dataPath) {
     std::string colorFileName = dataPath / "color.jpg";
     colorTexture.loadFromFile(colorFileName, true, false);
 
-    frame.loadFromFiles(dataPath);
+    referenceFrame.loadFromFiles(dataPath);
     stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    updateGeometry();
+    updateGeometry(true);
 }
 
 void QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
@@ -84,21 +84,25 @@ void QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     std::memcpy(&header, ptr, sizeof(Header));
     ptr += sizeof(Header);
 
-    if (inputData.size() < header.cameraSize + header.colorSize + header.geometrySize) {
+    // Sanity check
+    if (inputData.size() < sizeof(Header) + header.cameraSize + header.colorSize + header.geometrySize) {
         throw std::runtime_error("Input data size " +
                                   std::to_string(inputData.size()) +
                                   " is smaller than expected from header " +
                                   std::to_string(header.colorSize + header.geometrySize));
     }
 
+    // Read camera data
     cameraPose.loadFromMemory(ptr, header.cameraSize);
     copyPoseToCamera(remoteCamera);
     ptr += header.cameraSize;
 
+    // Read color data
     colorData.resize(header.colorSize);
     std::memcpy(colorData.data(), ptr, header.colorSize);
     ptr += header.colorSize;
 
+    // Read geometry data
     geometryData.resize(header.geometrySize);
     std::memcpy(geometryData.data(), ptr, header.geometrySize);
     ptr += header.geometrySize;
@@ -111,10 +115,16 @@ void QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
         return std::make_tuple(data, width, height, channels);
     });
 
-    frame.loadFromMemory(geometryData);
+    // Load QuadFrame
+    if (header.isReferenceFrame) {
+        referenceFrame.loadFromMemory(geometryData);
+    }
+    else {
+        residualFrame.loadFromMemory(geometryData);
+    }
     stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    updateGeometry();
+    updateGeometry(header.isReferenceFrame);
 
     // Wait for async to finish
     auto [data, width, height, channels] = future.get();
@@ -123,11 +133,21 @@ void QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     FileIO::freeImage(data);
 }
 
-void QuadsReceiver::updateGeometry() {
+void QuadsReceiver::updateGeometry(bool isReferenceFrame) {
     double startTime = timeutils::getTimeMicros();
-    auto offsetsFuture = frame.decompressDepthOffsets(uncompressedOffsets);
-    auto quadsFuture = frame.decompressQuads(uncompressedQuads);
-    quadsFuture.get(); offsetsFuture.get();
+    if (isReferenceFrame) {
+        auto offsetsFuture = referenceFrame.decompressDepthOffsets(uncompressedOffsets);
+        auto quadsFuture = referenceFrame.decompressQuads(uncompressedQuads);
+        quadsFuture.get(); offsetsFuture.get();
+    }
+    else {
+        auto offsetsUpdatedFuture = residualFrame.decompressUpdatedDepthOffsets(uncompressedOffsetsRevealed);
+        auto offsetsRevealedFuture = residualFrame.decompressUpdatedDepthOffsets(uncompressedOffsetsUpdated);
+        auto quadsUpdatedFuture = residualFrame.decompressUpdatedQuads(uncompressedQuadsUpdated);
+        auto quadsRevealedFuture = residualFrame.decompressUpdatedQuads(uncompressedQuadsRevealed);
+        offsetsUpdatedFuture.get(); offsetsRevealedFuture.get();
+        quadsUpdatedFuture.get(); quadsRevealedFuture.get();
+    }
     stats.decompressTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     auto sizes = quadSet.copyFromCPU(uncompressedQuads, uncompressedOffsets);

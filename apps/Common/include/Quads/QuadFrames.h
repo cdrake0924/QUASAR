@@ -145,7 +145,7 @@ public:
         ptr += sizeof(Header);
 
         // Sanity check
-        if (inputData.size() < header.quadsSize + header.depthOffsetsSize) {
+        if (inputData.size() < sizeof(Header) + header.quadsSize + header.depthOffsetsSize) {
             throw std::runtime_error("Input data size " +
                                       std::to_string(inputData.size()) +
                                       " is smaller than expected from header " +
@@ -172,6 +172,13 @@ private:
 
 class ResidualFrame {
 public:
+    struct Header {
+        uint32_t quadsUpdatedSize;
+        uint32_t depthOffsetsUpdatedSize;
+        uint32_t quadsRevealedSize;
+        uint32_t depthOffsetsRevealedSize;
+    };
+
     size_t numQuadsUpdated;
     size_t numDepthOffsetsUpdated;
     size_t numQuadsRevealed;
@@ -293,19 +300,78 @@ public:
     }
 
     size_t writeToMemory(std::vector<char>& outputData) {
-        size_t outputSize = quadsUpdated.size() + depthOffsetsUpdated.size() + quadsRevealed.size() + depthOffsetsRevealed.size();
+        Header header{
+            static_cast<uint32_t>(quadsUpdated.size()),
+            static_cast<uint32_t>(depthOffsetsUpdated.size()),
+            static_cast<uint32_t>(quadsRevealed.size()),
+            static_cast<uint32_t>(depthOffsetsRevealed.size())
+        };
+        size_t outputSize = sizeof(Header) +
+                            quadsUpdated.size() + depthOffsetsUpdated.size() +
+                            quadsRevealed.size() + depthOffsetsRevealed.size();
         outputData.resize(outputSize);
 
-        // Save updated quads
-        std::copy(quadsUpdated.begin(), quadsUpdated.end(), outputData.begin());
-        // Save updated depth offsets
-        std::copy(depthOffsetsUpdated.begin(), depthOffsetsUpdated.end(), outputData.begin() + quadsUpdated.size());
-        // Save revealed quads
-        std::copy(quadsRevealed.begin(), quadsRevealed.end(), outputData.begin() + quadsUpdated.size() + depthOffsetsUpdated.size());
-        // Save revealed depth offsets
-        std::copy(depthOffsetsRevealed.begin(), depthOffsetsRevealed.end(), outputData.begin() + quadsUpdated.size() + depthOffsetsUpdated.size() + quadsRevealed.size());
+        char* ptr = outputData.data();
+        // Write header
+        std::memcpy(ptr, &header, sizeof(Header));
+        ptr += sizeof(Header);
+        // Write updated quads
+        std::memcpy(ptr, quadsUpdated.data(), quadsUpdated.size());
+        ptr += quadsUpdated.size();
+        // Write updated depth offsets
+        std::memcpy(ptr, depthOffsetsUpdated.data(), depthOffsetsUpdated.size());
+        ptr += depthOffsetsUpdated.size();
+        // Write revealed quads
+        std::memcpy(ptr, quadsRevealed.data(), quadsRevealed.size());
+        ptr += quadsRevealed.size();
+        // Write revealed depth offsets
+        std::memcpy(ptr, depthOffsetsRevealed.data(), depthOffsetsRevealed.size());
+        ptr += depthOffsetsRevealed.size();
 
         return outputData.size();
+    }
+
+    size_t loadFromMemory(const std::vector<char>& inputData) {
+        const char* ptr = inputData.data();
+
+        // Read header
+        Header header;
+        std::memcpy(&header, ptr, sizeof(Header));
+        ptr += sizeof(Header);
+
+        // Sanity check
+        if (inputData.size() < sizeof(Header) +
+                               header.quadsUpdatedSize + header.depthOffsetsUpdatedSize +
+                               header.quadsRevealedSize + header.depthOffsetsRevealedSize) {
+            throw std::runtime_error("Input data size " +
+                                      std::to_string(inputData.size()) +
+                                      " is smaller than expected from header " +
+                                      std::to_string(header.quadsUpdatedSize + header.depthOffsetsUpdatedSize +
+                                                     header.quadsRevealedSize + header.depthOffsetsRevealedSize));
+        }
+
+        // Read updated quads
+        quadsUpdated.resize(header.quadsUpdatedSize);
+        std::memcpy(quadsUpdated.data(), ptr, header.quadsUpdatedSize);
+        ptr += header.quadsUpdatedSize;
+
+        // Read updated depth offsets
+        depthOffsetsUpdated.resize(header.depthOffsetsUpdatedSize);
+        std::memcpy(depthOffsetsUpdated.data(), ptr, header.depthOffsetsUpdatedSize);
+        ptr += header.depthOffsetsUpdatedSize;
+
+        // Read revealed quads
+        quadsRevealed.resize(header.quadsRevealedSize);
+        std::memcpy(quadsRevealed.data(), ptr, header.quadsRevealedSize);
+        ptr += header.quadsRevealedSize;
+
+        // Read revealed depth offsets
+        depthOffsetsRevealed.resize(header.depthOffsetsRevealedSize);
+        std::memcpy(depthOffsetsRevealed.data(), ptr, header.depthOffsetsRevealedSize);
+        ptr += header.depthOffsetsRevealedSize;
+
+        return quadsUpdated.size() + depthOffsetsUpdated.size() +
+               quadsRevealed.size() + depthOffsetsRevealed.size();
     }
 
 private:
