@@ -100,8 +100,9 @@ private:
     // Scenes with resulting meshes
     std::vector<Scene> meshScenes;
 
-    // Holds a copy of the current frame
-    FrameRenderTarget copyRT;
+    // Holds a copy of the current reference and residual frame
+    FrameRenderTarget referenceCopyRT;
+    FrameRenderTarget residualCopyRT;
 
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;

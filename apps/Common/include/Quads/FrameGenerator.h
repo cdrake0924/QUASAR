@@ -35,7 +35,7 @@ public:
         const FrameRenderTarget& referenceFrameRT,
         const PerspectiveCamera& remoteCamera,
         QuadMesh& mesh,
-        ReferenceFrame& resultFrame,
+        ReferenceFrame& referenceFrame,
         bool compress = true);
 
     void updateResidualRenderTargets(
@@ -48,7 +48,7 @@ public:
         const FrameRenderTarget& residualFrameMaskRT, const FrameRenderTarget& residualFrameRT,
         const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev,
         QuadMesh& mesh, QuadMesh& maskMesh,
-        ResidualFrame& resultFrame,
+        ResidualFrame& residualFrame,
         bool compress = true);
 
 private:

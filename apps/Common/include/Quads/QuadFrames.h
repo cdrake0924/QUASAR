@@ -21,7 +21,16 @@ enum FrameType {
     RESIDUAL,
 };
 
-class QuadFrame {};
+class QuadFrame {
+public:
+    QuadFrame(FrameType type) : frameType(type) {}
+    virtual ~QuadFrame() = default;
+
+    FrameType getFrameType() const { return frameType; }
+
+protected:
+    FrameType frameType;
+};
 
 class ReferenceFrame : public QuadFrame {
 public:
@@ -32,6 +41,12 @@ public:
 
     size_t numQuads, numDepthOffsets;
     std::vector<char> quads, depthOffsets;
+
+    ReferenceFrame()
+        : QuadFrame(FrameType::REFERENCE)
+        , numQuads(0)
+        , numDepthOffsets(0)
+    {}
 
     size_t getTotalNumQuads() const {
         return numQuads;
@@ -153,11 +168,12 @@ public:
         ptr += sizeof(Header);
 
         // Sanity check
-        if (inputData.size() < sizeof(Header) + header.quadsSize + header.depthOffsetsSize) {
+        size_t expectedSize = sizeof(Header) + header.quadsSize + header.depthOffsetsSize;
+        if (inputData.size() < expectedSize) {
             throw std::runtime_error("Input data size " +
                                       std::to_string(inputData.size()) +
                                       " is smaller than expected from header " +
-                                      std::to_string(header.quadsSize + header.depthOffsetsSize));
+                                      std::to_string(expectedSize));
         }
 
         // Read quads
@@ -195,6 +211,14 @@ public:
     std::vector<char> depthOffsetsUpdated;
     std::vector<char> quadsRevealed;
     std::vector<char> depthOffsetsRevealed;
+
+    ResidualFrame()
+        : QuadFrame(FrameType::RESIDUAL)
+        , numQuadsUpdated(0)
+        , numDepthOffsetsUpdated(0)
+        , numQuadsRevealed(0)
+        , numDepthOffsetsRevealed(0)
+    {}
 
     size_t getTotalNumQuads() const {
         return numQuadsUpdated + numQuadsRevealed;
@@ -389,14 +413,14 @@ public:
         ptr += sizeof(Header);
 
         // Sanity check
-        if (inputData.size() < sizeof(Header) +
-                               header.quadsUpdatedSize + header.depthOffsetsUpdatedSize +
-                               header.quadsRevealedSize + header.depthOffsetsRevealedSize) {
+        size_t expectedSize = sizeof(Header) +
+                              header.quadsUpdatedSize + header.depthOffsetsUpdatedSize +
+                              header.quadsRevealedSize + header.depthOffsetsRevealedSize;
+        if (inputData.size() < expectedSize) {
             throw std::runtime_error("Input data size " +
                                       std::to_string(inputData.size()) +
                                       " is smaller than expected from header " +
-                                      std::to_string(header.quadsUpdatedSize + header.depthOffsetsUpdatedSize +
-                                                     header.quadsRevealedSize + header.depthOffsetsRevealedSize));
+                                      std::to_string(expectedSize));
         }
 
         // Read updated quads

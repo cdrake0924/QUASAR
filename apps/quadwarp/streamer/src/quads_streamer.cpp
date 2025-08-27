@@ -11,7 +11,7 @@
 #include <QuadsStreamer.h>
 #include <PoseReceiver.h>
 
-#define REF_FRAME_PERIOD 2
+#define REF_FRAME_PERIOD 5
 
 using namespace quasar;
 
@@ -205,9 +205,9 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::Checkbox("Show Wireframe", &showWireframe);
             ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth);
             ImGui::Checkbox("Show Normals Instead of Color", &showNormals);
+            ImGui::Checkbox("Show Wireframe", &showWireframe);
 
             ImGui::Separator();
 

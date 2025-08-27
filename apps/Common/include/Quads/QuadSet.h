@@ -18,6 +18,14 @@ public:
         double quadsSize = 0.0;
         double depthOffsetsSize = 0.0;
 
+        Sizes operator+(const Sizes& other) const {
+            return {
+                numQuads + other.numQuads,
+                numDepthOffsets + other.numDepthOffsets,
+                quadsSize + other.quadsSize,
+                depthOffsetsSize + other.depthOffsetsSize
+            };
+        }
         Sizes& operator+=(const Sizes& other) {
             numQuads += other.numQuads;
             numDepthOffsets += other.numDepthOffsets;

@@ -45,12 +45,23 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , copyRT({
+    , referenceCopyRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
-        .internalFormat = GL_RGBA16F,
-        .format = GL_RGBA,
-        .type = GL_HALF_FLOAT,
+        .internalFormat = GL_RGB8,
+        .format = GL_RGB,
+        .type = GL_UNSIGNED_BYTE,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
+    , residualCopyRT({
+        .width = quadSet.getSize().x,
+        .height = quadSet.getSize().y,
+        .internalFormat = GL_RGB8,
+        .format = GL_RGB,
+        .type = GL_UNSIGNED_BYTE,
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
@@ -135,7 +146,7 @@ void QuadsStreamer::generateFrame(
     remoteRenderer.drawObjects(remoteScene, remoteCameraToUse);
     if (!showNormals) {
         remoteRenderer.copyToFrameRT(referenceFrameRT);
-        toneMapper.drawToRenderTarget(remoteRenderer, copyRT);
+        toneMapper.drawToRenderTarget(remoteRenderer, referenceCopyRT);
     }
     else {
         showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameRT);
@@ -188,6 +199,12 @@ void QuadsStreamer::generateFrame(
             referenceFrameMeshes[currMeshIndex], residualFrameMesh,
             residualFrame
         );
+        if (!showNormals) {
+            toneMapper.drawToRenderTarget(remoteRenderer, residualCopyRT);
+        }
+        else {
+            showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameRT);
+        }
 
         stats.totalRenderTime += frameGenerator.stats.timeToUpdateRTsMs;
 
@@ -248,12 +265,21 @@ size_t QuadsStreamer::writeToFile(const PerspectiveCamera& remoteCamera, const P
     cameraPose.setViewMatrix(remoteCamera.getViewMatrix());
     cameraPose.writeToFile(cameraFileName);
 
+    Path cameraFileNamePrev = (outputPath / "camera_prev").withExtension(".bin");
+    cameraPose.setProjectionMatrix(remoteCameraPrev.getProjectionMatrix());
+    cameraPose.setViewMatrix(remoteCameraPrev.getViewMatrix());
+    cameraPose.writeToFile(cameraFileNamePrev);
+
     // Save color
-    Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    copyRT.writeColorAsJPG(colorFileName);
+    Path colorFileNameRef = (outputPath / "color").withExtension(".jpg");
+    referenceCopyRT.writeColorAsJPG(colorFileNameRef);
+
+    Path colorFileNameRes = (outputPath / "color_residual").withExtension(".jpg");
+    residualCopyRT.writeColorAsJPG(colorFileNameRes);
 
     // Save proxies
-    return referenceFrame.writeToFiles(outputPath);
+    return referenceFrame.writeToFiles(outputPath) +
+           residualFrame.writeToFiles(outputPath);
 }
 
 size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool isResidualFrame, std::vector<char>& outputData) {
@@ -264,8 +290,13 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     cameraPose.writeToMemory(cameraData);
 
     // Save color data
-    std::vector<unsigned char> colorData;
-    copyRT.writeColorJPGToMemory(colorData);
+    std::vector<unsigned char> refColorData;
+    referenceCopyRT.writeColorJPGToMemory(refColorData);
+
+    std::vector<unsigned char> resColorData;
+    if (isResidualFrame) {
+        residualCopyRT.writeColorJPGToMemory(resColorData);
+    }
 
     // Save geometry data
     std::vector<char> geometryData;
@@ -277,17 +308,19 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     }
 
     QuadsReceiver::Header header{
-        !isResidualFrame ? FrameType::REFERENCE : FrameType::RESIDUAL,
-        static_cast<uint32_t>(cameraData.size()),
-        static_cast<uint32_t>(colorData.size()),
-        static_cast<uint32_t>(geometryData.size())
+        .frameType = !isResidualFrame ? FrameType::REFERENCE : FrameType::RESIDUAL,
+        .cameraSize = static_cast<uint32_t>(cameraData.size()),
+        .referenceColorSize = static_cast<uint32_t>(refColorData.size()),
+        .residualColorSize = static_cast<uint32_t>(resColorData.size()),
+        .geometrySize = static_cast<uint32_t>(geometryData.size())
     };
 
     spdlog::debug("Writing camera size: {}", header.cameraSize);
-    spdlog::debug("Writing color size: {}", header.colorSize);
+    spdlog::debug("Writing reference color size: {}", header.referenceColorSize);
+    spdlog::debug("Writing residual color size: {}", header.residualColorSize);
     spdlog::debug("Writing geometry size: {}", header.geometrySize);
 
-    outputData.resize(sizeof(header) + cameraData.size() + colorData.size() + geometryData.size());
+    outputData.resize(sizeof(header) + cameraData.size() + refColorData.size() + resColorData.size() + geometryData.size());
 
     char* ptr = outputData.data();
     // Write header
@@ -296,9 +329,12 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     // Write camera data
     std::memcpy(ptr, cameraData.data(), cameraData.size());
     ptr += cameraData.size();
-    // Write color data
-    std::memcpy(ptr, colorData.data(), colorData.size());
-    ptr += colorData.size();
+    // Write reference color data
+    std::memcpy(ptr, refColorData.data(), refColorData.size());
+    ptr += refColorData.size();
+    // Write residual color data
+    std::memcpy(ptr, resColorData.data(), resColorData.size());
+    ptr += resColorData.size();
     // Write geometry data
     std::memcpy(ptr, geometryData.data(), geometryData.size());
     ptr += geometryData.size();

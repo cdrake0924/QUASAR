@@ -265,7 +265,6 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::Checkbox("Show Wireframe", &showWireframe);
             if (ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth)) {
                 preventCopyingLocalPose = true;
                 sendReferenceFrame = true;
@@ -276,6 +275,7 @@ int main(int argc, char** argv) {
                 sendReferenceFrame = true;
                 runAnimations = false;
             }
+            ImGui::Checkbox("Show Wireframe", &showWireframe);
 
             ImGui::Separator();
 

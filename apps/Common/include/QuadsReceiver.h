@@ -16,7 +16,8 @@ public:
     struct Header {
         FrameType frameType;
         uint32_t cameraSize;
-        uint32_t colorSize;
+        uint32_t referenceColorSize;
+        uint32_t residualColorSize;
         uint32_t geometrySize;
     };
 
@@ -55,19 +56,20 @@ private:
     PerspectiveCamera remoteCameraPrev;
     Pose cameraPose;
 
-    Texture colorTexture;
+    Texture referenceColorTexture;
     QuadMesh referenceFrameMesh;
+    Texture residualColorTexture;
     QuadMesh residualFrameMesh;
 
     std::mutex m;
     std::deque<std::vector<char>> frames;
 
+    std::vector<unsigned char> referenceColorData;
+    std::vector<unsigned char> residualColorData;
+    std::vector<char> geometryData;
     std::vector<char> uncompressedQuads, uncompressedOffsets;
     std::vector<char> uncompressedQuadsUpdated, uncompressedOffsetsUpdated;
     std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
-
-    std::vector<unsigned char> colorData;
-    std::vector<char> geometryData;
 
     void updateGeometry(FrameType frameType);
 };

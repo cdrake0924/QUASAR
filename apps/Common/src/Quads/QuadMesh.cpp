@@ -1,6 +1,6 @@
+#include <algorithm>
 #include <Quads/QuadMesh.h>
 #include <Utils/TimeUtils.h>
-
 #include <shaders_common.h>
 
 #ifndef __ANDROID__
@@ -84,12 +84,12 @@ QuadMesh::BufferSizes QuadMesh::getBufferSizes() const {
     return bufferSizes;
 }
 
-void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isreferenceFrame) {
+void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isReferenceFrame) {
     double startTime = timeutils::getTimeMicros();
 
     appendQuadsShader.bind();
     {
-        appendQuadsShader.setBool("isreferenceFrame", isreferenceFrame);
+        appendQuadsShader.setBool("isReferenceFrame", isReferenceFrame);
         appendQuadsShader.setUint("newNumProxies", quadSet.getNumQuads());
     }
     {
@@ -115,6 +115,19 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
 void QuadMesh::fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferSize) {
     double startTime = timeutils::getTimeMicros();
 
+    // Get current number of proxies
+    int currNumProxies = 0;
+    auto* ptr = currNumProxiesBuffer.mapToCPU(GL_MAP_READ_BIT);
+    if (ptr) {
+        currNumProxies = static_cast<int*>(ptr)[0];
+        currNumProxiesBuffer.unmapFromCPU();
+    }
+    else {
+        spdlog::warn("Failed to map currNumProxiesBuffer. Copying using getData");
+        currNumProxiesBuffer.getData(&currNumProxies);
+    }
+    currNumProxies = std::min(currNumProxies, MAX_QUADS_PER_MESH);
+
     fillQuadIndicesShader.bind();
     {
         fillQuadIndicesShader.setVec2("gBufferSize", gBufferSize);
@@ -130,7 +143,8 @@ void QuadMesh::fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferS
 
         fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadIndicesMap);
     }
-    fillQuadIndicesShader.dispatch((MAX_QUADS_PER_MESH + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
+
+    fillQuadIndicesShader.dispatch(((currNumProxies + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     fillQuadIndicesShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     stats.timeToGatherQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);

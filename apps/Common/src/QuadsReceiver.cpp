@@ -5,23 +5,33 @@
 #include <Utils/TimeUtils.h>
 #include <QuadsReceiver.h>
 
-namespace quasar {
+using namespace quasar;
 
 QuadsReceiver::QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL)
     : quadSet(quadSet)
     , streamerURL(streamerURL)
     , remoteCamera(quadSet.getSize())
-    , colorTexture({
+    , referenceColorTexture({
         .internalFormat = GL_RGB,
         .format = GL_RGB,
+        .type = GL_UNSIGNED_BYTE,
         .wrapS = GL_REPEAT,
         .wrapT = GL_REPEAT,
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , referenceFrameMesh(quadSet, colorTexture)
+    , residualColorTexture({
+        .internalFormat = GL_RGB,
+        .format = GL_RGB,
+        .type = GL_UNSIGNED_BYTE,
+        .wrapS = GL_REPEAT,
+        .wrapT = GL_REPEAT,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
+    , referenceFrameMesh(quadSet, referenceColorTexture)
     // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, colorTexture, MAX_QUADS_PER_MESH / 4)
+    , residualFrameMesh(quadSet, residualColorTexture, MAX_QUADS_PER_MESH / 4)
     , uncompressedQuads(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
     , uncompressedQuadsUpdated(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
     , uncompressedQuadsRevealed(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
@@ -72,18 +82,29 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     stats = { 0 };
     double startTime = timeutils::getTimeMicros();
 
-    std::string cameraFileName = dataPath / "camera.bin";
+    Path cameraFileName = dataPath / "camera.bin";
     cameraPose.loadFromFile(cameraFileName);
     copyPoseToCamera(remoteCamera);
 
-    std::string colorFileName = dataPath / "color.jpg";
-    colorTexture.loadFromFile(colorFileName, true, false);
+    Path colorFileNameRef = dataPath / "color.jpg";
+    referenceColorTexture.loadFromFile(colorFileNameRef, true, false);
 
     referenceFrame.loadFromFiles(dataPath);
     stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     updateGeometry(FrameType::REFERENCE);
-    return FrameType::REFERENCE;
+
+    Path cameraFileNamePrev = dataPath / "camera_prev.bin";
+    cameraPose.loadFromFile(cameraFileNamePrev);
+    copyPoseToCamera(remoteCameraPrev);
+
+    Path colorFileNameRes = dataPath / "color_residual.jpg";
+    residualColorTexture.loadFromFile(colorFileNameRes, true, false);
+
+    residualFrame.loadFromFiles(dataPath);
+
+    updateGeometry(FrameType::RESIDUAL);
+    return FrameType::RESIDUAL;
 }
 
 FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
@@ -96,26 +117,35 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     ptr += sizeof(Header);
 
     // Sanity check
-    if (inputData.size() < sizeof(Header) + header.cameraSize + header.colorSize + header.geometrySize) {
+    size_t expectedSize = sizeof(Header) +
+                          header.cameraSize +
+                          header.referenceColorSize + header.residualColorSize +
+                          header.geometrySize;
+    if (inputData.size() < expectedSize) {
         throw std::runtime_error("Input data size " +
                                   std::to_string(inputData.size()) +
                                   " is smaller than expected from header " +
-                                  std::to_string(header.colorSize + header.geometrySize));
+                                  std::to_string(expectedSize));
     }
 
-    spdlog::debug("Reading camera size: {}", header.cameraSize);
-    spdlog::debug("Reading color size: {}", header.colorSize);
-    spdlog::debug("Reading geometry size: {}", header.geometrySize);
+    spdlog::debug("Loading camera size: {}", header.cameraSize);
+    spdlog::debug("Loading reference color size: {}", header.referenceColorSize);
+    spdlog::debug("Loading residual color size: {}", header.residualColorSize);
+    spdlog::debug("Loading geometry size: {}", header.geometrySize);
 
     // Read camera data
     cameraPose.loadFromMemory(ptr, header.cameraSize);
     copyPoseToCamera(remoteCamera);
     ptr += header.cameraSize;
 
-    // Read color data
-    colorData.resize(header.colorSize);
-    std::memcpy(colorData.data(), ptr, header.colorSize);
-    ptr += header.colorSize;
+    // Read reference color data
+    referenceColorData.resize(header.referenceColorSize);
+    std::memcpy(referenceColorData.data(), ptr, header.referenceColorSize);
+    ptr += header.referenceColorSize;
+
+    residualColorData.resize(header.residualColorSize);
+    std::memcpy(residualColorData.data(), ptr, header.residualColorSize);
+    ptr += header.residualColorSize;
 
     // Read geometry data
     geometryData.resize(header.geometrySize);
@@ -123,12 +153,20 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     ptr += header.geometrySize;
 
     // Run async
-    auto future = std::async(std::launch::async, [this]() {
+    FileIO::flipVerticallyOnLoad(true);
+    auto refFuture = std::async(std::launch::async, [this]() {
         int width, height, channels;
-        FileIO::flipVerticallyOnLoad(true);
-        unsigned char* data = FileIO::loadImageFromMemory(colorData.data(), colorData.size(), &width, &height, &channels);
+        unsigned char* data = FileIO::loadImageFromMemory(referenceColorData.data(), referenceColorData.size(), &width, &height, &channels);
         return std::make_tuple(data, width, height, channels);
     });
+    std::future<std::tuple<unsigned char*, int, int, int>> resFuture;
+    if (header.residualColorSize > 0) {
+        resFuture = std::async(std::launch::async, [this]() {
+            int width, height, channels;
+            unsigned char* data = FileIO::loadImageFromMemory(residualColorData.data(), residualColorData.size(), &width, &height, &channels);
+            return std::make_tuple(data, width, height, channels);
+        });
+    }
 
     // Load QuadFrame
     if (header.frameType == FrameType::REFERENCE) {
@@ -142,23 +180,28 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     updateGeometry(header.frameType);
 
     // Wait for async to finish
-    auto [data, width, height, channels] = future.get();
-    colorTexture.resize(width, height);
-    colorTexture.loadFromData(data);
-    FileIO::freeImage(data);
+    if (header.residualColorSize > 0) {
+        auto [resData, resWidth, resHeight, resChannels] = resFuture.get();
+        residualColorTexture.resize(resWidth, resHeight);
+        residualColorTexture.loadFromData(resData);
+        FileIO::freeImage(resData);
+    }
+
+    auto [refData, refWidth, refHeight, refChannels] = refFuture.get();
+    referenceColorTexture.resize(refWidth, refHeight);
+    referenceColorTexture.loadFromData(refData);
+    FileIO::freeImage(refData);
 
     return header.frameType;
 }
 
 void QuadsReceiver::updateGeometry(FrameType frameType) {
-    const glm::vec2& gBufferSize = glm::vec2(colorTexture.width, colorTexture.height);
+    const glm::vec2& gBufferSize = glm::vec2(referenceColorTexture.width, referenceColorTexture.height);
     if (frameType == FrameType::REFERENCE) {
-        double startTime = timeutils::getTimeMicros();
         // Decompress proxies (asynchronous)
         auto offsetsFuture = referenceFrame.decompressDepthOffsets(uncompressedOffsets);
         auto quadsFuture = referenceFrame.decompressQuads(uncompressedQuads);
         quadsFuture.get(); offsetsFuture.get();
-        stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // Transfer updated proxies to GPU for reconstruction
         auto sizes = quadSet.copyFromCPU(uncompressedQuads, uncompressedOffsets);
@@ -167,7 +210,7 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
 
         // Using GPU buffers, reconstruct mesh using proxies
-        startTime = timeutils::getTimeMicros();
+        double startTime = timeutils::getTimeMicros();
         referenceFrameMesh.appendQuads(quadSet, gBufferSize);
         referenceFrameMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
         stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
@@ -175,16 +218,18 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         auto meshBufferSizes = referenceFrameMesh.getBufferSizes();
         stats.totalTriangles += meshBufferSizes.numIndices / 3;
         stats.sizes += sizes;
+        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress();
+
+        remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
+        remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
     }
     else {
-        double startTime = timeutils::getTimeMicros();
         // Decompress proxies (asynchronous)
         auto offsetsUpdatedFuture = residualFrame.decompressUpdatedDepthOffsets(uncompressedOffsetsUpdated);
         auto offsetsRevealedFuture = residualFrame.decompressRevealedDepthOffsets(uncompressedOffsetsRevealed);
         auto quadsUpdatedFuture = residualFrame.decompressUpdatedQuads(uncompressedQuadsUpdated);
         auto quadsRevealedFuture = residualFrame.decompressRevealedQuads(uncompressedQuadsRevealed);
         quadsUpdatedFuture.get(); offsetsUpdatedFuture.get();
-        stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // Transfer updated proxies to GPU for reconstruction
         auto sizesUpdated = quadSet.copyFromCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated);
@@ -193,8 +238,8 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
 
         // Using GPU buffers, update reference frame mesh using proxies
-        startTime = timeutils::getTimeMicros();
-        referenceFrameMesh.appendQuads(quadSet, gBufferSize, false /* is not reference frame; append */);
+        double startTime = timeutils::getTimeMicros();
+        referenceFrameMesh.appendQuads(quadSet, gBufferSize, false /* is not reference frame */);
         referenceFrameMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCameraPrev);
         stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
@@ -218,12 +263,7 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
 
         auto resMeshBufferSizes = residualFrameMesh.getBufferSizes();
         stats.totalTriangles += resMeshBufferSizes.numIndices / 3;
-        stats.sizes += sizesUpdated;
-        stats.sizes += sizesRevealed;
+        stats.sizes += sizesUpdated + sizesRevealed;
+        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress() + residualFrame.getTimeToDecompress();
     }
-
-    remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
-    remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 }
-
-} // namespace quasar
