@@ -184,10 +184,10 @@ void Texture::saveDepthToFile(const std::string& filename) {
 }
 #endif
 
-void Texture::saveJPGToMemory(std::vector<unsigned char>& outputData, int quality) {
+void Texture::writeJPGToMemory(std::vector<unsigned char>& outputData, int quality) {
     outputData.resize(width * height * 4);
     readPixels(outputData.data());
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveJPGToMemory(outputData, width, height, 4, outputData.data(), quality);
+    FileIO::writeJPGToMemory(outputData, width, height, 4, outputData.data(), quality);
 }

@@ -74,14 +74,14 @@ public:
 
     Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
         double startTime = timeutils::getTimeMicros();
-        quadBuffers.copyFromCPU(inputQuads);
+        auto quadsSize = quadBuffers.copyFromCPU(inputQuads);
         depthOffsets.copyFromCPU(inputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         return {
             quadBuffers.numProxies,
             depthOffsets.getSize().x * depthOffsets.getSize().y,
-            static_cast<double>(inputQuads.size()),
+            static_cast<double>(quadsSize),
             static_cast<double>(inputDepthOffsets.size())
         };
     }

@@ -306,33 +306,33 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
-                auto& quadsGenerator = frameGenerator.quadsGenerator;
-                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
+                auto quadsGenerator = frameGenerator.getQuadsGenerator();
+                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator->params.correctOrientation)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
+                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator->params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
+                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
+                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
+                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
+                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
@@ -410,7 +410,7 @@ int main(int argc, char** argv) {
 
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
                     if (viewIdx == 0) {
-                        ImGui::Image((void*)(intptr_t)(quasar.refFrameRT.colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
+                        ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
                     }
                     else {
                         ImGui::Image((void*)(intptr_t)(quasar.frameRTsHidLayer[viewIdx-1].colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
@@ -441,10 +441,10 @@ int main(int argc, char** argv) {
                 for (int layer = 0; layer < maxLayersWideFOV - 1; layer++) {
                     Path viewPath = basePath.appendToName(".layer" + std::to_string(layer + 1) + "." + time);
                     if (writeToHDR) {
-                        quasar.frameRTsHidLayer[layer].saveColorAsHDR(viewPath.withExtension(".hdr"));
+                        quasar.frameRTsHidLayer[layer].writeColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
-                        quasar.frameRTsHidLayer[layer].saveColorAsPNG(viewPath.withExtension(".png"));
+                        quasar.frameRTsHidLayer[layer].writeColorAsPNG(viewPath.withExtension(".png"));
                     }
                 }
             }
@@ -515,16 +515,16 @@ int main(int argc, char** argv) {
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("FrameRenderTarget Color", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasar.refFrameRT.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasar.resFrameMaskRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quasar.residualFrameMaskRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasar.resFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quasar.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
@@ -629,7 +629,7 @@ int main(int argc, char** argv) {
                 remoteRenderer, remoteRendererDP, sendResidualFrame,
                 showNormals, showDepth);
 
-            std::string frameType = sendReferenceFrame ? "RefFrame" : "ResFrame";
+            std::string frameType = sendReferenceFrame ? "referenceFrame" : "residualFrame";
             spdlog::info("======================================================");
             spdlog::info("Rendering Time ({}): {:.3f}ms", frameType, quasar.stats.totalRenderTime);
             spdlog::info("Create Proxies Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateProxiesTime);
@@ -665,10 +665,10 @@ int main(int argc, char** argv) {
 
             if (layer == 0) {
                 // Show previous mesh
-                quasar.refFrameNodesLocal[quasar.currMeshIndex].visible = false;
-                quasar.refFrameNodesLocal[quasar.prevMeshIndex].visible = showLayer;
-                quasar.refFrameWireframesLocal[quasar.currMeshIndex].visible = false;
-                quasar.refFrameWireframesLocal[quasar.prevMeshIndex].visible = showLayer && showWireframe;
+                quasar.referenceFrameNodesLocal[quasar.currMeshIndex].visible = false;
+                quasar.referenceFrameNodesLocal[quasar.prevMeshIndex].visible = showLayer;
+                quasar.referenceFrameWireframesLocal[quasar.currMeshIndex].visible = false;
+                quasar.referenceFrameWireframesLocal[quasar.prevMeshIndex].visible = showLayer && showWireframe;
                 quasar.depthNode.visible = showLayer && showDepth;
             }
             else {
@@ -677,7 +677,7 @@ int main(int argc, char** argv) {
                 quasar.depthNodesHidLayer[layer-1].visible = showLayer && showDepth;
             }
         }
-        quasar.resFrameWireframeNodesLocal.visible = quasar.resFrameNode.visible && showWireframe;
+        quasar.residualFrameWireframeNodesLocal.visible = quasar.residualFrameNode.visible && showWireframe;
 
         if (restrictMovementToViewBox) {
             glm::vec3 remotePosition = remoteCameraCenter.getPosition();
@@ -698,9 +698,9 @@ int main(int argc, char** argv) {
         renderStats = renderer.drawObjects(localScene, camera);
 
         // Render to screen
-        auto& quadsGenerator = frameGenerator.quadsGenerator;
+        auto quadsGenerator = frameGenerator.getQuadsGenerator();
         holeFiller.enableToneMapping(!showNormals);
-        holeFiller.setDepthThreshold(quadsGenerator.params.depthThreshold);
+        holeFiller.setDepthThreshold(quadsGenerator->params.depthThreshold);
         holeFiller.drawToScreen(renderer);
         if (!updateClient) {
             return;

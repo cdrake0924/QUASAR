@@ -14,24 +14,24 @@ namespace quasar {
 class QuadsStreamer : public DataStreamerTCP {
 public:
     // Reference frame
-    FrameRenderTarget refFrameRT;
+    FrameRenderTarget referenceFrameRT;
     ReferenceFrame referenceFrame;
-    std::vector<QuadMesh> refFrameMeshes;
-    std::vector<Node> refFrameNodes;
+    std::vector<QuadMesh> referenceFrameMeshes;
+    std::vector<Node> referenceFrameNodes;
     int currMeshIndex = 0, prevMeshIndex = 1;
 
     // Residual frame
-    FrameRenderTarget resFrameRT;
+    FrameRenderTarget residualFrameRT;
     // Render target to hold updated/masked depth and normals for residual frames
-    FrameRenderTarget resFrameMaskRT;
+    FrameRenderTarget residualFrameMaskRT;
     ResidualFrame residualFrame;
-    QuadMesh resFrameMesh;
-    Node resFrameNode;
+    QuadMesh residualFrameMesh;
+    Node residualFrameNode;
 
     // Local objects
-    std::vector<Node> refFrameNodesLocal;
-    std::vector<Node> refFrameWireframesLocal;
-    Node resFrameWireframeNodesLocal;
+    std::vector<Node> referenceFrameNodesLocal;
+    std::vector<Node> referenceFrameWireframesLocal;
+    Node residualFrameWireframeNodesLocal;
 
     // Depth point cloud for debugging
     DepthMesh depthMesh;
@@ -56,23 +56,22 @@ public:
 
     QuadsStreamer(
         QuadSet& quadSet,
-        DeferredRenderer& remoteRenderer,
-        Scene& remoteScene,
-        const PerspectiveCamera& remoteCamera,
-        FrameGenerator& frameGenerator,
+        DeferredRenderer& remoteRenderer, Scene& remoteScene,
         const std::string& receiverURL = "");
     ~QuadsStreamer() = default;
 
     uint getNumTriangles() const;
+    std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return frameGenerator.getQuadsGenerator(); }
 
     void addMeshesToScene(Scene& localScene);
 
     void generateFrame(
-        DeferredRenderer& remoteRenderer, Scene& remoteScene,
-        bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
+        DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
+        bool createResidualFrame, bool showNormals = false, bool showDepth = false);
+    void sendProxies(const PerspectiveCamera& remoteCamera, bool createResidualFrame);
 
-    size_t writeToFile(const Path& outputPath);
-    size_t writeToMemory(bool isResidualFrame, std::vector<char>& outputData);
+    size_t writeToFile(const PerspectiveCamera& remoteCamera, const Path& outputPath);
+    size_t writeToMemory(const PerspectiveCamera& remoteCamera, bool isResidualFrame, std::vector<char>& outputData);
 
 private:
     const std::vector<glm::vec4> colors = {
@@ -89,12 +88,11 @@ private:
     };
 
     QuadSet& quadSet;
-    FrameGenerator& frameGenerator;
+    FrameGenerator frameGenerator;
 
     DeferredRenderer& remoteRenderer;
     Scene& remoteScene;
 
-    const PerspectiveCamera& remoteCamera;
     PerspectiveCamera remoteCameraPrev;
 
     Pose cameraPose;

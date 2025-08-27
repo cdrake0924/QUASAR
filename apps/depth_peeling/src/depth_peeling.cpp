@@ -241,10 +241,10 @@ int main(int argc, char** argv) {
                 for (int view = 1; view < renderer.maxLayers; view++) {
                     Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
                     if (writeToHDR) {
-                        renderer.peelingLayers[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
+                        renderer.peelingLayers[view].writeColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
-                        renderer.peelingLayers[view].saveColorAsPNG(viewPath.withExtension(".png"));
+                        renderer.peelingLayers[view].writeColorAsPNG(viewPath.withExtension(".png"));
                     }
                 }
             }

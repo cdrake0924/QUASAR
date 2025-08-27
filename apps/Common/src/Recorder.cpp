@@ -48,10 +48,10 @@ void Recorder::saveScreenshotToFile(const Path& filename, bool writeToHDR) {
     effect.drawToRenderTarget(renderer, *this);
 
     if (writeToHDR) {
-        saveColorAsHDR(filename.withExtension(".hdr"));
+        writeColorAsHDR(filename.withExtension(".hdr"));
     }
     else {
-        saveColorAsPNG(filename.withExtension(".png"));
+        writeColorAsPNG(filename.withExtension(".png"));
     }
 }
 

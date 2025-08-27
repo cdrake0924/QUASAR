@@ -18,24 +18,24 @@ public:
     uint maxVerticesDepth;
 
     // Reference frame
-    FrameRenderTarget refFrameRT;
+    FrameRenderTarget referenceFrameRT;
     std::vector<ReferenceFrame> referenceFrames;
-    std::vector<QuadMesh> refFrameMeshes;
-    std::vector<Node> refFrameNodes;
-    std::vector<Node> refFrameWireframesLocal;
+    std::vector<QuadMesh> referenceFrameMeshes;
+    std::vector<Node> referenceFrameNodes;
+    std::vector<Node> referenceFrameWireframesLocal;
     int currMeshIndex = 0, prevMeshIndex = 1;
 
     // Residual frame -- we only create the residuals to the visible layer
-    FrameRenderTarget resFrameRT;
+    FrameRenderTarget residualFrameRT;
     // Render target to hold updated/masked depth and normals for residual frames
-    FrameRenderTarget resFrameMaskRT;
+    FrameRenderTarget residualFrameMaskRT;
     std::vector<ResidualFrame> residualFrames;
-    QuadMesh resFrameMesh;
-    Node resFrameNode;
+    QuadMesh residualFrameMesh;
+    Node residualFrameNode;
 
     // Local objects
-    std::vector<Node> refFrameNodesLocal;
-    Node resFrameWireframeNodesLocal;
+    std::vector<Node> referenceFrameNodesLocal;
+    Node residualFrameWireframeNodesLocal;
 
     // Hidden layers
     std::vector<FrameRenderTarget> frameRTsHidLayer;

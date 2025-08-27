@@ -29,7 +29,7 @@ public:
         double timeToEncodeMs = 0.0;
         double timeToTransferMs = 0.0;
         double timeToSendMs = 0.0;
-        double totalTimeToSendMs = 0.0;
+        double totalTimetoSendMs = 0.0;
         double bitrateMbps = 0.0;
     } stats;
 

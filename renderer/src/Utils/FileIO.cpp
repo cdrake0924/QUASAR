@@ -76,7 +76,7 @@ std::ifstream::pos_type FileIO::getFileSize(const std::string& filename) {
 #endif
 }
 
-std::string FileIO::loadTextFile(const std::string& filename, uint* sizePtr) {
+std::string FileIO::loadFromTextFile(const std::string& filename, uint* sizePtr) {
 #ifndef __ANDROID__
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -106,7 +106,7 @@ std::string FileIO::loadTextFile(const std::string& filename, uint* sizePtr) {
 #endif
 }
 
-std::vector<char> FileIO::loadBinaryFile(const std::string& filename, uint* sizePtr) {
+std::vector<char> FileIO::loadFromBinaryFile(const std::string& filename, uint* sizePtr) {
 #ifndef __ANDROID__
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
@@ -280,7 +280,7 @@ void FileIO::writeToHDR(const std::string& filename, int width, int height, int 
     }
 }
 
-size_t FileIO::saveJPGToMemory(std::vector<unsigned char>& outputData, int width, int height, int channels, const void *data, int quality) {
+size_t FileIO::writeJPGToMemory(std::vector<unsigned char>& outputData, int width, int height, int channels, const void *data, int quality) {
     auto write_func = [](void* context, void* d, int s) {
         MemBuffer* mb = static_cast<MemBuffer*>(context);
         if (mb->size + (size_t)s > mb->cap) {

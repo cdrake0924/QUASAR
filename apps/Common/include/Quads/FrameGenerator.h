@@ -27,9 +27,9 @@ public:
         double timeToCompressMs = 0.0;
     } stats;
 
-    QuadsGenerator quadsGenerator;
-
     FrameGenerator(QuadSet& quadSet);
+
+    std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return quadsGenerator; }
 
     void createReferenceFrame(
         const FrameRenderTarget& referenceFrameRT,
@@ -39,25 +39,26 @@ public:
         bool compress = true);
 
     void updateResidualRenderTargets(
-        FrameRenderTarget& resFrameMaskRT, FrameRenderTarget& resFrameRT,
+        FrameRenderTarget& residualFrameMaskRT, FrameRenderTarget& residualFrameRT,
         DeferredRenderer& remoteRenderer, Scene& remoteScene,
         Scene& currMeshScene, Scene& prevMeshScene, // Scenes that contain the resulting reconstructed meshes
-        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera);
+        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev);
 
     void createResidualFrame(
-        const FrameRenderTarget& resFrameMaskRT, const FrameRenderTarget& resFrameRT,
-        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
+        const FrameRenderTarget& residualFrameMaskRT, const FrameRenderTarget& residualFrameRT,
+        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev,
         QuadMesh& mesh, QuadMesh& maskMesh,
         ResidualFrame& resultFrame,
         bool compress = true);
 
 private:
     QuadSet& quadSet;
+    std::shared_ptr<QuadsGenerator> quadsGenerator;
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;
-    std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
     std::vector<char> uncompressedQuadsUpdated, uncompressedOffsetsUpdated;
+    std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 };
 
 } // namespace quasar

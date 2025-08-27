@@ -15,7 +15,7 @@ QUASARStreamer::QUASARStreamer(
     , remoteScene(remoteScene)
     , frameGenerator(frameGenerator)
     , maxVerticesDepth(quadSet.getSize().x * quadSet.getSize().y)
-    , refFrameRT({
+    , referenceFrameRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -26,7 +26,7 @@ QUASARStreamer::QUASARStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , resFrameMaskRT({
+    , residualFrameMaskRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -37,7 +37,7 @@ QUASARStreamer::QUASARStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , resFrameRT({
+    , residualFrameRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -50,7 +50,7 @@ QUASARStreamer::QUASARStreamer(
     })
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
-    , resFrameMesh(quadSet, resFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
+    , residualFrameMesh(quadSet, residualFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
 {
@@ -58,11 +58,11 @@ QUASARStreamer::QUASARStreamer(
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
     meshScenes.resize(2);
-    refFrameMeshes.reserve(meshScenes.size());
-    refFrameNodes.reserve(meshScenes.size());
+    referenceFrameMeshes.reserve(meshScenes.size());
+    referenceFrameNodes.reserve(meshScenes.size());
     wideFovNodes.reserve(meshScenes.size());
-    refFrameNodesLocal.reserve(meshScenes.size());
-    refFrameWireframesLocal.reserve(meshScenes.size());
+    referenceFrameNodesLocal.reserve(meshScenes.size());
+    referenceFrameWireframesLocal.reserve(meshScenes.size());
 
     copyRTs.reserve(maxLayers);
     referenceFrames.resize(maxLayers);
@@ -79,31 +79,31 @@ QUASARStreamer::QUASARStreamer(
 
     // Setup visible layer for reference frame
     for (int i = 0; i < meshScenes.size(); i++) {
-        refFrameMeshes.emplace_back(quadSet, refFrameRT.colorTexture);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT.colorTexture);
 
-        refFrameNodes.emplace_back(&refFrameMeshes[i]);
-        refFrameNodes[i].frustumCulled = false;
-        meshScenes[i].addChildNode(&refFrameNodes[i]);
+        referenceFrameNodes.emplace_back(&referenceFrameMeshes[i]);
+        referenceFrameNodes[i].frustumCulled = false;
+        meshScenes[i].addChildNode(&referenceFrameNodes[i]);
 
-        refFrameNodesLocal.emplace_back(&refFrameMeshes[i]);
-        refFrameNodesLocal[i].frustumCulled = false;
+        referenceFrameNodesLocal.emplace_back(&referenceFrameMeshes[i]);
+        referenceFrameNodesLocal[i].frustumCulled = false;
 
-        refFrameWireframesLocal.emplace_back(&refFrameMeshes[i]);
-        refFrameWireframesLocal[i].frustumCulled = false;
-        refFrameWireframesLocal[i].wireframe = true;
-        refFrameWireframesLocal[i].visible = false;
-        refFrameWireframesLocal[i].overrideMaterial = &wireframeMaterial;
+        referenceFrameWireframesLocal.emplace_back(&referenceFrameMeshes[i]);
+        referenceFrameWireframesLocal[i].frustumCulled = false;
+        referenceFrameWireframesLocal[i].wireframe = true;
+        referenceFrameWireframesLocal[i].visible = false;
+        referenceFrameWireframesLocal[i].overrideMaterial = &wireframeMaterial;
     }
 
     // Setup masks for residual frame
-    resFrameNode.setEntity(&resFrameMesh);
-    resFrameNode.frustumCulled = false;
+    residualFrameNode.setEntity(&residualFrameMesh);
+    residualFrameNode.frustumCulled = false;
 
-    resFrameWireframeNodesLocal.setEntity(&resFrameMesh);
-    resFrameWireframeNodesLocal.frustumCulled = false;
-    resFrameWireframeNodesLocal.wireframe = true;
-    resFrameWireframeNodesLocal.visible = false;
-    resFrameWireframeNodesLocal.overrideMaterial = &maskWireframeMaterial;
+    residualFrameWireframeNodesLocal.setEntity(&residualFrameMesh);
+    residualFrameWireframeNodesLocal.frustumCulled = false;
+    residualFrameWireframeNodesLocal.wireframe = true;
+    residualFrameWireframeNodesLocal.visible = false;
+    residualFrameWireframeNodesLocal.overrideMaterial = &maskWireframeMaterial;
 
     // Setup depth mesh
     depthNode.setEntity(&depthMesh);
@@ -151,18 +151,18 @@ QUASARStreamer::QUASARStreamer(
 
     // Setup scene to use as mask for wide fov camera
     for (int i = 0; i < meshScenes.size(); i++) {
-        wideFovNodes.emplace_back(&refFrameMeshes[i]);
+        wideFovNodes.emplace_back(&referenceFrameMeshes[i]);
         wideFovNodes[i].frustumCulled = false;
         sceneWideFov.addChildNode(&wideFovNodes[i]);
     }
     for (int i = 0; i < numHidLayers - 1; i++) {
         sceneWideFov.addChildNode(&nodesHidLayer[i]);
     }
-    sceneWideFov.addChildNode(&resFrameNode);
+    sceneWideFov.addChildNode(&residualFrameNode);
 }
 
 uint QUASARStreamer::getNumTriangles() const {
-    auto refMeshSizes = refFrameMeshes[currMeshIndex].getBufferSizes();
+    auto refMeshSizes = referenceFrameMeshes[currMeshIndex].getBufferSizes();
     uint numTriangles = refMeshSizes.numIndices / 3; // Each triangle has 3 indices
     for (const auto& mesh : meshesHidLayer) {
         auto size = mesh.getBufferSizes();
@@ -173,11 +173,11 @@ uint QUASARStreamer::getNumTriangles() const {
 
 void QUASARStreamer::addMeshesToScene(Scene& localScene) {
     for (int i = 0; i < meshScenes.size(); i++) {
-        localScene.addChildNode(&refFrameNodesLocal[i]);
-        localScene.addChildNode(&refFrameWireframesLocal[i]);
+        localScene.addChildNode(&referenceFrameNodesLocal[i]);
+        localScene.addChildNode(&referenceFrameWireframesLocal[i]);
     }
-    localScene.addChildNode(&resFrameNode);
-    localScene.addChildNode(&resFrameWireframeNodesLocal);
+    localScene.addChildNode(&residualFrameNode);
+    localScene.addChildNode(&residualFrameWireframeNodesLocal);
     localScene.addChildNode(&depthNode);
 
     for (int layer = 0; layer < maxLayers - 1; layer++) {
@@ -206,9 +206,9 @@ void QUASARStreamer::generateFrame(
         auto& remoteCameraToUse = (layer == 0 && createResidualFrame) ? remoteCameraPrev :
                                     ((layer != maxLayers - 1) ? remoteCameraCenter : remoteCameraWideFov);
 
-        auto& frameToUse = (layer == 0) ? refFrameRT : frameRTsHidLayer[hiddenIndex];
+        auto& frameToUse = (layer == 0) ? referenceFrameRT : frameRTsHidLayer[hiddenIndex];
 
-        auto& meshToUse = (layer == 0) ? refFrameMeshes[currMeshIndex] : meshesHidLayer[hiddenIndex];
+        auto& meshToUse = (layer == 0) ? referenceFrameMeshes[currMeshIndex] : meshesHidLayer[hiddenIndex];
         auto& meshToUseDepth = (layer == 0) ? depthMesh : depthMeshsHidLayer[hiddenIndex];
 
         startTime = timeutils::getTimeMicros();
@@ -266,19 +266,19 @@ void QUASARStreamer::generateFrame(
         Generate Reference Frame
         ============================
         */
-        auto& quadsGenerator = frameGenerator.quadsGenerator;
-        auto oldParams = quadsGenerator.params;
+        auto quadsGenerator = frameGenerator.getQuadsGenerator();
+        auto oldParams = quadsGenerator->params;
         if (layer == maxLayers - 1) {
-            quadsGenerator.params.maxIterForceMerge = 4;
-            quadsGenerator.params.depthThreshold = 1e-3f;
-            quadsGenerator.params.flattenThreshold = 0.5f;
-            quadsGenerator.params.proxySimilarityThreshold = 5.0f;
+            quadsGenerator->params.maxIterForceMerge = 4;
+            quadsGenerator->params.depthThreshold = 1e-3f;
+            quadsGenerator->params.flattenThreshold = 0.5f;
+            quadsGenerator->params.proxySimilarityThreshold = 5.0f;
         }
         else if (layer > 0) {
-            quadsGenerator.params.maxIterForceMerge = 4;
-            quadsGenerator.params.depthThreshold = 1e-3f;
+            quadsGenerator->params.maxIterForceMerge = 4;
+            quadsGenerator->params.depthThreshold = 1e-3f;
         }
-        quadsGenerator.params.expandEdges = false;
+        quadsGenerator->params.expandEdges = false;
         frameGenerator.createReferenceFrame(
             frameToUse, remoteCameraToUse,
             meshToUse,
@@ -286,7 +286,7 @@ void QUASARStreamer::generateFrame(
             !createResidualFrame // No need to waste time compressing if we are generating a residual frame
         );
 
-        quadsGenerator.params = oldParams;
+        quadsGenerator->params = oldParams;
 
         stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
         stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
@@ -309,17 +309,17 @@ void QUASARStreamer::generateFrame(
         */
         if (layer == 0) {
             if (createResidualFrame) {
-                quadsGenerator.params.expandEdges = true;
+                quadsGenerator->params.expandEdges = true;
                 frameGenerator.updateResidualRenderTargets(
-                    resFrameMaskRT, resFrameRT,
+                    residualFrameMaskRT, residualFrameRT,
                     remoteRenderer, remoteScene,
                     meshScenes[currMeshIndex], meshScenes[prevMeshIndex],
                     remoteCameraCenter, remoteCameraPrev
                 );
                 frameGenerator.createResidualFrame(
-                    resFrameMaskRT, resFrameRT,
+                    residualFrameMaskRT, residualFrameRT,
                     remoteCameraCenter, remoteCameraPrev,
-                    refFrameMeshes[currMeshIndex], resFrameMesh,
+                    referenceFrameMeshes[currMeshIndex], residualFrameMesh,
                     residualFrames[layer]
                 );
 
@@ -338,7 +338,7 @@ void QUASARStreamer::generateFrame(
                 stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
             }
 
-            resFrameNode.visible = createResidualFrame;
+            residualFrameNode.visible = createResidualFrame;
             currMeshIndex = (currMeshIndex + 1) % meshScenes.size();
             prevMeshIndex = (prevMeshIndex + 1) % meshScenes.size();
 
@@ -374,7 +374,7 @@ size_t QUASARStreamer::writeToFile(const Path& outputPath) {
     for (int layer = 0; layer < maxLayers; layer++) {
         // Save color
         Path colorFileName = outputPath / ("color" + std::to_string(layer));
-        copyRTs[layer].saveColorAsJPG(colorFileName.withExtension(".jpg"));
+        copyRTs[layer].writeColorAsJPG(colorFileName.withExtension(".jpg"));
 
         // Save proxies
         totalOutputSize += referenceFrames[layer].writeToFiles(outputPath, layer);

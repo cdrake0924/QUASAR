@@ -144,5 +144,5 @@ size_t QuadBuffers::copyFromCPU(const std::vector<char>& inputData) {
 
     // Set new number of proxies
     resize(numProxies);
-    return numProxies;
+    return bufferOffset;
 }

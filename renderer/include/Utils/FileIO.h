@@ -21,8 +21,8 @@ public:
 
     static std::ifstream::pos_type getFileSize(const std::string& filename);
 
-    static std::string loadTextFile(const std::string& filename, uint* sizePtr = nullptr);
-    static std::vector<char> loadBinaryFile(const std::string& filename, uint* sizePtr = nullptr);
+    static std::string loadFromTextFile(const std::string& filename, uint* sizePtr = nullptr);
+    static std::vector<char> loadFromBinaryFile(const std::string& filename, uint* sizePtr = nullptr);
     static unsigned char* loadImage(const std::string& filename, int* width, int* height, int* channels, int desiredChannels = 0);
     static unsigned char* loadImageFromMemory(const unsigned char* data, int size, int* width, int* height, int* channels, int desiredChannels = 0);
     static float* loadImageHDR(const std::string& filename, int* width, int* height, int* channels, int desiredChannels = 0);
@@ -32,7 +32,7 @@ public:
     static void writeToPNG(const std::string& filename, int width, int height, int channels, const void *data);
     static void writeToJPG(const std::string& filename, int width, int height, int channels, const void *data, int quality = 85);
     static void writeToHDR(const std::string& filename, int width, int height, int channels, const float *data);
-    static size_t saveJPGToMemory(std::vector<unsigned char>& outputData, int width, int height, int channels, const void *data, int quality = 85);
+    static size_t writeJPGToMemory(std::vector<unsigned char>& outputData, int width, int height, int channels, const void *data, int quality = 85);
 
     static void freeImage(void* imageData);
 

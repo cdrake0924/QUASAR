@@ -86,7 +86,7 @@ void DepthStreamer::sendData() {
         cudaArray_t cudaBuffer = cudaBufferStruct.buffer;
         pose_id_t poseIDToSend = cudaBufferStruct.poseID;
 
-        time_t startTransferTime = timeutils::getTimeMicros();
+        time_t starttimeToTransferMs = timeutils::getTimeMicros();
 
         std::memcpy(data.data(), &poseIDToSend, sizeof(pose_id_t));
 
@@ -97,7 +97,7 @@ void DepthStreamer::sendData() {
                                                width * sizeof(GLushort), height,
                                                cudaMemcpyDeviceToHost));
 
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTime);
+        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - starttimeToTransferMs);
 
         double elapsedTimeSec = timeutils::microsToSeconds(timeutils::getTimeMicros() - prevTime);
         if (elapsedTimeSec < (1.0f / targetFrameRate)) {

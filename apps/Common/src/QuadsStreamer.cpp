@@ -6,16 +6,13 @@ QuadsStreamer::QuadsStreamer(
         QuadSet& quadSet,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
-        const PerspectiveCamera& remoteCamera,
-        FrameGenerator& frameGenerator,
         const std::string& receiverURL)
-    : quadSet(quadSet)
+    : receiverURL(receiverURL)
+    , quadSet(quadSet)
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
-    , remoteCamera(remoteCamera)
-    , frameGenerator(frameGenerator)
-    , receiverURL(receiverURL)
-    , refFrameRT({
+    , frameGenerator(quadSet)
+    , referenceFrameRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -26,7 +23,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , resFrameRT({
+    , residualFrameRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -37,7 +34,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , resFrameMaskRT({
+    , residualFrameMaskRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -60,45 +57,43 @@ QuadsStreamer::QuadsStreamer(
         .magFilter = GL_NEAREST,
     })
     // We can use less vertices and indicies for the mask since it will be sparse
-    , resFrameMesh(quadSet, resFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
+    , residualFrameMesh(quadSet, residualFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
     , DataStreamerTCP(receiverURL)
 {
-    remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
-
     meshScenes.resize(2);
-    refFrameMeshes.reserve(meshScenes.size());
-    refFrameNodes.reserve(meshScenes.size());
-    refFrameNodesLocal.reserve(meshScenes.size());
-    refFrameWireframesLocal.reserve(meshScenes.size());
+    referenceFrameMeshes.reserve(meshScenes.size());
+    referenceFrameNodes.reserve(meshScenes.size());
+    referenceFrameNodesLocal.reserve(meshScenes.size());
+    referenceFrameWireframesLocal.reserve(meshScenes.size());
 
     for (int i = 0; i < meshScenes.size(); i++) {
-        refFrameMeshes.emplace_back(quadSet, refFrameRT.colorTexture);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT.colorTexture);
 
-        refFrameNodes.emplace_back(&refFrameMeshes[i]);
-        refFrameNodes[i].frustumCulled = false;
-        meshScenes[i].addChildNode(&refFrameNodes[i]);
+        referenceFrameNodes.emplace_back(&referenceFrameMeshes[i]);
+        referenceFrameNodes[i].frustumCulled = false;
+        meshScenes[i].addChildNode(&referenceFrameNodes[i]);
 
-        refFrameNodesLocal.emplace_back(&refFrameMeshes[i]);
-        refFrameNodesLocal[i].frustumCulled = false;
+        referenceFrameNodesLocal.emplace_back(&referenceFrameMeshes[i]);
+        referenceFrameNodesLocal[i].frustumCulled = false;
 
-        refFrameWireframesLocal.emplace_back(&refFrameMeshes[i]);
-        refFrameWireframesLocal[i].frustumCulled = false;
-        refFrameWireframesLocal[i].wireframe = true;
-        refFrameWireframesLocal[i].visible = false;
-        refFrameWireframesLocal[i].overrideMaterial = &wireframeMaterial;
+        referenceFrameWireframesLocal.emplace_back(&referenceFrameMeshes[i]);
+        referenceFrameWireframesLocal[i].frustumCulled = false;
+        referenceFrameWireframesLocal[i].wireframe = true;
+        referenceFrameWireframesLocal[i].visible = false;
+        referenceFrameWireframesLocal[i].overrideMaterial = &wireframeMaterial;
     }
 
-    resFrameNode.setEntity(&resFrameMesh);
-    resFrameNode.frustumCulled = false;
+    residualFrameNode.setEntity(&residualFrameMesh);
+    residualFrameNode.frustumCulled = false;
 
-    resFrameWireframeNodesLocal.setEntity(&resFrameMesh);
-    resFrameWireframeNodesLocal.frustumCulled = false;
-    resFrameWireframeNodesLocal.wireframe = true;
-    resFrameWireframeNodesLocal.visible = false;
-    resFrameWireframeNodesLocal.overrideMaterial = &maskWireframeMaterial;
+    residualFrameWireframeNodesLocal.setEntity(&residualFrameMesh);
+    residualFrameWireframeNodesLocal.frustumCulled = false;
+    residualFrameWireframeNodesLocal.wireframe = true;
+    residualFrameWireframeNodesLocal.visible = false;
+    residualFrameWireframeNodesLocal.overrideMaterial = &maskWireframeMaterial;
 
     depthNode.setEntity(&depthMesh);
     depthNode.frustumCulled = false;
@@ -111,23 +106,23 @@ QuadsStreamer::QuadsStreamer(
 }
 
 uint QuadsStreamer::getNumTriangles() const {
-    auto refMeshSizes = refFrameMeshes[currMeshIndex].getBufferSizes();
-    auto maskMeshSizes = resFrameMesh.getBufferSizes();
+    auto refMeshSizes = referenceFrameMeshes[currMeshIndex].getBufferSizes();
+    auto maskMeshSizes = residualFrameMesh.getBufferSizes();
     return (refMeshSizes.numIndices + maskMeshSizes.numIndices) / 3; // Each triangle has 3 indices
 }
 
 void QuadsStreamer::addMeshesToScene(Scene& localScene) {
     for (int i = 0; i < 2; i++) {
-        localScene.addChildNode(&refFrameNodesLocal[i]);
-        localScene.addChildNode(&refFrameWireframesLocal[i]);
+        localScene.addChildNode(&referenceFrameNodesLocal[i]);
+        localScene.addChildNode(&referenceFrameWireframesLocal[i]);
     }
-    localScene.addChildNode(&resFrameNode);
-    localScene.addChildNode(&resFrameWireframeNodesLocal);
+    localScene.addChildNode(&residualFrameNode);
+    localScene.addChildNode(&residualFrameWireframeNodesLocal);
     localScene.addChildNode(&depthNode);
 }
 
 void QuadsStreamer::generateFrame(
-    DeferredRenderer& remoteRenderer, Scene& remoteScene,
+    DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
     bool createResidualFrame, bool showNormals, bool showDepth)
 {
     // Reset stats
@@ -139,11 +134,11 @@ void QuadsStreamer::generateFrame(
     double startTime = timeutils::getTimeMicros();
     remoteRenderer.drawObjects(remoteScene, remoteCameraToUse);
     if (!showNormals) {
-        remoteRenderer.copyToFrameRT(refFrameRT);
+        remoteRenderer.copyToFrameRT(referenceFrameRT);
         toneMapper.drawToRenderTarget(remoteRenderer, copyRT);
     }
     else {
-        showNormalsEffect.drawToRenderTarget(remoteRenderer, refFrameRT);
+        showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameRT);
     }
     stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
@@ -152,12 +147,12 @@ void QuadsStreamer::generateFrame(
     Generate Reference Frame
     ============================
     */
-    auto& quadsGenerator = frameGenerator.quadsGenerator;
-    quadsGenerator.params.expandEdges = false;
+    auto quadsGenerator = frameGenerator.getQuadsGenerator();
+    quadsGenerator->params.expandEdges = false;
     frameGenerator.createReferenceFrame(
-        refFrameRT,
+        referenceFrameRT,
         remoteCameraToUse,
-        refFrameMeshes[currMeshIndex],
+        referenceFrameMeshes[currMeshIndex],
         referenceFrame,
         !createResidualFrame // No need to waste time compressing if we are generating a residual frame
     );
@@ -180,17 +175,17 @@ void QuadsStreamer::generateFrame(
     ============================
     */
     if (createResidualFrame) {
-        quadsGenerator.params.expandEdges = true;
+        quadsGenerator->params.expandEdges = true;
         frameGenerator.updateResidualRenderTargets(
-            resFrameMaskRT, resFrameRT,
+            residualFrameMaskRT, residualFrameRT,
             remoteRenderer, remoteScene,
             meshScenes[currMeshIndex], meshScenes[prevMeshIndex],
             remoteCamera, remoteCameraPrev
         );
         frameGenerator.createResidualFrame(
-            resFrameMaskRT, resFrameRT,
+            residualFrameMaskRT, residualFrameRT,
             remoteCamera, remoteCameraPrev,
-            refFrameMeshes[currMeshIndex], resFrameMesh,
+            referenceFrameMeshes[currMeshIndex], residualFrameMesh,
             residualFrame
         );
 
@@ -209,18 +204,19 @@ void QuadsStreamer::generateFrame(
         stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
     }
 
-    resFrameNode.visible = createResidualFrame;
+    residualFrameNode.visible = createResidualFrame;
     currMeshIndex = (currMeshIndex + 1) % meshScenes.size();
     prevMeshIndex = (prevMeshIndex + 1) % meshScenes.size();
 
     // Only update the previous camera pose if we are not generating a Residual Frame
     if (!createResidualFrame) {
+        remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
     }
 
     // For debugging: Generate point cloud from depth map
     if (showDepth) {
-        depthMesh.update(remoteCamera, refFrameRT);
+        depthMesh.update(remoteCamera, referenceFrameRT);
         stats.totalGenDepthTime += depthMesh.stats.genDepthTime;
     }
 
@@ -236,14 +232,16 @@ void QuadsStreamer::generateFrame(
         stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
         stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
     }
+}
 
+void QuadsStreamer::sendProxies(const PerspectiveCamera& remoteCamera, bool createResidualFrame) {
     if (!receiverURL.empty()) {
-        writeToMemory(createResidualFrame, compressedData);
+        writeToMemory(remoteCamera, createResidualFrame, compressedData);
         send(compressedData);
     }
 }
 
-size_t QuadsStreamer::writeToFile(const Path& outputPath) {
+size_t QuadsStreamer::writeToFile(const PerspectiveCamera& remoteCamera, const Path& outputPath) {
     // Save camera
     Path cameraFileName = (outputPath / "camera").withExtension(".bin");
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
@@ -252,13 +250,13 @@ size_t QuadsStreamer::writeToFile(const Path& outputPath) {
 
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    copyRT.saveColorAsJPG(colorFileName);
+    copyRT.writeColorAsJPG(colorFileName);
 
     // Save proxies
     return referenceFrame.writeToFiles(outputPath);
 }
 
-size_t QuadsStreamer::writeToMemory(bool isResidualFrame, std::vector<char>& outputData) {
+size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool isResidualFrame, std::vector<char>& outputData) {
     // Save camera data
     std::vector<char> cameraData;
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
@@ -267,7 +265,7 @@ size_t QuadsStreamer::writeToMemory(bool isResidualFrame, std::vector<char>& out
 
     // Save color data
     std::vector<unsigned char> colorData;
-    copyRT.saveColorJPGToMemory(colorData);
+    copyRT.writeColorJPGToMemory(colorData);
 
     // Save geometry data
     std::vector<char> geometryData;
@@ -279,17 +277,17 @@ size_t QuadsStreamer::writeToMemory(bool isResidualFrame, std::vector<char>& out
     }
 
     QuadsReceiver::Header header{
-        !isResidualFrame,
+        !isResidualFrame ? FrameType::REFERENCE : FrameType::RESIDUAL,
         static_cast<uint32_t>(cameraData.size()),
         static_cast<uint32_t>(colorData.size()),
         static_cast<uint32_t>(geometryData.size())
     };
 
-    outputData.resize(sizeof(header) + cameraData.size() + colorData.size() + geometryData.size());
+    spdlog::debug("Writing camera size: {}", header.cameraSize);
+    spdlog::debug("Writing color size: {}", header.colorSize);
+    spdlog::debug("Writing geometry size: {}", header.geometrySize);
 
-    spdlog::info("Writing camera size: {}", header.cameraSize);
-    spdlog::info("Writing color size: {}", header.colorSize);
-    spdlog::info("Writing geometry size: {}", header.geometrySize);
+    outputData.resize(sizeof(header) + cameraData.size() + colorData.size() + geometryData.size());
 
     char* ptr = outputData.data();
     // Write header

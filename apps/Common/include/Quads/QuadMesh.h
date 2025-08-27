@@ -36,7 +36,7 @@ public:
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxQuadsPerMesh = MAX_QUADS_PER_MESH);
     ~QuadMesh() = default;
 
-    void appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isRefFrame = true);
+    void appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isreferenceFrame = true);
     void createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera);
 
     BufferSizes getBufferSizes() const;

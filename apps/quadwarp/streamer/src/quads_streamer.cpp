@@ -11,7 +11,7 @@
 #include <QuadsStreamer.h>
 #include <PoseReceiver.h>
 
-#define REF_FRAME_PERIOD 1
+#define REF_FRAME_PERIOD 2
 
 using namespace quasar;
 
@@ -78,27 +78,25 @@ int main(int argc, char** argv) {
 
     // "Remote" scene
     Scene remoteScene;
-    PerspectiveCamera remoteCamera(remoteRenderer.width, remoteRenderer.height);
+    PerspectiveCamera camera(remoteRenderer.width, remoteRenderer.height);
     SceneLoader loader;
-    loader.loadScene(sceneFile, remoteScene, remoteCamera);
+    loader.loadScene(sceneFile, remoteScene, camera);
 
     float remoteFOV = args::get(remoteFOVIn);
-    remoteCamera.setFovyDegrees(remoteFOV);
+    camera.setFovyDegrees(remoteFOV);
 
-    // "Local" scene
+    // "Local" scene for visualization
     Scene localScene;
-    localScene.envCubeMap = remoteScene.envCubeMap;
-    PerspectiveCamera camera(windowSize);
-    camera.setViewMatrix(remoteCamera.getViewMatrix());
+
+    glm::vec3 initialPosition = camera.getPosition();
 
     QuadSet quadSet(remoteWindowSize);
-    FrameGenerator frameGenerator(quadSet);
-    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, camera, frameGenerator, streamURL);
-
-    PoseReceiver poseReceiver(&camera, poseURL);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, streamURL);
 
     // Add meshes to local scene
     quadwarp.addMeshesToScene(localScene);
+
+    PoseReceiver poseReceiver(&camera, poseURL);
 
     // Post processing
     ToneMapper toneMapper;
@@ -106,14 +104,13 @@ int main(int argc, char** argv) {
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
-    bool preventCopyingLocalPose = false;
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
-    int serverFPSIndex = 1; // default to 1 FPS
+    int serverFPSIndex = 0; // default to 0 FPS
     double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
 
     RenderStats renderStats;
@@ -184,14 +181,11 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             glm::vec3 position = camera.getPosition();
-            if (ImGui::DragFloat3("Camera Position", (float*)&position, 0.01f)) {
-                camera.setPosition(position);
-            }
             glm::vec3 rotation = camera.getRotationEuler();
-            if (ImGui::DragFloat3("Camera Rotation", (float*)&rotation, 0.1f)) {
-                camera.setRotationEuler(rotation);
-            }
-            ImGui::DragFloat("Movement Speed", &camera.movementSpeed, 0.05f, 0.1f, 20.0f);
+            ImGui::BeginDisabled();
+            ImGui::DragFloat3("Camera Position", (float*)&position);
+            ImGui::DragFloat3("Camera Rotation", (float*)&rotation);
+            ImGui::EndDisabled();
 
             ImGui::Separator();
 
@@ -218,13 +212,13 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
-                auto& quadsGenerator = frameGenerator.quadsGenerator;
-                ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation);
-                ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f");
-                ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f);
-                ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f);
-                ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f);
-                ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2);
+                auto quadsGenerator = quadwarp.getQuadsGenerator();
+                ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator->params.correctOrientation);
+                ImGui::DragFloat("Depth Threshold", &quadsGenerator->params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f");
+                ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f);
+                ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f);
+                ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f);
+                ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2);
             }
 
             ImGui::Separator();
@@ -243,25 +237,23 @@ int main(int argc, char** argv) {
                 sendResidualFrame = true;
             }
 
-            ImGui::Separator();
-
             ImGui::End();
         }
 
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("Reference Frame", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.refFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.referenceFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.resFrameMaskRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameMaskRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.resFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
@@ -298,7 +290,16 @@ int main(int argc, char** argv) {
 
             poseID = poseReceiver.receivePose();
             if (poseID != -1 && poseID != prevPoseID) {
-                quadwarp.generateFrame(remoteRenderer, remoteScene, sendResidualFrame, showNormals, showDepth);
+                // Offset camera
+                camera.setPosition(camera.getPosition() + initialPosition);
+                camera.updateViewMatrix();
+
+                quadwarp.generateFrame(remoteRenderer, remoteScene, camera, sendResidualFrame, showNormals, showDepth);
+
+                // Show previous mesh
+                quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
+                quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = true;
+                quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = false;
 
                 spdlog::info("======================================================");
                 spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
@@ -316,24 +317,32 @@ int main(int argc, char** argv) {
                                                     quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
                 spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
 
+                // Restore camera position
+                camera.setPosition(camera.getPosition() - initialPosition);
+                camera.updateViewMatrix();
+
+                quadwarp.sendProxies(camera, sendResidualFrame);
+
+                sendReferenceFrame = false;
+                sendResidualFrame = false;
                 prevPoseID = poseID;
             }
-
-            preventCopyingLocalPose = false;
-            sendReferenceFrame = false;
-            sendResidualFrame = false;
         }
 
-        // Show previous mesh
-        quadwarp.refFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.refFrameNodesLocal[quadwarp.prevMeshIndex].visible = true;
-        quadwarp.refFrameWireframesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.refFrameWireframesLocal[quadwarp.prevMeshIndex].visible = showWireframe;
-        quadwarp.resFrameWireframeNodesLocal.visible = quadwarp.resFrameNode.visible && showWireframe;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.prevMeshIndex].visible = showWireframe;
+        quadwarp.residualFrameWireframeNodesLocal.visible = quadwarp.residualFrameNode.visible && showWireframe;
         quadwarp.depthNode.visible = showDepth;
+
+        // Offset camera
+        camera.setPosition(camera.getPosition() + initialPosition);
+        camera.updateViewMatrix();
 
         // Render generated meshes
         renderStats = renderer.drawObjects(localScene, camera);
+
+        // Restore camera position
+        camera.setPosition(camera.getPosition() - initialPosition);
+        camera.updateViewMatrix();
 
         // Render to screen
         if (config.showWindow) {

@@ -22,7 +22,7 @@ public:
 
     struct Stats {
         double timeToReceiveMs = 0.0;
-        double totalTimeToRecvMs = 0.0;
+        double totalTimetoRecvMs = 0.0;
         double bitrateMbps = 0.0;
     } stats;
 

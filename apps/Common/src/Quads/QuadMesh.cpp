@@ -84,12 +84,12 @@ QuadMesh::BufferSizes QuadMesh::getBufferSizes() const {
     return bufferSizes;
 }
 
-void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isRefFrame) {
+void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isreferenceFrame) {
     double startTime = timeutils::getTimeMicros();
 
     appendQuadsShader.bind();
     {
-        appendQuadsShader.setBool("isRefFrame", isRefFrame);
+        appendQuadsShader.setBool("isreferenceFrame", isreferenceFrame);
         appendQuadsShader.setUint("newNumProxies", quadSet.getNumQuads());
     }
     {

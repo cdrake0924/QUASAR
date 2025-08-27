@@ -20,13 +20,13 @@ Shader::Shader(const ShaderDataCreateParams& params)
 }
 
 void Shader::loadFromFiles(const std::string vertexPath, const std::string fragmentPath, const std::string geometryPath) {
-    std::string vertexCode = FileIO::loadTextFile(vertexPath);
-    std::string fragmentCode = FileIO::loadTextFile(fragmentPath);
+    std::string vertexCode = FileIO::loadFromTextFile(vertexPath);
+    std::string fragmentCode = FileIO::loadFromTextFile(fragmentPath);
 
     // If geometry shader path is present, also load a geometry shader
     std::string geometryCode;
     if (geometryPath != "") {
-        geometryCode = FileIO::loadTextFile(geometryPath);
+        geometryCode = FileIO::loadFromTextFile(geometryPath);
     }
 
     const char* vShaderCode = vertexCode.c_str();

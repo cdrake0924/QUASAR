@@ -14,9 +14,9 @@ public:
     struct Stats {
         uint totalTriangles = 0;
         double loadTime = 0.0;
-        double decompressTime = 0.0;
-        double transferTime = 0.0;
-        double createMeshTime = 0.0;
+        double timeToDecompressMs = 0.0;
+        double timeToTransferMs = 0.0;
+        double timeToCreateMeshMs = 0.0;
         QuadSet::Sizes sizes{};
     } stats;
 
@@ -100,18 +100,18 @@ public:
             auto offsetsFuture = frames[view].decompressDepthOffsets(uncompressedOffsets);
             auto quadsFuture = frames[view].decompressQuads(uncompressedQuads);
             quadsFuture.get(); offsetsFuture.get();
-            stats.decompressTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+            stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             // Copy data to GPU
             auto sizes = quadSet.copyFromCPU(uncompressedQuads, uncompressedOffsets);
-            stats.transferTime += quadSet.stats.timeToTransferMs;
+            stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
 
             // Update mesh
             const glm::vec2& gBufferSize = glm::vec2(colorTextures[view].width, colorTextures[view].height);
             startTime = timeutils::getTimeMicros();
             meshes[view].appendQuads(quadSet, gBufferSize);
             meshes[view].createMeshFromProxies(quadSet, gBufferSize, remoteCameras[view]);
-            stats.createMeshTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+            stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             auto meshBufferSizes = meshes[view].getBufferSizes();
             stats.totalTriangles += meshBufferSizes.numIndices / 3;

@@ -100,8 +100,7 @@ int main(int argc, char** argv) {
     camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     QuadSet quadSet(remoteWindowSize);
-    FrameGenerator frameGenerator(quadSet);
-    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, remoteCamera, frameGenerator);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene);
 
     // Add meshes to local scene
     quadwarp.addMeshesToScene(localScene);
@@ -281,33 +280,33 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
-                auto& quadsGenerator = frameGenerator.quadsGenerator;
-                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
+                auto quadsGenerator = quadwarp.getQuadsGenerator();
+                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator->params.correctOrientation)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
+                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator->params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
+                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
+                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
+                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
+                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
@@ -427,7 +426,7 @@ int main(int argc, char** argv) {
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
             if (ImGui::Button("Save Proxies")) {
-                quadwarp.writeToFile(outputPath);
+                quadwarp.writeToFile(remoteCamera, outputPath);
             }
 
             ImGui::End();
@@ -436,17 +435,17 @@ int main(int argc, char** argv) {
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("Reference Frame", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.refFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.referenceFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.resFrameMaskRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameMaskRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.resFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
@@ -541,7 +540,7 @@ int main(int argc, char** argv) {
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            quadwarp.generateFrame(remoteRenderer, remoteScene, sendResidualFrame, showNormals, showDepth);
+            quadwarp.generateFrame(remoteRenderer, remoteScene, remoteCamera, sendResidualFrame, showNormals, showDepth);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
@@ -567,11 +566,11 @@ int main(int argc, char** argv) {
         poseSendRecvSimulator.update(now);
 
         // Show previous mesh
-        quadwarp.refFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.refFrameNodesLocal[quadwarp.prevMeshIndex].visible = true;
-        quadwarp.refFrameWireframesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.refFrameWireframesLocal[quadwarp.prevMeshIndex].visible = showWireframe;
-        quadwarp.resFrameWireframeNodesLocal.visible = quadwarp.resFrameNode.visible && showWireframe;
+        quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
+        quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = true;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = false;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.prevMeshIndex].visible = showWireframe;
+        quadwarp.residualFrameWireframeNodesLocal.visible = quadwarp.residualFrameNode.visible && showWireframe;
         quadwarp.depthNode.visible = showDepth;
 
         if (restrictMovementToViewBox) {

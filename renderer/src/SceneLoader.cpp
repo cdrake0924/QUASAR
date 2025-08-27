@@ -62,7 +62,7 @@ Node* SceneLoader::findNodeByName(const std::string& name) {
 
 void SceneLoader::loadScene(const std::string& filename, Scene& scene, PerspectiveCamera& camera) {
     uint size;
-    std::string sceneJSON = FileIO::loadTextFile(filename, &size);
+    std::string sceneJSON = FileIO::loadFromTextFile(filename, &size);
     if (size == 0) {
         throw std::runtime_error("Scene file is empty: " + filename);
     }

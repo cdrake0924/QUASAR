@@ -240,13 +240,13 @@ public:
         unbind();
     }
 
-    void saveColorAsPNG(const std::string& path) {
+    void writeColorAsPNG(const std::string& path) {
         bind();
         albedoTexture.writeToPNG(path);
         unbind();
     }
 
-    void saveColorAsHDR(const std::string& path) {
+    void writeColorAsHDR(const std::string& path) {
         bind();
         albedoTexture.writeToHDR(path);
         unbind();

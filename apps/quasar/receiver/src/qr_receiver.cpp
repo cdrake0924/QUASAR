@@ -203,9 +203,9 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quasarReceiver.stats.loadTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quasarReceiver.stats.decompressTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quasarReceiver.stats.transferTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quasarReceiver.stats.createMeshTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quasarReceiver.stats.timeToDecompressMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quasarReceiver.stats.timeToTransferMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quasarReceiver.stats.timeToCreateMeshMs);
 
             ImGui::Separator();
 

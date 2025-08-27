@@ -444,7 +444,7 @@ int main(int argc, char** argv) {
                 bc4DepthStreamerRT.writeToFile(outputPath / "depth.bc4.zstd");
                 Path colorFileName = outputPath / "color";
                 toneMapper.drawToRenderTarget(remoteRenderer, renderTargetCopy);
-                renderTargetCopy.saveColorAsJPG(colorFileName.appendToName(".jpg"));
+                renderTargetCopy.writeColorAsJPG(colorFileName.appendToName(".jpg"));
             }
 
             ImGui::End();

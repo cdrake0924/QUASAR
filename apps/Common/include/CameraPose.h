@@ -61,7 +61,7 @@ struct Pose {
     }
 
     size_t loadFromFile(const Path& inputPath) {
-        std::vector<char> data = FileIO::loadBinaryFile(inputPath);
+        std::vector<char> data = FileIO::loadFromBinaryFile(inputPath);
         std::memcpy(this, data.data(), sizeof(Pose));
         return sizeof(Pose);
     }

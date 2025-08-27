@@ -68,7 +68,7 @@ double ComputeShader::getElapsedTime() const {
 }
 
 void ComputeShader::loadFromFile(const std::string& computePath) {
-    std::string computeCode = FileIO::loadTextFile(computePath);
+    std::string computeCode = FileIO::loadFromTextFile(computePath);
 
     const char* cShaderCode = computeCode.c_str();
     size_t computeCodeSize = computeCode.size();

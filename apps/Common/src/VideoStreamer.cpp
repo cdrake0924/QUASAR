@@ -125,7 +125,7 @@ void VideoStreamer::stop() {
 }
 
 float VideoStreamer::getFrameRate() {
-    return 1.0f / timeutils::millisToSeconds(stats.totalTimeToSendMs);
+    return 1.0f / timeutils::millisToSeconds(stats.totalTimetoSendMs);
 }
 
 void VideoStreamer::setTargetFrameRate(int targetFrameRate) {
@@ -189,7 +189,7 @@ void VideoStreamer::encodeAndSendFrames() {
         pose_id_t poseIDToSend = cudaStruct.poseID;
         cudaArray_t cudaBuffer = cudaStruct.buffer;
 
-        time_t startTransferTime = timeutils::getTimeMicros();
+        time_t starttimeToTransferMs = timeutils::getTimeMicros();
 
         CHECK_CUDA_ERROR(cudaMemcpy2DFromArray(rgbaVideoFrameData.data(),
                                                videoWidth * 4,
@@ -205,7 +205,7 @@ void VideoStreamer::encodeAndSendFrames() {
         }
 
         pose_id_t poseIDToSend = cpuStruct.poseID;
-        time_t startTransferTime = timeutils::getTimeMicros();
+        time_t starttimeToTransferMs = timeutils::getTimeMicros();
 
         for (int row = 0; row < height; ++row) {
             std::memcpy(&rgbaVideoFrameData[row * videoWidth * 4],
@@ -215,7 +215,7 @@ void VideoStreamer::encodeAndSendFrames() {
 #endif
 
         packPoseIDIntoVideoFrame(poseIDToSend);
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTime);
+        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - starttimeToTransferMs);
 
         time_t startEncode = timeutils::getTimeMicros();
 
@@ -258,7 +258,7 @@ void VideoStreamer::encodeAndSendFrames() {
                 (int)(timeutils::secondsToMicros(frameIntervalSec - elapsedTimeSec))));
         }
 
-        stats.totalTimeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
+        stats.totalTimetoSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         prevTime = timeutils::getTimeMicros();
     }
 }

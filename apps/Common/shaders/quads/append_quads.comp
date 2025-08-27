@@ -32,7 +32,7 @@ layout(std430, binding = 7) writeonly buffer OffsetsBufferOutput {
     uint metadatasOutput[];
 };
 
-uniform bool isRefFrame;
+uniform bool isreferenceFrame;
 uniform uint newNumProxies;
 
 shared uint localNumProxies;
@@ -40,8 +40,8 @@ shared uint localNumProxies;
 void main() {
     uint proxyIndex = gl_GlobalInvocationID.x;
 
-    // If RefFrame, start from the beginning
-    if (isRefFrame && proxyIndex == 0u) {
+    // If referenceFrame, start from the beginning
+    if (isreferenceFrame && proxyIndex == 0u) {
         currNumProxies = 0u;
     }
 
@@ -49,7 +49,7 @@ void main() {
         return;
     }
 
-    uint startIndex = isRefFrame ? 0u : prevNumProxies;
+    uint startIndex = isreferenceFrame ? 0u : prevNumProxies;
     if (gl_LocalInvocationID.x == 0u) {
         localNumProxies = 0u;
     }

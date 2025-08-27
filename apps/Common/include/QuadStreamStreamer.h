@@ -17,14 +17,14 @@ public:
     uint maxVerticesDepth;
 
     // Reference frame -- QS has no temporal compression (i.e. no residual frames)
-    std::vector<FrameRenderTarget> refFrameRTs;
+    std::vector<FrameRenderTarget> referenceFrameRTs;
     std::vector<ReferenceFrame> referenceFrames;
-    std::vector<QuadMesh> refFrameMeshes;
-    std::vector<Node> refFrameNodesRemote;
+    std::vector<QuadMesh> referenceFrameMeshes;
+    std::vector<Node> referenceFrameNodesRemote;
 
     // Local objects
-    std::vector<Node> refFrameNodesLocal;
-    std::vector<Node> refFrameWireframesLocal;
+    std::vector<Node> referenceFrameNodesLocal;
+    std::vector<Node> referenceFrameWireframesLocal;
 
     // Depth point cloud for debugging
     std::vector<DepthMesh> depthMeshes;

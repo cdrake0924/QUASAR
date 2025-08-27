@@ -8,11 +8,7 @@
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
-#include <CameraAnimator.h>
-
-#include <Shaders/ComputeShader.h>
 #include <VideoStreamer.h>
-#include <DepthStreamer.h>
 #include <BC4DepthStreamer.h>
 #include <PoseReceiver.h>
 
@@ -238,7 +234,6 @@ int main(int argc, char** argv) {
         // Receive pose
         pose_id_t poseID = poseReceiver.receivePose(false);
         if (poseID != -1) {
-
             // Offset camera
             camera.setPosition(camera.getPosition() + initialPosition);
             camera.updateViewMatrix();

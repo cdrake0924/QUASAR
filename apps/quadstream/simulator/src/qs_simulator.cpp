@@ -316,33 +316,33 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
-                auto& quadsGenerator = frameGenerator.quadsGenerator;
-                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
+                auto quadsGenerator = frameGenerator.getQuadsGenerator();
+                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator->params.correctOrientation)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
+                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator->params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
+                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
+                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
+                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
+                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
@@ -411,7 +411,7 @@ int main(int argc, char** argv) {
 
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
                     ImGui::Image(
-                        (void*)(intptr_t)(quadstream.refFrameRTs[viewIdx].colorTexture.ID),
+                        (void*)(intptr_t)(quadstream.referenceFrameRTs[viewIdx].colorTexture.ID),
                         ImVec2(texturePreviewSize, texturePreviewSize),
                         ImVec2(0, 1), ImVec2(1, 0)
                     );
@@ -441,10 +441,10 @@ int main(int argc, char** argv) {
                 for (int view = 1; view < maxViews; view++) {
                     Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
                     if (writeToHDR) {
-                        quadstream.refFrameRTs[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
+                        quadstream.referenceFrameRTs[view].writeColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
-                        quadstream.refFrameRTs[view].saveColorAsPNG(viewPath.withExtension(".png"));
+                        quadstream.referenceFrameRTs[view].writeColorAsPNG(viewPath.withExtension(".png"));
                     }
                 }
             }
@@ -653,8 +653,8 @@ int main(int argc, char** argv) {
         for (int view = 0; view < maxViews; view++) {
             bool showView = showViews[view];
 
-            quadstream.refFrameNodesLocal[view].visible = showView;
-            quadstream.refFrameWireframesLocal[view].visible = showView && showWireframe;
+            quadstream.referenceFrameNodesLocal[view].visible = showView;
+            quadstream.referenceFrameWireframesLocal[view].visible = showView && showWireframe;
             quadstream.depthNodes[view].visible = showView && showDepth;
         }
 

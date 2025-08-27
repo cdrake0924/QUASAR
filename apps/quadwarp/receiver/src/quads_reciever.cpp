@@ -88,24 +88,38 @@ int main(int argc, char** argv) {
 
     PoseStreamer poseStreamer(&camera, poseURL);
 
-    // Create node and wireframe node
-    Node node(&quadsReceiver.getMesh());
-    node.frustumCulled = false;
-    scene.addChildNode(&node);
+    // Create nodes and wireframe nodes
+    Node refNode(&quadsReceiver.getReferenceMesh());
+    refNode.frustumCulled = false;
+    scene.addChildNode(&refNode);
 
-    QuadMaterial wireframeMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
-    Node nodeWireframe(&quadsReceiver.getMesh());
-    nodeWireframe.frustumCulled = false;
-    nodeWireframe.wireframe = true;
-    nodeWireframe.visible = false;
-    nodeWireframe.overrideMaterial = &wireframeMaterial;
-    scene.addChildNode(&nodeWireframe);
+    QuadMaterial refNodeWireframeMaterial({ .baseColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) });
+    Node refNodeWireframe(&quadsReceiver.getReferenceMesh());
+    refNodeWireframe.frustumCulled = false;
+    refNodeWireframe.wireframe = true;
+    refNodeWireframe.visible = false;
+    refNodeWireframe.overrideMaterial = &refNodeWireframeMaterial;
+    scene.addChildNode(&refNodeWireframe);
+
+    Node resNode(&quadsReceiver.getResidualMesh());
+    resNode.frustumCulled = false;
+    scene.addChildNode(&resNode);
+
+    QuadMaterial resNodeWireframeMaterial({ .baseColor = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f) });
+    Node resNodeWireframe(&quadsReceiver.getResidualMesh());
+    resNodeWireframe.frustumCulled = false;
+    resNodeWireframe.wireframe = true;
+    resNodeWireframe.visible = false;
+    resNodeWireframe.overrideMaterial = &resNodeWireframeMaterial;
+    scene.addChildNode(&resNodeWireframe);
 
     if (loadFromDisk) {
         // Initial load
         quadsReceiver.loadFromFiles(dataPath);
         quadsReceiver.copyPoseToCamera(camera);
     }
+
+    bool showWireframe = false;
 
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
@@ -186,13 +200,13 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quadsReceiver.stats.loadTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quadsReceiver.stats.decompressTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quadsReceiver.stats.transferTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quadsReceiver.stats.createMeshTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quadsReceiver.stats.timeToDecompressMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quadsReceiver.stats.timeToTransferMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quadsReceiver.stats.timeToCreateMeshMs);
 
             ImGui::Separator();
 
-            ImGui::Checkbox("Show Wireframe", &nodeWireframe.visible);
+            ImGui::Checkbox("Show Wireframe", &showWireframe);
 
             if (loadFromDisk) {
                 ImGui::Separator();
@@ -279,7 +293,12 @@ int main(int argc, char** argv) {
         // Send pose to streamer
         poseStreamer.sendPose();
 
-        quadsReceiver.processFrames();
+        FrameType frameType = quadsReceiver.recvData();
+        if (frameType != FrameType::NONE) {
+            resNode.visible = frameType == FrameType::RESIDUAL;
+        }
+        refNodeWireframe.visible = showWireframe;
+        resNodeWireframe.visible = resNode.visible && showWireframe;
 
         // Render all objects in scene
         renderStats = renderer.drawObjects(scene, camera);

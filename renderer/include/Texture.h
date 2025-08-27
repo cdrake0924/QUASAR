@@ -102,7 +102,7 @@ public:
 #ifdef GL_CORE
     void saveDepthToFile(const std::string& filename);
 #endif
-    void saveJPGToMemory(std::vector<unsigned char>& outputData, int quality = 85);
+    void writeJPGToMemory(std::vector<unsigned char>& outputData, int quality = 85);
 
 protected:
     GLenum target;

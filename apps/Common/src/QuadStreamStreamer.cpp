@@ -18,24 +18,24 @@ QuadStreamStreamer::QuadStreamStreamer(
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
 {
-    refFrameRTs.reserve(maxViews);
+    referenceFrameRTs.reserve(maxViews);
     copyRTs.reserve(maxViews);
-    refFrameMeshes.reserve(maxViews);
+    referenceFrameMeshes.reserve(maxViews);
     depthMeshes.reserve(maxViews);
-    refFrameNodesLocal.reserve(maxViews);
-    refFrameNodesRemote.reserve(maxViews);
-    refFrameWireframesLocal.reserve(maxViews);
+    referenceFrameNodesLocal.reserve(maxViews);
+    referenceFrameNodesRemote.reserve(maxViews);
+    referenceFrameWireframesLocal.reserve(maxViews);
     depthNodes.reserve(maxViews);
 
     referenceFrames.resize(maxViews);
 
     // Mostly match QuadStream's params from paper:
-    auto& quadsGenerator = frameGenerator.quadsGenerator;
-    quadsGenerator.params.expandEdges = true;
-    quadsGenerator.params.depthThreshold = 1e-4f;
-    quadsGenerator.params.flattenThreshold = 0.05f; // This has been changed from original paper
-    quadsGenerator.params.proxySimilarityThreshold = 0.1f;
-    quadsGenerator.params.maxIterForceMerge = 1; // Only merge once (similar-ish to doing quad splitting)
+    auto quadsGenerator = frameGenerator.getQuadsGenerator();
+    quadsGenerator->params.expandEdges = true;
+    quadsGenerator->params.depthThreshold = 1e-4f;
+    quadsGenerator->params.flattenThreshold = 0.05f; // This has been changed from original paper
+    quadsGenerator->params.proxySimilarityThreshold = 0.1f;
+    quadsGenerator->params.maxIterForceMerge = 1; // Only merge once (similar-ish to doing quad splitting)
 
     RenderTargetCreateParams rtParams = {
         .width = quadSet.getSize().x,
@@ -60,37 +60,37 @@ QuadStreamStreamer::QuadStreamStreamer(
         if (view == maxViews - 1) {
             rtParams.width = 1280; rtParams.height = 720;
         }
-        refFrameRTs.emplace_back(rtParams);
+        referenceFrameRTs.emplace_back(rtParams);
         copyRTs.emplace_back(rtParams);
 
         // We can use less vertices and indicies for the additional views since they will be sparser
         uint maxProxies = (view == 0 || view == maxViews - 1) ? MAX_QUADS_PER_MESH : MAX_QUADS_PER_MESH / 4;
-        refFrameMeshes.emplace_back(quadSet, refFrameRTs[view].colorTexture, maxProxies);
-        refFrameNodesLocal.emplace_back(&refFrameMeshes[view]);
-        refFrameNodesLocal[view].frustumCulled = false;
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRTs[view].colorTexture, maxProxies);
+        referenceFrameNodesLocal.emplace_back(&referenceFrameMeshes[view]);
+        referenceFrameNodesLocal[view].frustumCulled = false;
 
         const glm::vec4& color = colors[view % colors.size()];
 
-        refFrameWireframesLocal.emplace_back(&refFrameMeshes[view]);
-        refFrameWireframesLocal[view].frustumCulled = false;
-        refFrameWireframesLocal[view].wireframe = true;
-        refFrameWireframesLocal[view].overrideMaterial = new QuadMaterial({ .baseColor = color });
+        referenceFrameWireframesLocal.emplace_back(&referenceFrameMeshes[view]);
+        referenceFrameWireframesLocal[view].frustumCulled = false;
+        referenceFrameWireframesLocal[view].wireframe = true;
+        referenceFrameWireframesLocal[view].overrideMaterial = new QuadMaterial({ .baseColor = color });
 
         depthMeshes.emplace_back(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
         depthNodes.emplace_back(&depthMeshes[view]);
         depthNodes[view].frustumCulled = false;
         depthNodes[view].primativeType = GL_POINTS;
 
-        refFrameNodesRemote.emplace_back(&refFrameMeshes[view]);
-        refFrameNodesRemote[view].frustumCulled = false;
-        refFrameNodesRemote[view].visible = (view == 0);
-        meshScene.addChildNode(&refFrameNodesRemote[view]);
+        referenceFrameNodesRemote.emplace_back(&referenceFrameMeshes[view]);
+        referenceFrameNodesRemote[view].frustumCulled = false;
+        referenceFrameNodesRemote[view].visible = (view == 0);
+        meshScene.addChildNode(&referenceFrameNodesRemote[view]);
     }
 }
 
 uint QuadStreamStreamer::getNumTriangles() const {
     uint numTriangles = 0;
-    for (const auto& mesh : refFrameMeshes) {
+    for (const auto& mesh : referenceFrameMeshes) {
         auto size = mesh.getBufferSizes();
         numTriangles += size.numIndices / 3; // Each triangle has 3 indices
     }
@@ -99,8 +99,8 @@ uint QuadStreamStreamer::getNumTriangles() const {
 
 void QuadStreamStreamer::addMeshesToScene(Scene& localScene) {
     for (int view = 0; view < maxViews; view++) {
-        localScene.addChildNode(&refFrameNodesLocal[view]);
-        localScene.addChildNode(&refFrameWireframesLocal[view]);
+        localScene.addChildNode(&referenceFrameNodesLocal[view]);
+        localScene.addChildNode(&referenceFrameWireframesLocal[view]);
         localScene.addChildNode(&depthNodes[view]);
     }
 }
@@ -116,9 +116,9 @@ void QuadStreamStreamer::generateFrame(
     for (int view = 0; view < maxViews; view++) {
         auto& remoteCameraToUse = remoteCameras[view];
 
-        auto& gBufferToUse = refFrameRTs[view];
+        auto& gBufferToUse = referenceFrameRTs[view];
 
-        auto& meshToUse = refFrameMeshes[view];
+        auto& meshToUse = referenceFrameMeshes[view];
         auto& meshToUseDepth = depthMeshes[view];
 
         double startTime = timeutils::getTimeMicros();
@@ -130,11 +130,11 @@ void QuadStreamStreamer::generateFrame(
         }
         // Other view
         else {
-            // Make all previous refFrameMeshes visible and everything else invisible
+            // Make all previous referenceFrameMeshes visible and everything else invisible
             for (int prevView = 1; prevView < maxViews; prevView++) {
                 meshScene.rootNode.children[prevView]->visible = (prevView < view);
             }
-            // Draw old refFrameMeshes at new remoteCamera view, filling stencil buffer with 1
+            // Draw old referenceFrameMeshes at new remoteCamera view, filling stencil buffer with 1
             remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
             remoteRenderer.pipeline.writeMaskState.disableColorWrites();
             remoteRenderer.drawObjectsNoLighting(meshScene, remoteCameraToUse);
@@ -194,7 +194,7 @@ size_t QuadStreamStreamer::writeToFile(const Path& outputPath) {
     for (int view = 0; view < maxViews; view++) {
         // Save color
         Path colorFileName = outputPath / ("color" + std::to_string(view));
-        copyRTs[view].saveColorAsJPG(colorFileName.withExtension(".jpg"));
+        copyRTs[view].writeColorAsJPG(colorFileName.withExtension(".jpg"));
 
         totalOutputSize += referenceFrames[view].writeToFiles(outputPath, view);
     }

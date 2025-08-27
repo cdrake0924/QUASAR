@@ -117,7 +117,7 @@ void VideoTexture::setMaxQueueSize(size_t maxQueueSize) {
 }
 
 float VideoTexture::getFrameRate() {
-    return 1.0f / timeutils::millisToSeconds(stats.totalTimeToRecvMs);
+    return 1.0f / timeutils::millisToSeconds(stats.totalTimetoRecvMs);
 }
 
 void VideoTexture::receiveFrame() {
@@ -178,7 +178,7 @@ void VideoTexture::receiveFrame() {
             lastBitrateCalcTime = now;
         }
 
-        stats.totalTimeToRecvMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
+        stats.totalTimetoRecvMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         prevTime = timeutils::getTimeMicros();
     }
 }
