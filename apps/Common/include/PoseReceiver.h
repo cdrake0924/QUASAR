@@ -34,7 +34,7 @@ public:
         spdlog::info("Created PoseReceiver that recvs from URL: {}", this->streamerURL);
     }
 
-    void onDataReceived(const std::vector<uint8_t>& data) override {
+    void onDataReceived(const std::vector<char>& data) override {
         std::lock_guard<std::mutex> lock(m);
 
         if (data.size() < sizeof(Pose)) {

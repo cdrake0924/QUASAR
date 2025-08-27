@@ -4,17 +4,17 @@
 #include <iomanip>
 #include <thread>
 #include <atomic>
+
 #include <concurrentqueue/concurrentqueue.h>
 
+#include <Shaders/ComputeShader.h>
 #include <RenderTargets/RenderTarget.h>
 #include <Networking/DataStreamerTCP.h>
-#include <Shaders/ComputeShader.h>
-
-#include <CameraPose.h>
 
 #include <Path.h>
 #include <Codec/BC4.h>
 #include <Codec/ZSTDCodec.h>
+#include <CameraPose.h>
 
 #if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLBuffer.h>
@@ -22,7 +22,7 @@
 
 namespace quasar {
 
-class BC4DepthStreamer : public RenderTarget {
+class BC4DepthStreamer : public RenderTarget, public DataStreamerTCP {
 public:
     uint width, height;
 
@@ -42,7 +42,7 @@ public:
     BC4DepthStreamer(const RenderTargetCreateParams& params, const std::string& receiverURL = "");
     ~BC4DepthStreamer();
 
-    void close();
+    void stop();
 
     float getFrameRate() const {
         return 1.0f / timeutils::millisToSeconds(stats.timeToSendMs);
@@ -58,7 +58,6 @@ public:
 
 private:
     int targetFrameRate = 30;
-    std::unique_ptr<DataStreamerTCP> streamer;
 
     std::vector<char> data;
     std::vector<char> compressedData;

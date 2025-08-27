@@ -64,6 +64,7 @@ QuadsStreamer::QuadsStreamer(
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
+    , DataStreamerTCP(receiverURL)
 {
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
@@ -105,7 +106,7 @@ QuadsStreamer::QuadsStreamer(
     depthNode.primativeType = GL_POINTS;
 
     if (!receiverURL.empty()) {
-        streamer = std::make_unique<DataStreamerTCP>(receiverURL);
+        spdlog::info("Created QuadsStreamer that sends to URL: {}", receiverURL);
     }
 }
 
@@ -236,16 +237,13 @@ void QuadsStreamer::generateFrame(
         stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
     }
 
-    if (streamer) {
+    if (!receiverURL.empty()) {
         writeToMemory(compressedData);
-        streamer->send(compressedData);
+        send(compressedData);
     }
 }
 
 size_t QuadsStreamer::writeToFile(const Path& outputPath) {
-    // writeToMemory(compressedData);
-    // FileIO::writeToBinaryFile(outputPath / "compressed.bin.zstd", compressedData.data(), compressedData.size());
-
     // Save camera
     Path cameraFileName = (outputPath / "camera").withExtension(".bin");
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());

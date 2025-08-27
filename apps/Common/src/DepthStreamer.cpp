@@ -20,6 +20,7 @@ DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string
         .magFilter = colorTexture.magFilter,
         .multiSampled = colorTexture.multiSampled,
     })
+    , DataStreamerTCP(receiverURL)
 {
     spdlog::info("Created DepthStreamer that sends to URL: {}", receiverURL);
 
@@ -28,17 +29,16 @@ DepthStreamer::DepthStreamer(const RenderTargetCreateParams& params, std::string
 
     if (!receiverURL.empty()) {
         running = true;
-        streamer = std::make_unique<DataStreamerTCP>(receiverURL);
         dataSendingThread = std::thread(&DepthStreamer::sendData, this);
     }
 #endif
 }
 
 DepthStreamer::~DepthStreamer() {
-    close();
+    stop();
 }
 
-void DepthStreamer::close() {
+void DepthStreamer::stop() {
 #if defined(HAS_CUDA)
     running = false;
 
@@ -108,7 +108,7 @@ void DepthStreamer::sendData() {
         stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         stats.bitrateMbps = ((data.size() + sizeof(pose_id_t)) * 8 / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
 
-        streamer->send(data);
+        send(data);
 
         prevTime = timeutils::getTimeMicros();
     }

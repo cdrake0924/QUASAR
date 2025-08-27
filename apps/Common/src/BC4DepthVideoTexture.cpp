@@ -6,11 +6,11 @@
 using namespace quasar;
 
 BC4DepthVideoTexture::BC4DepthVideoTexture(const TextureDataCreateParams& params, std::string streamerURL)
-    : DataReceiverTCP(streamerURL, false)
-    , width((params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE) // Round up to nearest multiple of BC4_BLOCK_SIZE
+    : width((params.width + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE) // Round up to nearest multiple of BC4_BLOCK_SIZE
     , height((params.height + BC4_BLOCK_SIZE - 1) / BC4_BLOCK_SIZE * BC4_BLOCK_SIZE)
     , compressedSize((width / BC4_BLOCK_SIZE) * (height / BC4_BLOCK_SIZE))
     , Texture(params)
+    , DataReceiverTCP(streamerURL, false)
 {
     resize(width, height);
     bc4CompressedBuffer = Buffer({
@@ -19,6 +19,10 @@ BC4DepthVideoTexture::BC4DepthVideoTexture(const TextureDataCreateParams& params
         .numElems = compressedSize,
         .usage = GL_DYNAMIC_DRAW,
     });
+
+    if (!streamerURL.empty()) {
+        spdlog::info("Created BC4DepthVideoTexture that recvs from URL: {}", streamerURL);
+    }
 }
 
 pose_id_t BC4DepthVideoTexture::getLatestPoseID() {

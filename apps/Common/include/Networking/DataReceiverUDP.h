@@ -24,7 +24,7 @@ public:
     DataReceiverUDP(std::string url, int maxDataSize, bool nonBlocking = false);
     ~DataReceiverUDP();
 
-    void close();
+    virtual void stop();
 
 protected:
     std::atomic_bool running{false};
@@ -33,10 +33,10 @@ protected:
     std::map<packet_id_t, std::map<int, DataPacketUDP>> datas;
     std::map<packet_id_t, int> dataSizes;
 
-    virtual void onDataReceived(const std::vector<uint8_t>& data) = 0;
+    virtual void onDataReceived(const std::vector<char>& data) = 0;
 
 private:
-    SocketUDP socket;
+    std::unique_ptr<SocketUDP> socket;
 
     int recvPacket(DataPacketUDP* packet);
     void recvData();

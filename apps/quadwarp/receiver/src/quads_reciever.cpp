@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -12,6 +11,7 @@
 #include <CameraAnimator.h>
 
 #include <QuadsReceiver.h>
+#include <PoseStreamer.h>
 
 using namespace quasar;
 
@@ -23,8 +23,12 @@ int main(int argc, char** argv) {
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
     args::Flag verbose(parser, "verbose", "Enable verbose logging", {'v', "verbose"});
     args::ValueFlag<std::string> sizeIn(parser, "size", "Resolution of renderer", {'s', "size"}, "1920x1080");
-    args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
+    args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
+    args::ValueFlag<std::string> streamURLIn(parser, "stream", "stream URL", {'e', "stream-url"}, "127.0.0.1:54321");
+    args::Flag loadFromDisk(parser, "load-from-disk", "Load data from disk", {'L', "load-from-disk"}, false);
+    args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "127.0.0.1:54321");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -48,6 +52,8 @@ int main(int argc, char** argv) {
     config.enableVSync = !args::get(novsync);
 
     Path dataPath = Path(args::get(dataPathIn));
+    std::string streamURL = !loadFromDisk ? args::get(streamURLIn) : "";
+    std::string poseURL = !loadFromDisk ? args::get(poseURLIn) : "";
 
     auto window = std::make_shared<GLFWWindow>(config);
     auto guiManager = std::make_shared<ImGuiManager>(window);
@@ -78,7 +84,9 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(windowSize);
     float remoteFOV = args::get(remoteFOVIn);
-    QuadsReceiver quadsReceiver(quadSet, remoteFOV);
+    QuadsReceiver quadsReceiver(quadSet, remoteFOV, streamURL);
+
+    PoseStreamer poseStreamer(&camera, poseURL);
 
     // Create node and wireframe node
     Node node(&quadsReceiver.getMesh());
@@ -93,9 +101,11 @@ int main(int argc, char** argv) {
     nodeWireframe.overrideMaterial = &wireframeMaterial;
     scene.addChildNode(&nodeWireframe);
 
-    // Initial load
-    quadsReceiver.loadFromFiles(dataPath);
-    quadsReceiver.copyPoseToCamera(camera);
+    if (loadFromDisk) {
+        // Initial load
+        quadsReceiver.loadFromFiles(dataPath);
+        quadsReceiver.copyPoseToCamera(camera);
+    }
 
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
@@ -184,10 +194,11 @@ int main(int argc, char** argv) {
 
             ImGui::Checkbox("Show Wireframe", &nodeWireframe.visible);
 
-            ImGui::Separator();
-
-            if (ImGui::Button("Reload Proxies", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                quadsReceiver.loadFromFiles(dataPath);
+            if (loadFromDisk) {
+                ImGui::Separator();
+                if (ImGui::Button("Reload Proxies", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                    quadsReceiver.loadFromFiles(dataPath);
+                }
             }
 
             ImGui::End();
@@ -264,6 +275,11 @@ int main(int argc, char** argv) {
         }
         auto scroll = window->getScrollOffset();
         camera.processScroll(scroll.y);
+
+        // Send pose to streamer
+        poseStreamer.sendPose();
+
+        quadsReceiver.processFrames();
 
         // Render all objects in scene
         renderStats = renderer.drawObjects(scene, camera);

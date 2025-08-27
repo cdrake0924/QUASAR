@@ -102,6 +102,10 @@ VideoStreamer::VideoStreamer(
 }
 
 VideoStreamer::~VideoStreamer() {
+    stop();
+}
+
+void VideoStreamer::stop() {
     shouldTerminate = true;
 
     if (videoStreamerThread.joinable())

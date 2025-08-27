@@ -3,11 +3,11 @@
 
 #include <thread>
 #include <atomic>
-#include <concurrentqueue/concurrentqueue.h>
 
-#include <Utils/TimeUtils.h>
-#include <Networking/DataPacketUDP.h>
 #include <Networking/Socket.h>
+#include <Networking/DataPacketUDP.h>
+#include <Utils/TimeUtils.h>
+#include <concurrentqueue/concurrentqueue.h>
 
 namespace quasar {
 
@@ -20,12 +20,12 @@ public:
     DataStreamerUDP(std::string url, int maxDataSize, bool nonBlocking = false);
     ~DataStreamerUDP();
 
-    void close();
+    void stop();
 
     int send(const uint8_t* data);
 
 private:
-    SocketUDP socket;
+    std::unique_ptr<SocketUDP> socket;
 
     std::atomic_bool running{false};
     std::thread dataSendingThread;

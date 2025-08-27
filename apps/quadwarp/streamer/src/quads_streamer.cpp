@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -7,24 +6,19 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
-#include <Path.h>
-#include <Recorder.h>
-#include <CameraAnimator.h>
-
 #include <QuadsStreamer.h>
+#include <PoseReceiver.h>
 
-#include <PoseSendRecvSimulator.h>
-
-#define REF_FRAME_PERIOD 5
+#define REF_FRAME_PERIOD 1
 
 using namespace quasar;
 
 int main(int argc, char** argv) {
     Config config{};
     config.title = "Quads Streamer";
+    config.targetFramerate = 30;
 
     args::ArgumentParser parser(config.title);
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
@@ -33,16 +27,10 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> resIn(parser, "rsize", "Resolution of remote renderer", {'r', "rsize"}, "1920x1080");
     args::ValueFlag<std::string> sceneFileIn(parser, "scene", "Path to scene file", {'S', "scene"}, "../assets/scenes/sponza.json");
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
-    args::Flag saveImages(parser, "save", "Save outputs to disk", {'I', "save-images"});
-    args::ValueFlag<std::string> cameraPathFileIn(parser, "camera-path", "Path to camera animation file", {'C', "camera-path"});
-    args::ValueFlag<std::string> outputPathIn(parser, "output-path", "Directory to save outputs", {'o', "output-path"}, ".");
-    args::ValueFlag<float> networkLatencyIn(parser, "network-latency", "Simulated network latency in ms", {'N', "network-latency"}, 25.0f);
-    args::ValueFlag<float> networkJitterIn(parser, "network-jitter", "Simulated network jitter in ms", {'J', "network-jitter"}, 10.0f);
-    args::Flag posePredictionIn(parser, "pose-prediction", "Enable pose prediction", {'P', "pose-prediction"}, false);
-    args::Flag poseSmoothingIn(parser, "pose-smoothing", "Enable pose smoothing", {'T', "pose-smoothing"}, false);
-    args::ValueFlag<float> viewBoxSizeIn(parser, "view-box-size", "Size of view box in m", {'B', "view-size"}, 0.5f);
+    args::ValueFlag<bool> displayIn(parser, "display", "Show window", {'d', "display"}, true);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
     args::ValueFlag<std::string> streamURLIn(parser, "stream", "stream URL", {'e', "stream-url"}, "127.0.0.1:54321");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "0.0.0.0:54321");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -68,13 +56,13 @@ int main(int argc, char** argv) {
     pos = rsizeStr.find('x');
     glm::uvec2 remoteWindowSize = glm::uvec2(std::stoi(rsizeStr.substr(0, pos)), std::stoi(rsizeStr.substr(pos + 1)));
 
-    config.enableVSync = !args::get(novsync) && !saveImages;
-    config.showWindow = !args::get(saveImages);
+    config.enableVSync = !args::get(novsync);
+    config.showWindow = args::get(displayIn);
 
     Path sceneFile = args::get(sceneFileIn);
-    Path cameraPathFile = args::get(cameraPathFileIn);
-    Path outputPath = Path(args::get(outputPathIn)); outputPath.mkdirRecursive();
+
     std::string streamURL = args::get(streamURLIn);
+    std::string poseURL = args::get(poseURLIn);
 
     auto window = std::make_shared<GLFWWindow>(config);
     auto guiManager = std::make_shared<ImGuiManager>(window);
@@ -105,7 +93,9 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(remoteWindowSize);
     FrameGenerator frameGenerator(quadSet);
-    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, remoteCamera, frameGenerator, streamURL);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, camera, frameGenerator, streamURL);
+
+    PoseReceiver poseReceiver(&camera, poseURL);
 
     // Add meshes to local scene
     quadwarp.addMeshesToScene(localScene);
@@ -113,70 +103,24 @@ int main(int argc, char** argv) {
     // Post processing
     ToneMapper toneMapper;
 
-    Recorder recorder({
-        .width = windowSize.x,
-        .height = windowSize.y,
-        .internalFormat = GL_RGBA,
-        .format = GL_RGBA,
-        .type = GL_UNSIGNED_BYTE,
-        .wrapS = GL_CLAMP_TO_EDGE,
-        .wrapT = GL_CLAMP_TO_EDGE,
-        .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR,
-    }, renderer, toneMapper, outputPath, config.targetFramerate);
-    CameraAnimator cameraAnimator(cameraPathFile);
-
-    if (saveImages) {
-        recorder.setTargetFrameRate(-1 /* unlimited */);
-        recorder.setFormat(Recorder::OutputFormat::PNG);
-        recorder.start();
-    }
-
-    if (cameraPathFileIn) {
-        cameraAnimator.copyPoseToCamera(camera);
-        cameraAnimator.copyPoseToCamera(remoteCamera);
-    }
-
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
     bool preventCopyingLocalPose = false;
-    bool runAnimations = cameraPathFileIn;
-    bool restrictMovementToViewBox = !cameraPathFileIn;
-    float viewBoxSize = args::get(viewBoxSizeIn);
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
-    int serverFPSIndex = !cameraPathFileIn ? 0 : 5; // default to 30 FPS
+    int serverFPSIndex = 1; // default to 1 FPS
     double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
-    float networkLatency = !cameraPathFileIn ? 0.0f : args::get(networkLatencyIn);
-    float networkJitter = !cameraPathFileIn ? 0.0f : args::get(networkJitterIn);
-    bool posePrediction = posePredictionIn;
-    bool poseSmoothing = poseSmoothingIn;
-    PoseSendRecvSimulator poseSendRecvSimulator({
-        .networkLatencyMs = networkLatency,
-        .networkJitterMs = networkJitter,
-        .renderTimeMs = rerenderIntervalMs,
-        .posePrediction = posePrediction,
-        .poseSmoothing = poseSmoothing,
-    });
 
     RenderStats renderStats;
-    bool recording = false;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
-        static bool showUI = !saveImages;
-        static bool showFrameCaptureWindow = false;
-        static bool showMeshCaptureWindow = false;
+        static bool showUI = true;
         static bool showFramePreviewWindow = false;
-        static char fileNameBase[256] = "screenshot";
-        static bool writeToHDR = false;
-        static bool showRecordWindow = false;
-        static int recordingFormatIndex = 0;
-        static char recordingDirBase[256] = "recordings";
 
         static bool showSkyBox = true;
 
@@ -193,9 +137,6 @@ int main(int argc, char** argv) {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("FPS", 0, &showFPS);
             ImGui::MenuItem("UI", 0, &showUI);
-            ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
-            ImGui::MenuItem("Record", 0, &showRecordWindow);
-            ImGui::MenuItem("Mesh Capture", 0, &showMeshCaptureWindow);
             ImGui::MenuItem("Frame Previews", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
@@ -271,168 +212,38 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::Checkbox("Show Wireframe", &showWireframe);
-            if (ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth)) {
-                preventCopyingLocalPose = true;
-                sendReferenceFrame = true;
-                runAnimations = false;
-            }
-            if (ImGui::Checkbox("Show Normals Instead of Color", &showNormals)) {
-                preventCopyingLocalPose = true;
-                sendReferenceFrame = true;
-                runAnimations = false;
-            }
+            ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth);
+            ImGui::Checkbox("Show Normals Instead of Color", &showNormals);
 
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
                 auto& quadsGenerator = frameGenerator.quadsGenerator;
-                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
-                    preventCopyingLocalPose = true;
-                    sendReferenceFrame = true;
-                    runAnimations = false;
-                }
-                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
-                    preventCopyingLocalPose = true;
-                    sendReferenceFrame = true;
-                    runAnimations = false;
-                }
-                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
-                    preventCopyingLocalPose = true;
-                    sendReferenceFrame = true;
-                    runAnimations = false;
-                }
-                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
-                    preventCopyingLocalPose = true;
-                    sendReferenceFrame = true;
-                    runAnimations = false;
-                }
-                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
-                    preventCopyingLocalPose = true;
-                    sendReferenceFrame = true;
-                    runAnimations = false;
-                }
-                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
-                    preventCopyingLocalPose = true;
-                    sendReferenceFrame = true;
-                    runAnimations = false;
-                }
+                ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation);
+                ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f");
+                ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f);
+                ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f);
+                ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f);
+                ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2);
             }
 
             ImGui::Separator();
 
-            if (ImGui::DragFloat("Network Latency (ms)", &networkLatency, 0.5f, 0.0f, 500.0f)) {
-                poseSendRecvSimulator.setNetworkLatency(networkLatency);
-            }
-            if (ImGui::DragFloat("Network Jitter (ms)", &networkJitter, 0.25f, 0.0f, 50.0f)) {
-                poseSendRecvSimulator.setNetworkJitter(networkJitter);
-            }
-
-            ImGui::Checkbox("Pose Prediction Enabled", &poseSendRecvSimulator.posePrediction);
-
             if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
                 rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
-                runAnimations = true;
             }
 
             float windowWidth = ImGui::GetContentRegionAvail().x;
             float buttonWidth = (windowWidth - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
             if (ImGui::Button("Send Reference Frame", ImVec2(buttonWidth, 0))) {
                 sendReferenceFrame = true;
-                runAnimations = true;
             }
             ImGui::SameLine();
             if (ImGui::Button("Send Residual Frame", ImVec2(buttonWidth, 0))) {
                 sendResidualFrame = true;
-                runAnimations = true;
             }
 
             ImGui::Separator();
-
-            if (ImGui::DragFloat("View Box Size", &viewBoxSize, 0.025f, 0.1f, 2.0f)) {
-                preventCopyingLocalPose = true;
-                sendReferenceFrame = true;
-                runAnimations = false;
-            }
-
-            ImGui::Checkbox("Restrict Movement to View Box", &restrictMovementToViewBox);
-
-            ImGui::End();
-        }
-
-        if (showFrameCaptureWindow) {
-            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 90), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Frame Capture", &showFrameCaptureWindow);
-
-            ImGui::Text("Base File Name:");
-            ImGui::InputText("##base file name", fileNameBase, IM_ARRAYSIZE(fileNameBase));
-            std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
-            Path filename = (outputPath / fileNameBase).appendToName("." + time);
-
-            ImGui::Checkbox("Save as HDR", &writeToHDR);
-
-            ImGui::Separator();
-
-            if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, writeToHDR);
-            }
-
-            ImGui::End();
-        }
-
-        if (showRecordWindow) {
-            ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 300), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Record", &showRecordWindow);
-
-            if (recording) {
-                ImGui::TextColored(ImVec4(1,0,0,1), "Recording in progress...");
-            }
-
-            ImGui::Text("Output Directory:");
-            ImGui::InputText("##output directory", recordingDirBase, IM_ARRAYSIZE(recordingDirBase));
-
-            ImGui::Text("FPS:");
-            if (ImGui::InputInt("##fps", &recorder.targetFrameRate)) {
-                recorder.setTargetFrameRate(recorder.targetFrameRate);
-            }
-
-            ImGui::Text("Format:");
-            if (ImGui::Combo("##format", &recordingFormatIndex, recorder.getFormatCStrArray(), recorder.getFormatCount())) {
-                Recorder::OutputFormat selectedFormat = Recorder::OutputFormat::MP4;
-                switch (recordingFormatIndex) {
-                    case 0: selectedFormat = Recorder::OutputFormat::MP4; break;
-                    case 1: selectedFormat = Recorder::OutputFormat::PNG; break;
-                    case 2: selectedFormat = Recorder::OutputFormat::JPG; break;
-                    default: break;
-                }
-                recorder.setFormat(selectedFormat);
-            }
-
-            if (ImGui::Button("Start")) {
-                recording = true;
-                std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
-                Path recordingDir = (outputPath / recordingDirBase).appendToName("." + time);
-                recorder.setOutputPath(recordingDir);
-                recorder.start();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Stop")) {
-                recorder.stop();
-                recording = false;
-            }
-
-            ImGui::End();
-        }
-
-        if (showMeshCaptureWindow) {
-            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 300), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
-
-            if (ImGui::Button("Save Proxies")) {
-                quadwarp.writeToFile(outputPath);
-            }
 
             ImGui::End();
         }
@@ -465,60 +276,13 @@ int main(int argc, char** argv) {
 
     double totalDT = 0.0;
     double lastRenderTime = -INFINITY;
-    bool updateClient = !saveImages;
     int frameCounter = 0;
+    pose_id_t poseID = -1, prevPoseID = -1;
     app.onRender([&](double now, double dt) {
-        // Handle mouse input
-        if (!(ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantCaptureMouse)) {
-            auto mouseButtons = window->getMouseButtons();
-            window->setMouseCursor(!mouseButtons.LEFT_PRESSED);
-            static bool dragging = false;
-            static bool prevMouseLeftPressed = false;
-            static float lastX = windowSize.x / 2.0;
-            static float lastY = windowSize.y / 2.0;
-            if (!prevMouseLeftPressed && mouseButtons.LEFT_PRESSED) {
-                dragging = true;
-                prevMouseLeftPressed = true;
-
-                auto cursorPos = window->getCursorPos();
-                lastX = static_cast<float>(cursorPos.x);
-                lastY = static_cast<float>(cursorPos.y);
-            }
-            if (prevMouseLeftPressed && !mouseButtons.LEFT_PRESSED) {
-                dragging = false;
-                prevMouseLeftPressed = false;
-            }
-            if (dragging) {
-                auto cursorPos = window->getCursorPos();
-                float xpos = static_cast<float>(cursorPos.x);
-                float ypos = static_cast<float>(cursorPos.y);
-
-                float xoffset = xpos - lastX;
-                float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-                lastX = xpos;
-                lastY = ypos;
-
-                camera.processMouseMovement(xoffset, yoffset, true);
-            }
-        }
+        // Handle keyboard input
         auto keys = window->getKeys();
         if (keys.ESC_PRESSED) {
             window->close();
-        }
-
-        if (cameraAnimator.running) {
-            updateClient = cameraAnimator.update(!cameraPathFileIn ? dt : 1.0 / MILLISECONDS_IN_SECOND);
-            now = cameraAnimator.now;
-            dt = cameraAnimator.dt;
-            if (updateClient) {
-                cameraAnimator.copyPoseToCamera(camera);
-            }
-        }
-        else {
-            auto scroll = window->getScrollOffset();
-            camera.processScroll(scroll.y);
-            camera.processKeyboard(keys, dt);
         }
         totalDT += dt;
 
@@ -528,47 +292,37 @@ int main(int argc, char** argv) {
         }
         if (sendReferenceFrame || sendResidualFrame) {
             // Update all animations
-            if (runAnimations) {
-                remoteScene.updateAnimations(totalDT);
-                totalDT = 0.0;
-            }
+            remoteScene.updateAnimations(totalDT);
+            totalDT = 0.0;
             lastRenderTime = now;
 
-            // "Send" pose to the server. this will wait until latency+/-jitter ms have passed
-            poseSendRecvSimulator.sendPose(camera, now);
-            if (!preventCopyingLocalPose) {
-                // "Receive" a predicted pose to render a new frame. this will wait until latency+/-jitter ms have passed
-                Pose clientPosePred;
-                if (poseSendRecvSimulator.recvPoseToRender(clientPosePred, now)) {
-                    remoteCamera.setViewMatrix(clientPosePred.mono.view);
-                }
-                // If we do not have a new pose, just send a new frame with the old pose
+            poseID = poseReceiver.receivePose();
+            if (poseID != -1 && poseID != prevPoseID) {
+                quadwarp.generateFrame(remoteRenderer, remoteScene, sendResidualFrame, showNormals, showDepth);
+
+                spdlog::info("======================================================");
+                spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
+                spdlog::info("Create Proxies Time: {:.3f}ms", quadwarp.stats.totalCreateProxiesTime);
+                spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadwarp.stats.totalGenQuadMapTime);
+                spdlog::info("  Simplify Time: {:.3f}ms", quadwarp.stats.totalSimplifyTime);
+                spdlog::info("  Gather Quads Time: {:.3f}ms", quadwarp.stats.totalGatherQuadsTime);
+                spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totalCreateMeshTime);
+                spdlog::info("  Append Quads Time: {:.3f}ms", quadwarp.stats.totalAppendQuadsTime);
+                spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadwarp.stats.totalFillQuadsIndiciesTime);
+                spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTime);
+                spdlog::info("Compress Time: {:.3f}ms", quadwarp.stats.totalCompressTime);
+                if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadwarp.stats.totalGenDepthTime);
+                spdlog::info("Frame Size: {:.3f}MB", (quadwarp.stats.totalSizes.quadsSize +
+                                                    quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
+                spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
+
+                prevPoseID = poseID;
             }
-
-            quadwarp.generateFrame(remoteRenderer, remoteScene, sendResidualFrame, showNormals, showDepth);
-
-            spdlog::info("======================================================");
-            spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
-            spdlog::info("Create Proxies Time: {:.3f}ms", quadwarp.stats.totalCreateProxiesTime);
-            spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadwarp.stats.totalGenQuadMapTime);
-            spdlog::info("  Simplify Time: {:.3f}ms", quadwarp.stats.totalSimplifyTime);
-            spdlog::info("  Gather Quads Time: {:.3f}ms", quadwarp.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totalCreateMeshTime);
-            spdlog::info("  Append Quads Time: {:.3f}ms", quadwarp.stats.totalAppendQuadsTime);
-            spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadwarp.stats.totalFillQuadsIndiciesTime);
-            spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTime);
-            spdlog::info("Compress Time: {:.3f}ms", quadwarp.stats.totalCompressTime);
-            if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadwarp.stats.totalGenDepthTime);
-            spdlog::info("Frame Size: {:.3f}MB", (quadwarp.stats.totalSizes.quadsSize +
-                                                  quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
-            spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
 
             preventCopyingLocalPose = false;
             sendReferenceFrame = false;
             sendResidualFrame = false;
         }
-
-        poseSendRecvSimulator.update(now);
 
         // Show previous mesh
         quadwarp.refFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
@@ -578,45 +332,13 @@ int main(int argc, char** argv) {
         quadwarp.resFrameWireframeNodesLocal.visible = quadwarp.resFrameNode.visible && showWireframe;
         quadwarp.depthNode.visible = showDepth;
 
-        if (restrictMovementToViewBox) {
-            glm::vec3 remotePosition = remoteCamera.getPosition();
-            glm::vec3 position = camera.getPosition();
-            // Restrict camera position to be inside position±viewBoxSize
-            position.x = glm::clamp(position.x, remotePosition.x - viewBoxSize/2, remotePosition.x + viewBoxSize/2);
-            position.y = glm::clamp(position.y, remotePosition.y - viewBoxSize/2, remotePosition.y + viewBoxSize/2);
-            position.z = glm::clamp(position.z, remotePosition.z - viewBoxSize/2, remotePosition.z + viewBoxSize/2);
-            camera.setPosition(position);
-            camera.updateViewMatrix();
-        }
-
-        double startTime = window->getTime();
-
         // Render generated meshes
         renderStats = renderer.drawObjects(localScene, camera);
 
         // Render to screen
-        toneMapper.enableToneMapping(!showNormals);
-        toneMapper.drawToScreen(renderer);
-        if (!updateClient) {
-            return;
-        }
-        if (cameraAnimator.running) {
-            spdlog::info("Client Render Time: {:.3f}ms", timeutils::secondsToMillis(window->getTime() - startTime));
-        }
-
-        poseSendRecvSimulator.accumulateError(camera, remoteCamera);
-
-        if (cameraPathFileIn) {
-            recorder.captureFrame(camera);
-
-            if (!cameraAnimator.running) {
-                poseSendRecvSimulator.printErrors();
-                recorder.stop();
-                window->close();
-            }
-        }
-        else if (recording) {
-            recorder.captureFrame(camera);
+        if (config.showWindow) {
+            toneMapper.enableToneMapping(!showNormals);
+            toneMapper.drawToScreen(renderer);
         }
     });
 

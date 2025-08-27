@@ -21,8 +21,7 @@ public:
     DataReceiverTCP(const std::string& url, bool nonBlocking = false);
     virtual ~DataReceiverTCP();
 
-    void start();
-    void close();
+    virtual void stop();
 
 protected:
     std::string url;
@@ -32,7 +31,7 @@ protected:
     virtual void onDataReceived(const std::vector<char>& data) = 0;
 
 private:
-    SocketTCP socket;
+    std::unique_ptr<SocketTCP> socket;
     std::thread dataRecvingThread;
 
     void recvData();

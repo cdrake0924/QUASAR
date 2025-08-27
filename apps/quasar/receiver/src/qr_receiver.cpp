@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>

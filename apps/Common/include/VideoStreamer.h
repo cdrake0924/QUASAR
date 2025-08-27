@@ -1,12 +1,12 @@
 #ifndef VIDEOSTREAMER_H
 #define VIDEOSTREAMER_H
 
-#include <gst/gst.h>
-#include <gst/app/gstappsrc.h>
-
 #include <vector>
 #include <atomic>
 #include <thread>
+
+#include <gst/gst.h>
+#include <gst/app/gstappsrc.h>
 #include <concurrentqueue/concurrentqueue.h>
 
 #include <Utils/TimeUtils.h>
@@ -39,6 +39,8 @@ public:
         int targetFrameRate = 30,
         int targetBitRateMbps = 10);
     ~VideoStreamer();
+
+    void stop();
 
     float getFrameRate();
 

@@ -16,9 +16,9 @@ extern "C" {
 #include <string>
 #include <vector>
 #include <filesystem>
-#include <concurrentqueue/concurrentqueue.h>
 
 #include <BS_thread_pool/BS_thread_pool.hpp>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <Path.h>
 #include <RenderTargets/RenderTarget.h>

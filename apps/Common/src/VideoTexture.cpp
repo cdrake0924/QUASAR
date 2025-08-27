@@ -86,6 +86,10 @@ VideoTexture::VideoTexture(
 }
 
 VideoTexture::~VideoTexture() {
+    stop();
+}
+
+void VideoTexture::stop() {
     shouldTerminate = true;
     videoReady = false;
 

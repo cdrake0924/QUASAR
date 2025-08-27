@@ -1,15 +1,11 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
-
-#include <CameraAnimator.h>
 
 #include <VideoStreamer.h>
 #include <PoseReceiver.h>
@@ -101,7 +97,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, videoURL, config.targetFramerate, targetBitrate);
 
-    PoseReceiver poseReceiver = PoseReceiver(camera.get(), poseURL);
+    PoseReceiver poseReceiver(camera.get(), poseURL);
 
     // Post processing
     ToneMapper toneMapper;

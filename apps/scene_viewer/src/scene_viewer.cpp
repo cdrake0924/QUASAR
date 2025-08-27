@@ -1,12 +1,10 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 #include <PostProcessing/ShowNormalsEffect.h>

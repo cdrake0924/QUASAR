@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -7,7 +6,6 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 

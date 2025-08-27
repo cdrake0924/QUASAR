@@ -11,7 +11,7 @@
 
 namespace quasar {
 
-class QuadsStreamer {
+class QuadsStreamer : public DataStreamerTCP {
 public:
     // Reference frame
     FrameRenderTarget refFrameRT;
@@ -109,7 +109,6 @@ private:
     QuadMaterial maskWireframeMaterial;
 
     std::vector<char> compressedData;
-    std::unique_ptr<DataStreamerTCP> streamer;
 
     ToneMapper toneMapper;
     ShowNormalsEffect showNormalsEffect;

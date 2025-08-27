@@ -1,12 +1,10 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
@@ -119,7 +117,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_NEAREST,
     }, depthURL);
 
-    PoseReceiver poseReceiver = PoseReceiver(&camera, poseURL);
+    PoseReceiver poseReceiver(&camera, poseURL);
 
     // Post processing
     ToneMapper toneMapper;

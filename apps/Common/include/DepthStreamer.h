@@ -5,11 +5,11 @@
 #include <atomic>
 #include <vector>
 #include <memory>
-#include <concurrentqueue/concurrentqueue.h>
 
+#include <CameraPose.h>
 #include <RenderTargets/RenderTarget.h>
 #include <Networking/DataStreamerTCP.h>
-#include <CameraPose.h>
+#include <concurrentqueue/concurrentqueue.h>
 
 #if defined(HAS_CUDA)
 #include <CudaGLInterop/CudaGLImage.h>
@@ -17,7 +17,7 @@
 
 namespace quasar {
 
-class DepthStreamer : public RenderTarget {
+class DepthStreamer : public RenderTarget, public DataStreamerTCP {
 public:
     std::string receiverURL;
 
@@ -32,7 +32,7 @@ public:
     DepthStreamer(const RenderTargetCreateParams& params, std::string receiverURL);
     ~DepthStreamer();
 
-    void close();
+    void stop();
 
     float getFrameRate() {
         return 1.0f / timeutils::millisToSeconds(stats.timeToSendMs);
@@ -46,7 +46,6 @@ public:
 
 private:
     int targetFrameRate = 30;
-    std::unique_ptr<DataStreamerTCP> streamer;
 
     std::vector<char> data;
     RenderTarget renderTargetCopy;

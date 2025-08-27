@@ -5,28 +5,35 @@ using namespace quasar;
 DataReceiverUDP::DataReceiverUDP(std::string url, int maxDataSize, bool nonBlocking)
     : url(url)
     , maxDataSize(maxDataSize)
-    , socket(nonBlocking)
 {
-    socket.bind(url);
+    if (url.empty()) {
+        return;
+    }
+
+    socket = std::make_unique<SocketUDP>(nonBlocking);
+    socket->bind(url);
 
     running = true;
     dataRecvingThread = std::thread(&DataReceiverUDP::recvData, this);
 }
 
 DataReceiverUDP::~DataReceiverUDP() {
-    close();
+    stop();
 }
 
-void DataReceiverUDP::close() {
-    running = false;
+void DataReceiverUDP::stop() {
+    if (url.empty()) {
+        return;
+    }
 
+    running = false;
     if (dataRecvingThread.joinable()) {
         dataRecvingThread.join();
     }
 }
 
 int DataReceiverUDP::recvPacket(DataPacketUDP* packet) {
-    return socket.recv(packet, sizeof(DataPacketUDP), 0);
+    return socket->recv(packet, sizeof(DataPacketUDP), 0);
 }
 
 void DataReceiverUDP::recvData() {
@@ -43,7 +50,7 @@ void DataReceiverUDP::recvData() {
         dataSizes[packet.dataID] += packet.size;
 
         if (dataSizes[packet.dataID] == maxDataSize) {
-            std::vector<uint8_t> data(maxDataSize);
+            std::vector<char> data(maxDataSize);
             int offset = 0;
             for (auto& p : datas[packet.dataID]) {
                 std::memcpy(data.data() + offset, p.second.data, p.second.size);
@@ -57,5 +64,5 @@ void DataReceiverUDP::recvData() {
         }
     }
 
-    socket.close();
+    socket->close();
 }

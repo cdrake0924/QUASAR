@@ -33,13 +33,14 @@ public:
         const std::string& videoURL);
     ~VideoTexture();
 
-    void resize(uint width, uint height);
+    void stop();
 
     pose_id_t getLatestPoseID();
     float getFrameRate();
 
     void setMaxQueueSize(size_t maxQueueSize);
 
+    void resize(uint width, uint height);
     pose_id_t draw(pose_id_t poseID = -1);
 
 private:

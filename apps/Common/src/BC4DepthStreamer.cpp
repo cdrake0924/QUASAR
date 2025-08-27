@@ -23,6 +23,7 @@ BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const
         }
     })
     , RenderTarget(params)
+    , DataStreamerTCP(receiverURL)
 {
     resize(width, height);
 
@@ -38,19 +39,20 @@ BC4DepthStreamer::BC4DepthStreamer(const RenderTargetCreateParams& params, const
 
     if (!receiverURL.empty()) {
         running = true;
-        streamer = std::make_unique<DataStreamerTCP>(receiverURL);
         dataSendingThread = std::thread(&BC4DepthStreamer::sendData, this);
     }
 #endif
 
-    spdlog::info("Created BC4DepthStreamer that sends to URL: {}", receiverURL);
+    if (!receiverURL.empty()) {
+        spdlog::info("Created BC4DepthStreamer that sends to URL: {}", receiverURL);
+    }
 }
 
 BC4DepthStreamer::~BC4DepthStreamer() {
-    close();
+    stop();
 }
 
-void BC4DepthStreamer::close() {
+void BC4DepthStreamer::stop() {
 #if defined(HAS_CUDA)
     running = false;
 
@@ -154,7 +156,7 @@ void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
 
     applyCodec();
 
-    streamer->send(compressedData);
+    send(compressedData);
 #endif
 }
 
@@ -187,7 +189,7 @@ void BC4DepthStreamer::sendData() {
             );
         }
 
-        streamer->send(compressedData);
+        send(compressedData);
 
         stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         stats.bitrateMbps = ((compressedSize * 8.0) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;

@@ -21,7 +21,7 @@
 
 namespace quasar {
 
-class PoseStreamer {
+class PoseStreamer : public DataStreamerUDP {
 public:
     std::string receiverURL;
     uint rate;
@@ -30,7 +30,7 @@ public:
         : camera(camera)
         , receiverURL(receiverURL)
         , rate(rate)
-        , streamer(receiverURL, sizeof(Pose))
+        , DataStreamerUDP(receiverURL, sizeof(Pose))
     {
         spdlog::info("Created PoseStreamer that sends to URL: {}", receiverURL);
     }
@@ -100,7 +100,7 @@ public:
             // }
         }
         currPose.timestamp = timeutils::getTimeMicros();
-        streamer.send((uint8_t*)&currPose);
+        send((uint8_t*)&currPose);
 
         prevPoses[currPoseID] = currPose;
         currPoseID++;
@@ -111,8 +111,6 @@ public:
     }
 
 private:
-    DataStreamerUDP streamer;
-
     Camera* camera;
     Pose prevPose;
     pose_id_t currPoseID = 0;

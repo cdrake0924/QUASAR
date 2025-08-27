@@ -5,14 +5,14 @@ using namespace quasar;
 DataStreamerTCP::DataStreamerTCP(std::string url, int maxDataSize, bool nonBlocking)
     : url(url)
     , maxDataSize(maxDataSize)
-    , socket(nonBlocking)
 {
     if (url.empty()) {
         return;
     }
 
-    socket.setReuseAddr();
-    socket.setSendSize(maxDataSize);
+    socket = std::make_unique<SocketTCP>(nonBlocking);
+    socket->setReuseAddr();
+    socket->setSendSize(maxDataSize);
 
     dataSendingThread = std::thread(&DataStreamerTCP::sendData, this);
 }
@@ -24,7 +24,6 @@ DataStreamerTCP::~DataStreamerTCP() {
 void DataStreamerTCP::stop() {
     shouldTerminate = true;
     ready = false;
-
     if (dataSendingThread.joinable()) {
         dataSendingThread.join();
     }
@@ -46,11 +45,11 @@ int DataStreamerTCP::send(std::vector<char>& data, bool copy) {
 }
 
 void DataStreamerTCP::sendData() {
-    socket.bind(url);
-    socket.listen(1);
+    socket->bind(url);
+    socket->listen(1);
 
     while (!shouldTerminate) {
-        if ((clientSocketID = socket.accept()) < 0) {
+        if ((clientSocketID = socket->accept()) < 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         else {
@@ -74,7 +73,7 @@ void DataStreamerTCP::sendData() {
 
         int totalSent = 0;
         while (totalSent < header.size()) {
-            int sent = socket.sendToClient(clientSocketID, header.data() + totalSent, header.size() - totalSent, 0);
+            int sent = socket->sendToClient(clientSocketID, header.data() + totalSent, header.size() - totalSent, 0);
             if (sent < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) continue;
             }
@@ -85,7 +84,7 @@ void DataStreamerTCP::sendData() {
 
         totalSent = 0;
         while (totalSent < data.size()) {
-            int sent = socket.sendToClient(clientSocketID, data.data() + totalSent, data.size() - totalSent, 0);
+            int sent = socket->sendToClient(clientSocketID, data.data() + totalSent, data.size() - totalSent, 0);
             if (sent < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) continue;
             }
@@ -98,5 +97,5 @@ void DataStreamerTCP::sendData() {
         stats.bitrateMbps = ((sizeof(dataSize) + data.size() * 8.0) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
     }
 
-    socket.close();
+    socket->close();
 }
