@@ -164,8 +164,7 @@ void QuadsStreamer::generateFrame(
         referenceFrameRT,
         remoteCameraToUse,
         referenceFrameMeshes[currMeshIndex],
-        referenceFrame,
-        !createResidualFrame // No need to waste time compressing if we are generating a residual frame
+        referenceFrame
     );
 
     stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
@@ -179,6 +178,7 @@ void QuadsStreamer::generateFrame(
     stats.totalCreateMeshTime += frameGenerator.stats.timeToCreateMeshMs;
 
     stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
+
     /*
     ============================
     Generate Residual Frame

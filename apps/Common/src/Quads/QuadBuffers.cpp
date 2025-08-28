@@ -34,7 +34,6 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
 {}
 
 void QuadBuffers::resize(size_t newNumProxies) {
-    spdlog::info("Resized QuadBuffers: {} -> {}", numProxies, newNumProxies);
     numProxies = newNumProxies;
 }
 
