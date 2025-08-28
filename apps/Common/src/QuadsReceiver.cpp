@@ -232,7 +232,7 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         quadsUpdatedFuture.get(); offsetsUpdatedFuture.get();
 
         // Transfer updated proxies to GPU for reconstruction
-        auto sizesUpdated = quadSet.copyFromCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated);
+        auto sizesUpdated = quadSet.copyFromCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated, false);
         residualFrame.numQuadsUpdated = sizesUpdated.numQuads;
         residualFrame.numDepthOffsetsUpdated = sizesUpdated.numDepthOffsets;
         stats.timeToTransferMs += quadSet.stats.timeToTransferMs;

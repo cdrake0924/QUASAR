@@ -52,7 +52,7 @@ public:
         return frameSize;
     }
 
-    uint getNumQuads() const {
+    uint getNumProxies() const {
         return quadBuffers.numProxies;
     }
 
@@ -60,7 +60,7 @@ public:
         return depthOffsets.getSize().x * depthOffsets.getSize().y;
     }
 
-    void setNumQuads(int numProxies) {
+    void setNumProxies(int numProxies) {
         quadBuffers.resize(numProxies);
     }
 
@@ -80,9 +80,9 @@ public:
     }
 #endif
 
-    Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
+    Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets, bool resizeNumProxies = true) {
         double startTime = timeutils::getTimeMicros();
-        auto quadsSize = quadBuffers.copyFromCPU(inputQuads);
+        auto quadsSize = quadBuffers.copyFromCPU(inputQuads, resizeNumProxies);
         depthOffsets.copyFromCPU(inputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 

@@ -90,7 +90,7 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
     appendQuadsShader.bind();
     {
         appendQuadsShader.setBool("isReferenceFrame", isReferenceFrame);
-        appendQuadsShader.setUint("newNumProxies", quadSet.getNumQuads());
+        appendQuadsShader.setUint("newNumProxies", quadSet.getNumProxies());
     }
     {
         appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, currNumProxiesBuffer);
@@ -104,7 +104,7 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
         appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.depthsBuffer);
         appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, currentQuadBuffers.metadatasBuffer);
     }
-    appendQuadsShader.dispatch(((quadSet.getNumQuads() + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
+    appendQuadsShader.dispatch(((quadSet.getNumProxies() + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     appendQuadsShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     stats.timeToAppendQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
@@ -143,7 +143,6 @@ void QuadMesh::fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferS
 
         fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadIndicesMap);
     }
-
     fillQuadIndicesShader.dispatch(((currNumProxies + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     fillQuadIndicesShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 

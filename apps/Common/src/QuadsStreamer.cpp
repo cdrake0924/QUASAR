@@ -179,7 +179,6 @@ void QuadsStreamer::generateFrame(
     stats.totalCreateMeshTime += frameGenerator.stats.timeToCreateMeshMs;
 
     stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
-
     /*
     ============================
     Generate Residual Frame
