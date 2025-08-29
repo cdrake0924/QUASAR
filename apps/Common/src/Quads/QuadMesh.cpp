@@ -20,36 +20,17 @@ QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxQuadsP
         .numElems = 1,
         .usage = GL_DYNAMIC_COPY,
     })
-    , prevNumProxiesBuffer({
-        .target = GL_SHADER_STORAGE_BUFFER,
-        .dataSize = sizeof(uint),
-        .numElems = 1,
-        .usage = GL_DYNAMIC_DRAW,
-    })
-    , currNumProxiesBuffer({
-        .target = GL_SHADER_STORAGE_BUFFER,
-        .dataSize = sizeof(uint),
-        .numElems = 1,
-        .usage = GL_DYNAMIC_DRAW,
-    })
     , quadIndicesMap({
         .target = GL_SHADER_STORAGE_BUFFER,
         .dataSize = sizeof(uint),
         .numElems = quadSet.getSize().x * quadSet.getSize().y,
         .usage = GL_DYNAMIC_DRAW,
     })
-    , quadCreatedFlagsBuffer({
+    , quadCreatedBuffer({
         .target = GL_SHADER_STORAGE_BUFFER,
         .dataSize = sizeof(int),
         .numElems = maxProxies,
         .usage = GL_DYNAMIC_DRAW,
-    })
-    , appendQuadsShader({
-        .computeCodeData = SHADER_COMMON_APPEND_QUADS_COMP,
-        .computeCodeSize = SHADER_COMMON_APPEND_QUADS_COMP_len,
-        .defines = {
-            "#define THREADS_PER_LOCALGROUP " + std::to_string(THREADS_PER_LOCALGROUP)
-        }
     })
     , fillQuadIndicesShader({
         .computeCodeData = SHADER_COMMON_FILL_QUAD_INDICES_COMP,
@@ -87,64 +68,44 @@ QuadMesh::BufferSizes QuadMesh::getBufferSizes() const {
 void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isReferenceFrame) {
     double startTime = timeutils::getTimeMicros();
 
-    appendQuadsShader.bind();
-    {
-        appendQuadsShader.setBool("isReferenceFrame", isReferenceFrame);
-        appendQuadsShader.setUint("newNumProxies", quadSet.getNumProxies());
+    if (isReferenceFrame) {
+        currNumProxies = 0;
+        prevNumProxies = 0;
     }
-    {
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, currNumProxiesBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, prevNumProxiesBuffer);
+    spdlog::warn(isReferenceFrame ? "Resetting proxy counts for reference frame" : "Updating proxy counts");
 
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, quadSet.quadBuffers.normalSphericalsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, quadSet.quadBuffers.depthsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, quadSet.quadBuffers.metadatasBuffer);
+    uint newNumProxies = quadSet.getNumProxies();
+    currNumProxies += newNumProxies;
 
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.normalSphericalsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.depthsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, currentQuadBuffers.metadatasBuffer);
-    }
-    appendQuadsShader.dispatch(((quadSet.getNumProxies() + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
-    appendQuadsShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    stats.timeToAppendQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-
-    fillQuadIndices(quadSet, gBufferSize);
-}
-
-void QuadMesh::fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferSize) {
-    double startTime = timeutils::getTimeMicros();
-
-    // Get current number of proxies
-    int currNumProxies = 0;
-    auto* ptr = currNumProxiesBuffer.mapToCPU(GL_MAP_READ_BIT);
-    if (ptr) {
-        currNumProxies = static_cast<int*>(ptr)[0];
-        currNumProxiesBuffer.unmapFromCPU();
-    }
-    else {
-        spdlog::warn("Failed to map currNumProxiesBuffer. Copying using getData");
-        currNumProxiesBuffer.getData(&currNumProxies);
-    }
-    currNumProxies = std::min(currNumProxies, MAX_QUADS_PER_MESH);
+    uint maxInvocations = std::min(currNumProxies, MAX_QUADS_PER_MESH);
+    spdlog::info("{}: Previous number of proxies: {}", ID, prevNumProxies);
+    spdlog::info("{}: New number of proxies: {}", ID, newNumProxies);
+    spdlog::info("{}: Current number of proxies: {}", ID, currNumProxies);
+    spdlog::info("{}: Max invocations: {}", ID, maxInvocations);
 
     fillQuadIndicesShader.bind();
     {
+        fillQuadIndicesShader.setBool("isReferenceFrame", isReferenceFrame);
         fillQuadIndicesShader.setVec2("gBufferSize", gBufferSize);
+        fillQuadIndicesShader.setUint("prevNumProxies", prevNumProxies);
+        fillQuadIndicesShader.setUint("maxInvocations", maxInvocations);
     }
     {
-        fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, currNumProxiesBuffer);
-        fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, prevNumProxiesBuffer);
-        fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, quadCreatedFlagsBuffer);
+        fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, quadSet.quadBuffers.normalSphericalsBuffer);
+        fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadSet.quadBuffers.depthsBuffer);
+        fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, quadSet.quadBuffers.metadatasBuffer);
 
         fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, currentQuadBuffers.normalSphericalsBuffer);
         fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, currentQuadBuffers.depthsBuffer);
         fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.metadatasBuffer);
 
         fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadIndicesMap);
+        fillQuadIndicesShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, quadCreatedBuffer);
     }
-    fillQuadIndicesShader.dispatch(((currNumProxies + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
+    fillQuadIndicesShader.dispatch(((maxInvocations + 1) + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     fillQuadIndicesShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+    prevNumProxies = currNumProxies;
 
     stats.timeToGatherQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
@@ -165,20 +126,22 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
         createQuadMeshShader.setFloat("far", remoteCamera.getFar());
     }
     {
+        createQuadMeshShader.setUint("currNumProxies", currNumProxies);
+    }
+    {
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, meshSizesBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadCreatedFlagsBuffer);
 
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, vertexBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, indexBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, indirectBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, vertexBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, indexBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, indirectBuffer);
 
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.normalSphericalsBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.depthsBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, currentQuadBuffers.metadatasBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, currentQuadBuffers.normalSphericalsBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.depthsBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.metadatasBuffer);
 
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 8, quadIndicesMap);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, quadIndicesMap);
 
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 9, currNumProxiesBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 8, quadCreatedBuffer);
 
         createQuadMeshShader.setImageTexture(0, quadSet.depthOffsets.texture, 0, GL_FALSE, 0, GL_READ_ONLY, quadSet.depthOffsets.texture.internalFormat);
     }

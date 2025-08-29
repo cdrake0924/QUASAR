@@ -82,11 +82,11 @@ void FrameGenerator::updateResidualRenderTargets(
     */
     double startTime = timeutils::getTimeMicros();
 
-    // Fill depth buffer with previous generated mesh
+    // Fill depth buffer with previous reconstructed mesh
     remoteRenderer.pipeline.writeMaskState.disableColorWrites();
     remoteRenderer.drawObjectsNoLighting(prevMeshScene, remoteCameraPrev);
 
-    // Use current generated mesh as a stencil mask
+    // Use current reconstructed mesh as a stencil mask
     remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
     remoteRenderer.pipeline.depthState.depthFunc = GL_EQUAL;
     remoteRenderer.drawObjectsNoLighting(currMeshScene, remoteCameraPrev, GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -105,7 +105,7 @@ void FrameGenerator::updateResidualRenderTargets(
     Generate frame from new camera pose using current frame as a mask to capture disocclusions due to camera movement
     ============================
     */
-    // Use current generated mesh as a stencil mask
+    // Use current reconstructed mesh as a stencil mask
     remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
     remoteRenderer.pipeline.writeMaskState.disableColorWrites();
     remoteRenderer.drawObjectsNoLighting(currMeshScene, currRemoteCamera);
@@ -124,7 +124,7 @@ void FrameGenerator::updateResidualRenderTargets(
 void FrameGenerator::createResidualFrame(
     const FrameRenderTarget& residualFrameMaskRT, const FrameRenderTarget& residualFrameRT,
     const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev,
-    QuadMesh& mesh, QuadMesh& maskMesh,
+    QuadMesh& referenceMesh, QuadMesh& residualMesh,
     ResidualFrame& residualFrame,
     bool compress)
 {
@@ -158,11 +158,11 @@ void FrameGenerator::createResidualFrame(
 
     // Using GPU buffers, update reference frame mesh using proxies
     startTime = timeutils::getTimeMicros();
-    mesh.appendQuads(quadSet, gBufferSize, false /* is not reference frame */);
-    mesh.createMeshFromProxies(quadSet, gBufferSize, remoteCameraPrev);
-    stats.timeToAppendQuadsMs = mesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs = mesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs = mesh.stats.timeToCreateMeshMs;
+    referenceMesh.appendQuads(quadSet, gBufferSize, false /* is not reference frame */);
+    referenceMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCameraPrev);
+    stats.timeToAppendQuadsMs = referenceMesh.stats.timeToAppendQuadsMs;
+    stats.timeToFillQuadIndicesMs = referenceMesh.stats.timeToGatherQuadsMs;
+    stats.timeToCreateVertIndMs = referenceMesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
@@ -189,11 +189,11 @@ void FrameGenerator::createResidualFrame(
 
     // Using GPU buffers, reconstruct revealed mesh using proxies
     startTime = timeutils::getTimeMicros();
-    maskMesh.appendQuads(quadSet, gBufferSize);
-    maskMesh.createMeshFromProxies(quadSet, gBufferSize, currRemoteCamera);
-    stats.timeToAppendQuadsMs += maskMesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs += maskMesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs += maskMesh.stats.timeToCreateMeshMs;
+    residualMesh.appendQuads(quadSet, gBufferSize);
+    residualMesh.createMeshFromProxies(quadSet, gBufferSize, currRemoteCamera);
+    stats.timeToAppendQuadsMs += residualMesh.stats.timeToAppendQuadsMs;
+    stats.timeToFillQuadIndicesMs += residualMesh.stats.timeToGatherQuadsMs;
+    stats.timeToCreateVertIndMs += residualMesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*

@@ -12,7 +12,7 @@
 
 namespace quasar {
 
-#define MAX_QUADS_PER_MESH 550000
+#define MAX_QUADS_PER_MESH 500000u
 
 #define VERTICES_IN_A_QUAD 4
 #define INDICES_IN_A_QUAD 6
@@ -45,17 +45,14 @@ private:
     QuadBuffers currentQuadBuffers;
 
     Buffer meshSizesBuffer;
-    Buffer prevNumProxiesBuffer;
-    Buffer currNumProxiesBuffer;
 
-    Buffer quadCreatedFlagsBuffer;
+    Buffer quadCreatedBuffer;
     Buffer quadIndicesMap;
 
-    ComputeShader appendQuadsShader;
+    uint currNumProxies = 0, prevNumProxies = 0;
+
     ComputeShader fillQuadIndicesShader;
     ComputeShader createQuadMeshShader;
-
-    void fillQuadIndices(const QuadSet& quadSet, const glm::vec2& gBufferSize);
 };
 
 } // namespace quasar

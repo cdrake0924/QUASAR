@@ -13,19 +13,15 @@ layout(std430, binding = 0) buffer MeshBufferSizes {
     uint numIndices;
 };
 
-layout(std430, binding = 1) readonly buffer QuadCreatedFlagsBuffer {
-    int quadCreatedFlags[];
-};
-
-layout(std430, binding = 2) buffer VertexBuffer {
+layout(std430, binding = 1) buffer VertexBuffer {
     Vertex vertices[];
 };
 
-layout(std430, binding = 3) buffer IndexBuffer {
+layout(std430, binding = 2) buffer IndexBuffer {
     uint indices[];
 };
 
-layout(std430, binding = 4) buffer MeshIndirectCommandBuffer {
+layout(std430, binding = 3) buffer MeshIndirectCommandBuffer {
     uint count;
     uint instanceCount;
     uint firstIndex;
@@ -33,30 +29,30 @@ layout(std430, binding = 4) buffer MeshIndirectCommandBuffer {
     uint baseInstance;
 } meshIndirectCommandBuffer;
 
-layout(std430, binding = 5) readonly buffer NormalSphericalsBufferInput {
+layout(std430, binding = 4) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
 };
 
-layout(std430, binding = 6) readonly buffer DepthsBufferInput {
+layout(std430, binding = 5) readonly buffer DepthsBufferInput {
     float depthsInput[];
 };
 
-layout(std430, binding = 7) readonly buffer MetadatasBufferInput {
+layout(std430, binding = 6) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 8) readonly buffer QuadIndicesMap {
+layout(std430, binding = 7) readonly buffer QuadIndicesMap {
     uint quadIndices[];
 };
 
-layout(std430, binding = 9) readonly buffer CurrNumProxiesBuffer {
-    uint currNumProxies;
+layout(std430, binding = 8) readonly buffer quadCreatedBuffer {
+    int quadCreatedFlags[];
 };
 
 layout(rgba16f, binding = 0) uniform readonly image2D depthOffsetsBuffer;
 
 uniform vec2 gBufferSize;
-uniform vec2 atlasSize;
+uniform uint currNumProxies;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -244,12 +240,11 @@ void storeSurfelsFromQuadMap(in QuadMapData quadMapData) {
     // Extract the plane normal and point from the quad map
     Plane proxyPlane = quadMapDataToPlane(quadMapData);
 
-    uint halfSize = 1u << (quadMapData.size - 1u); // 2^size / 2
+    uint size = 1u << quadMapData.size;
+    uint halfSize = size / 2u;
+    float halfGridSize = float(size) * surfelSize / 2.0;
     vec2 proxyPlaneUV = (vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
     vec2 proxyPlanePixelCoords = vec2(proxyPlaneUV * gBufferSize);
-
-    uint size = 1u << quadMapData.size;
-    float halfGridSize = float(size) * surfelSize / 2.0;
 
     bool flattened = quadMapData.flattened;
     if (!flattened) {

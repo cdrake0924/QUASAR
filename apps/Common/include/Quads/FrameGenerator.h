@@ -47,7 +47,7 @@ public:
     void createResidualFrame(
         const FrameRenderTarget& residualFrameMaskRT, const FrameRenderTarget& residualFrameRT,
         const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev,
-        QuadMesh& mesh, QuadMesh& maskMesh,
+        QuadMesh& referenceMesh, QuadMesh& residualMesh,
         ResidualFrame& residualFrame,
         bool compress = true);
 

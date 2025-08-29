@@ -140,6 +140,7 @@ void QuadsStreamer::generateFrame(
     stats = { 0 };
 
     auto& remoteCameraToUse = createResidualFrame ? remoteCameraPrev : remoteCamera;
+    auto quadsGenerator = frameGenerator.getQuadsGenerator();
 
     // Render remote scene normally
     double startTime = timeutils::getTimeMicros();
@@ -158,13 +159,13 @@ void QuadsStreamer::generateFrame(
     Generate Reference Frame
     ============================
     */
-    auto quadsGenerator = frameGenerator.getQuadsGenerator();
     quadsGenerator->params.expandEdges = false;
+    ReferenceFrame currReferenceFrame;
     frameGenerator.createReferenceFrame(
         referenceFrameRT,
         remoteCameraToUse,
         referenceFrameMeshes[currMeshIndex],
-        referenceFrame
+        createResidualFrame ? currReferenceFrame : referenceFrame
     );
 
     stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
@@ -179,12 +180,12 @@ void QuadsStreamer::generateFrame(
 
     stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
 
-    /*
-    ============================
-    Generate Residual Frame
-    ============================
-    */
     if (createResidualFrame) {
+        /*
+        ============================
+        Generate Residual Frame
+        ============================
+        */
         quadsGenerator->params.expandEdges = true;
         frameGenerator.updateResidualRenderTargets(
             residualFrameMaskRT, residualFrameRT,
@@ -195,7 +196,7 @@ void QuadsStreamer::generateFrame(
         frameGenerator.createResidualFrame(
             residualFrameMaskRT, residualFrameRT,
             remoteCamera, remoteCameraPrev,
-            referenceFrameMeshes[currMeshIndex], residualFrameMesh,
+            referenceFrameMeshes[prevMeshIndex], residualFrameMesh,
             residualFrame
         );
         if (!showNormals) {
@@ -220,15 +221,16 @@ void QuadsStreamer::generateFrame(
         stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
     }
 
-    residualFrameNode.visible = createResidualFrame;
-    currMeshIndex = (currMeshIndex + 1) % meshScenes.size();
-    prevMeshIndex = (prevMeshIndex + 1) % meshScenes.size();
-
-    // Only update the previous camera pose if we are not generating a Residual Frame
     if (!createResidualFrame) {
+        currMeshIndex = (currMeshIndex + 1) % meshScenes.size();
+        prevMeshIndex = (prevMeshIndex + 1) % meshScenes.size();
+
+        // Only update the previous camera pose if we are not generating a Residual Frame
         remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
     }
+
+    residualFrameNode.visible = createResidualFrame;
 
     // For debugging: Generate point cloud from depth map
     if (showDepth) {
