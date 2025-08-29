@@ -7,7 +7,7 @@
 
 using namespace quasar;
 
-QuadsReceiver::QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL)
+QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
     : quadSet(quadSet)
     , streamerURL(streamerURL)
     , remoteCamera(quadSet.getSize())
@@ -40,21 +40,17 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::strin
     , uncompressedOffsetsRevealed(quadSet.depthOffsets.getSize().x * quadSet.depthOffsets.getSize().y * 4 * sizeof(uint16_t))
     , DataReceiverTCP(streamerURL)
 {
-    remoteCamera.setFovyDegrees(remoteFOV);
-    remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
-    remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
-
     if (!streamerURL.empty()) {
         spdlog::info("Created QuadsReceiver that recvs from URL: {}", streamerURL);
     }
 }
 
-QuadMesh& QuadsReceiver::getReferenceMesh() {
-    return referenceFrameMesh;
-}
-
-QuadMesh& QuadsReceiver::getResidualMesh() {
-    return residualFrameMesh;
+QuadsReceiver::QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL)
+    : QuadsReceiver(quadSet, streamerURL)
+{
+    remoteCamera.setFovyDegrees(remoteFOV);
+    remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
+    remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 }
 
 void QuadsReceiver::copyPoseToCamera(PerspectiveCamera& camera) {
@@ -90,7 +86,7 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     referenceColorTexture.loadFromFile(colorFileNameRef, true, false);
 
     referenceFrame.loadFromFiles(dataPath);
-    stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     updateGeometry(FrameType::REFERENCE);
 
@@ -175,7 +171,7 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     else {
         residualFrame.loadFromMemory(geometryData);
     }
-    stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     updateGeometry(header.frameType);
 
@@ -196,7 +192,7 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
 }
 
 void QuadsReceiver::updateGeometry(FrameType frameType) {
-    const glm::vec2& gBufferSize = glm::vec2(referenceColorTexture.width, referenceColorTexture.height);
+    const glm::vec2& gBufferSize = quadSet.getSize();
     if (frameType == FrameType::REFERENCE) {
         // Decompress proxies (asynchronous)
         auto offsetsFuture = referenceFrame.decompressDepthOffsets(uncompressedOffsets);

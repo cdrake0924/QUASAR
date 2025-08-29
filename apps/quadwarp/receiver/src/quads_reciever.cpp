@@ -24,11 +24,10 @@ int main(int argc, char** argv) {
     args::Flag verbose(parser, "verbose", "Enable verbose logging", {'v', "verbose"});
     args::ValueFlag<std::string> sizeIn(parser, "size", "Resolution of renderer", {'s', "size"}, "1920x1080");
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
-    args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
-    args::ValueFlag<std::string> streamURLIn(parser, "stream", "stream URL", {'e', "stream-url"}, "127.0.0.1:54321");
     args::Flag loadFromDisk(parser, "load-from-disk", "Load data from disk", {'L', "load-from-disk"}, false);
     args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
     args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "127.0.0.1:54321");
+    args::ValueFlag<std::string> quadsURLIn(parser, "quads", "Quads URL", {'e', "quads-url"}, "0.0.0.0:65432");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -52,7 +51,7 @@ int main(int argc, char** argv) {
     config.enableVSync = !args::get(novsync);
 
     Path dataPath = Path(args::get(dataPathIn));
-    std::string streamURL = !loadFromDisk ? args::get(streamURLIn) : "";
+    std::string quadsURL = !loadFromDisk ? args::get(quadsURLIn) : "";
     std::string poseURL = !loadFromDisk ? args::get(poseURLIn) : "";
 
     auto window = std::make_shared<GLFWWindow>(config);
@@ -83,8 +82,7 @@ int main(int argc, char** argv) {
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
     QuadSet quadSet(windowSize);
-    float remoteFOV = args::get(remoteFOVIn);
-    QuadsReceiver quadsReceiver(quadSet, remoteFOV, streamURL);
+    QuadsReceiver quadsReceiver(quadSet, quadsURL);
 
     PoseStreamer poseStreamer(&camera, poseURL);
 
@@ -126,6 +124,7 @@ int main(int argc, char** argv) {
         static bool showFPS = true;
         static bool showUI = true;
         static bool showFrameCaptureWindow = false;
+        static bool showFramePreviewWindow = false;
         static bool writeToHDR = false;
         static char fileNameBase[256] = "screenshot";
 
@@ -143,6 +142,7 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("FPS", 0, &showFPS);
             ImGui::MenuItem("UI", 0, &showUI);
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
+            ImGui::MenuItem("Frame Preview", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -199,7 +199,19 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quadsReceiver.stats.loadTime);
+            if (ImGui::CollapsingHeader("Background Settings")) {
+                if (ImGui::Button("Change Background Color", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                    ImGui::OpenPopup("Background Color Popup");
+                }
+                if (ImGui::BeginPopup("Background Color Popup")) {
+                    ImGui::ColorPicker3("Background Color", (float*)&scene.backgroundColor);
+                    ImGui::EndPopup();
+                }
+            }
+
+            ImGui::Separator();
+
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quadsReceiver.stats.timeToLoadMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quadsReceiver.stats.timeToDecompressMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quadsReceiver.stats.timeToTransferMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quadsReceiver.stats.timeToCreateMeshMs);
@@ -236,6 +248,19 @@ int main(int argc, char** argv) {
                 recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
+            ImGui::End();
+        }
+
+        if (showFramePreviewWindow) {
+            flags = 0;
+            ImGui::Begin("Reference Frame", 0, flags);
+            ImGui::Image((void*)(intptr_t)(quadsReceiver.referenceColorTexture),
+                         ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::End();
+
+            ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
+            ImGui::Image((void*)(intptr_t)(quadsReceiver.residualColorTexture),
+                         ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
     });

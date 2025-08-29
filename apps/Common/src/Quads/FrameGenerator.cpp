@@ -73,8 +73,6 @@ void FrameGenerator::updateResidualRenderTargets(
 {
     stats.timeToUpdateRTsMs = 0.0;
 
-    const glm::vec2 gBufferSize = glm::vec2(residualFrameRT.width, residualFrameRT.height);
-
     /*
     ============================
     Generate frame from old camera pose using previous frame as a mask to capture scene changes

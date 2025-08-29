@@ -68,7 +68,7 @@ void DepthStreamer::sendFrame(pose_id_t poseID) {
     glReadPixels(0, 0, width, height, GL_RED, GL_UNSIGNED_SHORT, data.data() + sizeof(pose_id_t));
     unbind();
 
-    streamer->send(data);
+    send(data);
 #endif
 }
 

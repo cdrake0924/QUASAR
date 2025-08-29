@@ -13,7 +13,7 @@ class QuadStreamReceiver {
 public:
     struct Stats {
         uint totalTriangles = 0;
-        double loadTime = 0.0;
+        double timeToLoadMs = 0.0;
         double timeToDecompressMs = 0.0;
         double timeToTransferMs = 0.0;
         double timeToCreateMeshMs = 0.0;
@@ -94,7 +94,7 @@ public:
             // Load quads and depth offsets from files and decompress (nonblocking)
             double startTime = timeutils::getTimeMicros();
             frames[view].loadFromFiles(dataPath, view);
-            stats.loadTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+            stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             startTime = timeutils::getTimeMicros();
             auto offsetsFuture = frames[view].decompressDepthOffsets(uncompressedOffsets);

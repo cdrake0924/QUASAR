@@ -428,12 +428,12 @@ cd apps/depth_peeling
 cd apps/atw/simulator
 ./atw_simulator --size 1920x1080 --scene ../assets/scenes/robot_lab.json</code></pre>
 
-    <p>To run streamer (actually streams over a network):</p>
+    <p>To run the streamer (actually streams over a network):</p>
     <pre><code># in build directory
 cd apps/atw/streamer
 ./atw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url 127.0.0.1:12345</code></pre>
 
-    <p>In a new terminal, to run receiver (streaming client):</p>
+    <p>In a new terminal, to run the receiver (streaming client):</p>
     <pre><code># in build directory
 cd apps/atw/receiver
 ./atw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345</code></pre>
@@ -447,12 +447,12 @@ cd apps/atw/receiver
 cd apps/meshwarp/simulator
 ./mw_simulator --size 1920x1080 --scene ../assets/scenes/robot_lab.json</code></pre>
 
-    <p>To run streamer:</p>
+    <p>To run the streamer:</p>
     <pre><code># in build directory
 cd apps/meshwarp/streamer
 ./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url 127.0.0.1:12345 --depth-url 127.0.0.1:65432</code></pre>
 
-    <p>In a new terminal, to run receiver:</p>
+    <p>In a new terminal, to run the receiver:</p>
     <pre><code># in build directory
 cd apps/meshwarp/receiver
 ./mw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --depth-url 0.0.0.0:65432</code></pre>
@@ -471,11 +471,18 @@ cd apps/depth_codec
     <pre><code># in build directory
 cd apps/quadwarp/simulator
 ./quads_simulator --size 1920x1080 --scene ../assets/scenes/robot_lab.json</code></pre>
-    <p>You can save a frame to disk by clicking <code>View->Mesh Capture->Save Proxies</code> in the GUI.</p>
-    <p>To run the receiver (which loads a saved frame from disk):</p>
+    <p>You can save frames to disk by clicking <code>View->Mesh Capture->Save Proxies</code> in the GUI.</p>
+
+    <p>To run the streamer:</p>
+    <pre><code># in build directory
+cd apps/quadwarp/streamer
+./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url 127.0.0.1:12345 --quads-url 127.0.0.1:65432</code></pre>
+
+    <p>In a new terminal, to run the receiver:</p>
     <pre><code># in build directory
 cd apps/quadwarp/receiver
 ./quads_receiver --size 1920x1080</code></pre>
+    <p>You can loads frames saved to disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
 
     <h3 id="quadstream">QuadStream</h3>
     <p>The QuadStream app fits a series of quads from multiple G-Buffers from various camera views inside a headbox. The code is a best effort implementation of <a href="https://jozef.hladky.de/projects/QS">QuadStream</a>.</p>

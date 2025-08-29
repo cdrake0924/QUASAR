@@ -16,8 +16,6 @@
 
 #include <PoseSendRecvSimulator.h>
 
-#define REF_FRAME_PERIOD 5
-
 using namespace quasar;
 
 int main(int argc, char** argv) {
@@ -142,6 +140,7 @@ int main(int argc, char** argv) {
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
+    int refFrameInterval = 5;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
@@ -340,6 +339,7 @@ int main(int argc, char** argv) {
                 sendResidualFrame = true;
                 runAnimations = true;
             }
+            ImGui::DragInt("Ref Frame Interval", &refFrameInterval, 0.1, 1, 5);
 
             ImGui::Separator();
 
@@ -518,7 +518,7 @@ int main(int argc, char** argv) {
         totalDT += dt;
 
         if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
-            sendReferenceFrame = (frameCounter++) % REF_FRAME_PERIOD == 0; // insert Reference Frame every REF_FRAME_PERIOD frames
+            sendReferenceFrame = (frameCounter++) % refFrameInterval == 0; // insert Reference Frame every refFrameInterval frames
             sendResidualFrame = !sendReferenceFrame;
         }
         if (sendReferenceFrame || sendResidualFrame) {
@@ -548,7 +548,7 @@ int main(int argc, char** argv) {
             spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadwarp.stats.totalGenQuadMapTime);
             spdlog::info("  Simplify Time: {:.3f}ms", quadwarp.stats.totalSimplifyTime);
             spdlog::info("  Gather Quads Time: {:.3f}ms", quadwarp.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totalCreateMeshTime);
+            spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totaltimeToCreateMeshMs);
             spdlog::info("  Append Quads Time: {:.3f}ms", quadwarp.stats.totalAppendQuadsTime);
             spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadwarp.stats.totalFillQuadsIndiciesTime);
             spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTime);

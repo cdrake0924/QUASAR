@@ -36,7 +36,7 @@ public:
         double totalGenQuadMapTime = 0.0;
         double totalSimplifyTime = 0.0;
         double totalGatherQuadsTime = 0.0;
-        double totalCreateMeshTime = 0.0;
+        double totaltimeToCreateMeshMs = 0.0;
         double totalAppendQuadsTime = 0.0;
         double totalFillQuadsIndiciesTime = 0.0;
         double totalCreateVertIndTime = 0.0;

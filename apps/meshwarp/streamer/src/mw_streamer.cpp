@@ -84,12 +84,12 @@ int main(int argc, char** argv) {
     SceneLoader loader;
     loader.loadScene(sceneFile, scene, camera);
 
-    // Set fov
-    camera.setFovyDegrees(args::get(fovIn));
+    float remoteFOV = args::get(fovIn);
+    camera.setFovyDegrees(remoteFOV);
 
     glm::vec3 initialPosition = camera.getPosition();
 
-    VideoStreamer videoStreamerColorRT = VideoStreamer({
+    VideoStreamer videoStreamerColorRT({
         .width = windowSize.x,
         .height = windowSize.y,
         .internalFormat = GL_SRGB8,
@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, videoURL, config.targetFramerate, targetBitrate);
 
-    BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
+    BC4DepthStreamer bc4DepthStreamerRT({
         .width = windowSize.x / depthFactor,
         .height = windowSize.y / depthFactor,
         .internalFormat = GL_R32F,
@@ -232,7 +232,7 @@ int main(int argc, char** argv) {
         scene.updateAnimations(dt);
 
         // Receive pose
-        pose_id_t poseID = poseReceiver.receivePose(false);
+        pose_id_t poseID = poseReceiver.receivePose();
         if (poseID != -1) {
             // Offset camera
             camera.setPosition(camera.getPosition() + initialPosition);

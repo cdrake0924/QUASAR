@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> depthURLIn(parser, "depth", "Depth URL", {'e', "depth-url"}, "0.0.0.0:65432");
     args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "127.0.0.1:54321");
     args::ValueFlag<uint> depthFactorIn(parser, "factor", "Depth Resolution Factor", {'a', "depth-factor"}, 1);
-    args::ValueFlag<float> fovIn(parser, "fov", "Field of view", {'f', "fov"}, 60.0f);
+    args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote field of view", {'f', "remote-fov"}, 60.0f);
     args::ValueFlag<std::string> outputPathIn(parser, "output-path", "Directory to save outputs", {'o', "output-path"}, ".");
     try {
         parser.ParseCLI(argc, argv);
@@ -109,13 +109,13 @@ int main(int argc, char** argv) {
 
     // "Remote" camera
     PerspectiveCamera remoteCamera(videoTextureColor.width, videoTextureColor.height);
-    remoteCamera.setFovyDegrees(args::get(fovIn));
+    float remoteFOV = args::get(remoteFOVIn);
 
     // "Local" scene
     Scene scene;
     PerspectiveCamera camera(windowSize);
 
-    PoseStreamer poseStreamer(&camera, poseURL);
+    PoseStreamer poseStreamer(&remoteCamera, poseURL);
 
     glm::uvec2 adjustedWindowSize = windowSize / surfelSize;
 
@@ -250,6 +250,18 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
+            if (ImGui::CollapsingHeader("Background Settings")) {
+                if (ImGui::Button("Change Background Color", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                    ImGui::OpenPopup("Background Color Popup");
+                }
+                if (ImGui::BeginPopup("Background Color Popup")) {
+                    ImGui::ColorPicker3("Background Color", (float*)&scene.backgroundColor);
+                    ImGui::EndPopup();
+                }
+            }
+
+            ImGui::Separator();
+
             ImGui::Text("Remote Pose ID: RGB (%d), D (%d)", poseIdColor, poseIdDepth);
 
             glm::mat4 pose = glm::inverse(currentDepthFramePose.mono.view);
@@ -287,6 +299,10 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::Checkbox("Sync Color and Depth", &sync);
+
+            ImGui::Separator();
+
+            ImGui::DragFloat("Remote FOV", &remoteFOV, 0.5f, 60.0f, 170.0f);
 
             ImGui::Separator();
 
@@ -378,6 +394,10 @@ int main(int argc, char** argv) {
         camera.processScroll(scroll.y);
 
         // Send pose to streamer
+        remoteCamera.setFovyDegrees(remoteFOV);
+        remoteCamera.setPosition(camera.getPosition());
+        remoteCamera.setRotationQuat(camera.getRotationQuat());
+        remoteCamera.updateViewMatrix();
         poseStreamer.sendPose();
 
         // Render color video frame
@@ -395,11 +415,9 @@ int main(int argc, char** argv) {
 
         if (!mwEnabled) {
             if (poseIdColor != -1) poseStreamer.getPose(poseIdColor, &currentColorFramePose, &elapsedTimeColor);
-
             videoShader.bind();
             videoShader.setTexture("tex", videoTextureColor, 5);
             renderStats = renderer.drawToScreen(videoShader);
-
             return;
         }
 

@@ -1,5 +1,7 @@
 #ifndef QUAD_SET_H
-#define QUAD_SET_H
+#define QUAD_SET_H\
+
+#include <spdlog/spdlog.h>
 
 #include <Path.h>
 #include <Utils/FileIO.h>
@@ -64,12 +66,15 @@ public:
         quadBuffers.resize(numProxies);
     }
 
-#ifdef GL_CORE
     Sizes copyToCPU(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
+#ifdef GL_CORE
         double startTime = timeutils::getTimeMicros();
         quadBuffers.copyToCPU(outputQuads);
         depthOffsets.copyToCPU(outputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+#else
+        spdlog::error("QuadSet::copyToCPU is only supported in OpenGL Core");
+#endif
 
         return {
             quadBuffers.numProxies,
@@ -78,7 +83,6 @@ public:
             static_cast<double>(outputDepthOffsets.size()),
         };
     }
-#endif
 
     Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets, bool resizeNumProxies = true) {
         double startTime = timeutils::getTimeMicros();

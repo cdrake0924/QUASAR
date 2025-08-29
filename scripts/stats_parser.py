@@ -24,7 +24,7 @@ def get_stats_from_file(file_path):
                     normalized_label = f"{normalize_label(label)} ({unit})"
                     data[normalized_label].append(float(value))
 
-        stats = { 0 }
+        stats = {}
         for label, values in data.items():
             avg = sum(values) / len(values)
             std = math.sqrt(sum((x - avg) ** 2 for x in values) / len(values))

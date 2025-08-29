@@ -176,7 +176,7 @@ void QuadsStreamer::generateFrame(
     stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
     stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToFillQuadIndicesMs;
     stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
-    stats.totalCreateMeshTime += frameGenerator.stats.timeToCreateMeshMs;
+    stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
 
     stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
 
@@ -216,7 +216,7 @@ void QuadsStreamer::generateFrame(
         stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
         stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToGatherQuadsMs;
         stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
-        stats.totalCreateMeshTime += frameGenerator.stats.timeToCreateMeshMs;
+        stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
 
         stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
     }

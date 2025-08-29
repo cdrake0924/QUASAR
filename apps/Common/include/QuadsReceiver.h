@@ -23,7 +23,7 @@ public:
 
     struct Stats {
         uint totalTriangles = 0;
-        double loadTime = 0.0;
+        double timeToLoadMs = 0.0;
         double timeToDecompressMs = 0.0;
         double timeToTransferMs = 0.0;
         double timeToCreateMeshMs = 0.0;
@@ -35,11 +35,17 @@ public:
     ReferenceFrame referenceFrame;
     ResidualFrame residualFrame;
 
+    Texture referenceColorTexture;
+    Texture residualColorTexture;
+
+    QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL = "");
     QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL = "");
     ~QuadsReceiver() = default;
 
-    QuadMesh& getReferenceMesh();
-    QuadMesh& getResidualMesh();
+    QuadMesh& getReferenceMesh() { return referenceFrameMesh; }
+    QuadMesh& getResidualMesh() { return residualFrameMesh; }
+    PerspectiveCamera& getRemoteCamera() { return remoteCamera; }
+    PerspectiveCamera& getRemoteCameraPrev() { return remoteCameraPrev; }
 
     void copyPoseToCamera(PerspectiveCamera& camera);
 
@@ -56,9 +62,7 @@ private:
     PerspectiveCamera remoteCameraPrev;
     Pose cameraPose;
 
-    Texture referenceColorTexture;
     QuadMesh referenceFrameMesh;
-    Texture residualColorTexture;
     QuadMesh residualFrameMesh;
 
     std::mutex m;

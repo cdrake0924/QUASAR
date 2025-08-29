@@ -11,8 +11,6 @@
 #include <QuadsStreamer.h>
 #include <PoseReceiver.h>
 
-#define REF_FRAME_PERIOD 5
-
 using namespace quasar;
 
 int main(int argc, char** argv) {
@@ -29,8 +27,8 @@ int main(int argc, char** argv) {
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<bool> displayIn(parser, "display", "Show window", {'d', "display"}, true);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
-    args::ValueFlag<std::string> streamURLIn(parser, "stream", "stream URL", {'e', "stream-url"}, "127.0.0.1:54321");
     args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "0.0.0.0:54321");
+    args::ValueFlag<std::string> quadsURLIn(parser, "quads", "Quads URL", {'e', "quads-url"}, "127.0.0.1:65432");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -61,7 +59,7 @@ int main(int argc, char** argv) {
 
     Path sceneFile = args::get(sceneFileIn);
 
-    std::string streamURL = args::get(streamURLIn);
+    std::string quadsURL = args::get(quadsURLIn);
     std::string poseURL = args::get(poseURLIn);
 
     auto window = std::make_shared<GLFWWindow>(config);
@@ -85,15 +83,13 @@ int main(int argc, char** argv) {
     float remoteFOV = args::get(remoteFOVIn);
     camera.setFovyDegrees(remoteFOV);
 
-    // "Local" scene for visualization
-    Scene localScene;
-
     glm::vec3 initialPosition = camera.getPosition();
 
     QuadSet quadSet(remoteWindowSize);
-    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, streamURL);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, quadsURL);
 
-    // Add meshes to local scene
+    // "Local" scene for visualization
+    Scene localScene;
     quadwarp.addMeshesToScene(localScene);
 
     PoseReceiver poseReceiver(&camera, poseURL);
@@ -107,10 +103,11 @@ int main(int argc, char** argv) {
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
+    int refFrameInterval = 1;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
-    int serverFPSIndex = 0; // default to 0 FPS
+    int serverFPSIndex = 1; // default to 1 FPS
     double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
 
     RenderStats renderStats;
@@ -218,7 +215,7 @@ int main(int argc, char** argv) {
                 ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f);
                 ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f);
                 ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f);
-                ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2);
+                ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 0.1, 0, quadsGenerator->numQuadMaps/2);
             }
 
             ImGui::Separator();
@@ -236,6 +233,7 @@ int main(int argc, char** argv) {
             if (ImGui::Button("Send Residual Frame", ImVec2(buttonWidth, 0))) {
                 sendResidualFrame = true;
             }
+            ImGui::DragInt("Ref Frame Interval", &refFrameInterval, 0.1, 1, 5);
 
             ImGui::End();
         }
@@ -279,7 +277,7 @@ int main(int argc, char** argv) {
         totalDT += dt;
 
         if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
-            sendReferenceFrame = (frameCounter++) % REF_FRAME_PERIOD == 0; // insert Reference Frame every REF_FRAME_PERIOD frames
+            sendReferenceFrame = (frameCounter++) % refFrameInterval == 0; // insert Reference Frame every refFrameInterval frames
             sendResidualFrame = !sendReferenceFrame;
         }
         if (sendReferenceFrame || sendResidualFrame) {
@@ -307,7 +305,7 @@ int main(int argc, char** argv) {
                 spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadwarp.stats.totalGenQuadMapTime);
                 spdlog::info("  Simplify Time: {:.3f}ms", quadwarp.stats.totalSimplifyTime);
                 spdlog::info("  Gather Quads Time: {:.3f}ms", quadwarp.stats.totalGatherQuadsTime);
-                spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totalCreateMeshTime);
+                spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totaltimeToCreateMeshMs);
                 spdlog::info("  Append Quads Time: {:.3f}ms", quadwarp.stats.totalAppendQuadsTime);
                 spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadwarp.stats.totalFillQuadsIndiciesTime);
                 spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTime);

@@ -189,7 +189,7 @@ void STLImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
     bool bMatClr = false;
 
     if (IsBinarySTL(mBuffer, mFileSize)) {
-        bMatClr = LoadBinaryFile();
+        bMatClr = loadFromBinaryFile();
     } else if (IsAsciiSTL(mBuffer, mFileSize)) {
         LoadASCIIFile(mScene->mRootNode);
     } else {
@@ -397,7 +397,7 @@ void STLImporter::LoadASCIIFile(aiNode *root) {
 
 // ------------------------------------------------------------------------------------------------
 // Read a binary STL file
-bool STLImporter::LoadBinaryFile() {
+bool STLImporter::loadFromBinaryFile() {
     // allocate one mesh
     mScene->mNumMeshes = 1;
     mScene->mMeshes = new aiMesh *[1];

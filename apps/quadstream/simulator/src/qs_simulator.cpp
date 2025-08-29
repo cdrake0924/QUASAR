@@ -627,7 +627,7 @@ int main(int argc, char** argv) {
             spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadstream.stats.totalGenQuadMapTime);
             spdlog::info("  Simplify Time: {:.3f}ms", quadstream.stats.totalSimplifyTime);
             spdlog::info("  Gather Quads Time: {:.3f}ms", quadstream.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time: {:.3f}ms", quadstream.stats.totalCreateMeshTime);
+            spdlog::info("Create Mesh Time: {:.3f}ms", quadstream.stats.totaltimeToCreateMeshMs);
             spdlog::info("  Append Quads Time: {:.3f}ms", quadstream.stats.totalAppendQuadsTime);
             spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadstream.stats.totalFillQuadsIndiciesTime);
             spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadstream.stats.totalCreateVertIndTime);
