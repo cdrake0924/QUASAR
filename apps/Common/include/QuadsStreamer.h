@@ -26,12 +26,12 @@ public:
     FrameRenderTarget residualFrameMaskRT;
     ResidualFrame residualFrame;
     QuadMesh residualFrameMesh;
-    Node residualFrameNode;
+    Node residualFrameNodeLocal;
 
     // Local objects
     std::vector<Node> referenceFrameNodesLocal;
     std::vector<Node> referenceFrameWireframesLocal;
-    Node residualFrameWireframeNodesLocal;
+    Node residualFrameWireframesLocal;
 
     // Depth point cloud for debugging
     DepthMesh depthMesh;

@@ -97,14 +97,14 @@ QuadsStreamer::QuadsStreamer(
         referenceFrameWireframesLocal[i].overrideMaterial = &wireframeMaterial;
     }
 
-    residualFrameNode.setEntity(&residualFrameMesh);
-    residualFrameNode.frustumCulled = false;
+    residualFrameNodeLocal.setEntity(&residualFrameMesh);
+    residualFrameNodeLocal.frustumCulled = false;
 
-    residualFrameWireframeNodesLocal.setEntity(&residualFrameMesh);
-    residualFrameWireframeNodesLocal.frustumCulled = false;
-    residualFrameWireframeNodesLocal.wireframe = true;
-    residualFrameWireframeNodesLocal.visible = false;
-    residualFrameWireframeNodesLocal.overrideMaterial = &maskWireframeMaterial;
+    residualFrameWireframesLocal.setEntity(&residualFrameMesh);
+    residualFrameWireframesLocal.frustumCulled = false;
+    residualFrameWireframesLocal.wireframe = true;
+    residualFrameWireframesLocal.visible = false;
+    residualFrameWireframesLocal.overrideMaterial = &maskWireframeMaterial;
 
     depthNode.setEntity(&depthMesh);
     depthNode.frustumCulled = false;
@@ -127,8 +127,8 @@ void QuadsStreamer::addMeshesToScene(Scene& localScene) {
         localScene.addChildNode(&referenceFrameNodesLocal[i]);
         localScene.addChildNode(&referenceFrameWireframesLocal[i]);
     }
-    localScene.addChildNode(&residualFrameNode);
-    localScene.addChildNode(&residualFrameWireframeNodesLocal);
+    localScene.addChildNode(&residualFrameNodeLocal);
+    localScene.addChildNode(&residualFrameWireframesLocal);
     localScene.addChildNode(&depthNode);
 }
 
@@ -141,6 +141,10 @@ void QuadsStreamer::generateFrame(
 
     auto& remoteCameraToUse = createResidualFrame ? remoteCameraPrev : remoteCamera;
     auto quadsGenerator = frameGenerator.getQuadsGenerator();
+
+    if (!createResidualFrame) {
+        std::swap(currMeshIndex, prevMeshIndex);
+    }
 
     // Render remote scene normally
     double startTime = timeutils::getTimeMicros();
@@ -220,17 +224,13 @@ void QuadsStreamer::generateFrame(
 
         stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
     }
-
-    if (!createResidualFrame) {
-        currMeshIndex = (currMeshIndex + 1) % meshScenes.size();
-        prevMeshIndex = (prevMeshIndex + 1) % meshScenes.size();
-
+    else {
         // Only update the previous camera pose if we are not generating a Residual Frame
         remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
     }
 
-    residualFrameNode.visible = createResidualFrame;
+    residualFrameNodeLocal.visible = createResidualFrame;
 
     // For debugging: Generate point cloud from depth map
     if (showDepth) {

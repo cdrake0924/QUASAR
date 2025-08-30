@@ -678,7 +678,7 @@ int main(int argc, char** argv) {
                 quasar.depthNodesHidLayer[layer-1].visible = showLayer && showDepth;
             }
         }
-        quasar.residualFrameWireframeNodesLocal.visible = quasar.residualFrameNode.visible && showWireframe;
+        quasar.residualFrameWireframesLocal.visible = quasar.residualFrameNode.visible && showWireframe;
 
         if (restrictMovementToViewBox) {
             glm::vec3 remotePosition = remoteCameraCenter.getPosition();

@@ -11,9 +11,7 @@
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
-
 #include <QuadsStreamer.h>
-
 #include <PoseSendRecvSimulator.h>
 
 using namespace quasar;
@@ -99,6 +97,10 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(remoteWindowSize);
     QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene);
+
+    std::vector<Node> referenceFrameNodesLocal;
+    std::vector<Node> referenceFrameWireframesLocal;
+    Node residualFrameWireframesLocal;
 
     // Add meshes to local scene
     quadwarp.addMeshesToScene(localScene);
@@ -565,12 +567,12 @@ int main(int argc, char** argv) {
 
         poseSendRecvSimulator.update(now);
 
-        // Show previous mesh
-        quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = true;
-        quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.referenceFrameWireframesLocal[quadwarp.prevMeshIndex].visible = showWireframe;
-        quadwarp.residualFrameWireframeNodesLocal.visible = quadwarp.residualFrameNode.visible && showWireframe;
+        // Show meshes
+        quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = true;
+        quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = false;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = showWireframe;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.prevMeshIndex].visible = false;
+        quadwarp.residualFrameWireframesLocal.visible = quadwarp.residualFrameNodeLocal.visible && showWireframe;
         quadwarp.depthNode.visible = showDepth;
 
         if (restrictMovementToViewBox) {

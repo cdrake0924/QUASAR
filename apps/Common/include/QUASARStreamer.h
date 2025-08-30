@@ -35,7 +35,7 @@ public:
 
     // Local objects
     std::vector<Node> referenceFrameNodesLocal;
-    Node residualFrameWireframeNodesLocal;
+    Node residualFrameWireframesLocal;
 
     // Hidden layers
     std::vector<FrameRenderTarget> frameRTsHidLayer;

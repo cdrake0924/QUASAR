@@ -99,11 +99,11 @@ QUASARStreamer::QUASARStreamer(
     residualFrameNode.setEntity(&residualFrameMesh);
     residualFrameNode.frustumCulled = false;
 
-    residualFrameWireframeNodesLocal.setEntity(&residualFrameMesh);
-    residualFrameWireframeNodesLocal.frustumCulled = false;
-    residualFrameWireframeNodesLocal.wireframe = true;
-    residualFrameWireframeNodesLocal.visible = false;
-    residualFrameWireframeNodesLocal.overrideMaterial = &maskWireframeMaterial;
+    residualFrameWireframesLocal.setEntity(&residualFrameMesh);
+    residualFrameWireframesLocal.frustumCulled = false;
+    residualFrameWireframesLocal.wireframe = true;
+    residualFrameWireframesLocal.visible = false;
+    residualFrameWireframesLocal.overrideMaterial = &maskWireframeMaterial;
 
     // Setup depth mesh
     depthNode.setEntity(&depthMesh);
@@ -177,7 +177,7 @@ void QUASARStreamer::addMeshesToScene(Scene& localScene) {
         localScene.addChildNode(&referenceFrameWireframesLocal[i]);
     }
     localScene.addChildNode(&residualFrameNode);
-    localScene.addChildNode(&residualFrameWireframeNodesLocal);
+    localScene.addChildNode(&residualFrameWireframesLocal);
     localScene.addChildNode(&depthNode);
 
     for (int layer = 0; layer < maxLayers - 1; layer++) {
