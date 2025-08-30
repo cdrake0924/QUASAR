@@ -71,11 +71,11 @@ public:
     virtual void bindMaterial(Scene& scene, const glm::mat4& model,
                               const Material* overrideMaterial = nullptr, const Texture* prevIDMap = nullptr) override;
 
-    virtual RenderStats draw(GLenum primativeType, const Camera& camera, const glm::mat4& model,
+    virtual RenderStats draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model,
                              bool frustumCull = true, const Material* overrideMaterial = nullptr) override;
-    virtual RenderStats draw(GLenum primativeType, const Camera& camera, const glm::mat4& model,
+    virtual RenderStats draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model,
                              const BoundingSphere& boundingSphere, const Material* overrideMaterial = nullptr) override;
-    virtual RenderStats draw(GLenum primativeType);
+    virtual RenderStats draw(GLenum primitiveType);
 
     void setBuffers(const void* vertices, uint verticesSize, const uint* indices = nullptr, uint indicesSize = 0);
     void setBuffers(uint verticesSize, uint indicesSize);

@@ -213,7 +213,7 @@ void Mesh::bindMaterial(Scene& scene, const glm::mat4& model, const Material* ov
     materialToUse->unbind();
 }
 
-RenderStats Mesh::draw(GLenum primativeType, const Camera& camera, const glm::mat4& model, bool frustumCull, const Material* overrideMaterial) {
+RenderStats Mesh::draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model, bool frustumCull, const Material* overrideMaterial) {
     RenderStats stats;
 
     // If the camera is a VR camera, check if the AABB is visible in both frustums
@@ -246,22 +246,22 @@ RenderStats Mesh::draw(GLenum primativeType, const Camera& camera, const glm::ma
     materialToUse->getShader()->setMat4("model", model);
     materialToUse->getShader()->setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
 
-    stats = draw(primativeType);
+    stats = draw(primitiveType);
 
     materialToUse->unbind();
 
     return stats;
 }
 
-RenderStats Mesh::draw(GLenum primativeType, const Camera& camera, const glm::mat4& model, const BoundingSphere& boundingSphere, const Material* overrideMaterial) {
+RenderStats Mesh::draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model, const BoundingSphere& boundingSphere, const Material* overrideMaterial) {
     RenderStats stats;
     if (!boundingSphere.intersects(model, aabb)) {
         return stats;
     }
-    return draw(primativeType, camera, model, false, overrideMaterial);
+    return draw(primitiveType, camera, model, false, overrideMaterial);
 }
 
-RenderStats Mesh::draw(GLenum primativeType) {
+RenderStats Mesh::draw(GLenum primitiveType) {
     RenderStats stats;
 
     glBindVertexArray(vertexArrayBuffer);
@@ -269,24 +269,24 @@ RenderStats Mesh::draw(GLenum primativeType) {
         indirectBuffer.bind();
         if (indexBuffer.getSize() > 0) {
             indexBuffer.bind();
-            glDrawElementsIndirect(primativeType, GL_UNSIGNED_INT, 0);
+            glDrawElementsIndirect(primitiveType, GL_UNSIGNED_INT, 0);
             indexBuffer.unbind();
         }
         else {
             vertexBuffer.bind();
-            glDrawArraysIndirect(primativeType, 0);
+            glDrawArraysIndirect(primitiveType, 0);
             vertexBuffer.unbind();
         }
     }
     else {
         if (indexBuffer.getSize() > 0) {
             indexBuffer.bind();
-            glDrawElements(primativeType, indexBuffer.getSize(), GL_UNSIGNED_INT, 0);
+            glDrawElements(primitiveType, indexBuffer.getSize(), GL_UNSIGNED_INT, 0);
             indexBuffer.unbind();
         }
         else {
             vertexBuffer.bind();
-            glDrawArrays(primativeType, 0, vertexBuffer.getSize());
+            glDrawArrays(primitiveType, 0, vertexBuffer.getSize());
             vertexBuffer.unbind();
         }
     }

@@ -470,7 +470,7 @@ int SceneLoader::parseNode(jsmntok_t* tokens, int i, const char* json, Scene& sc
         else if (compare(tok, json, "pointcloud") == 0) {
             bool pointcloud;
             i = parseBool(tokens, i + 1, json, &pointcloud);
-            node->primativeType = pointcloud ? GL_POINTS : GL_TRIANGLES;
+            node->primitiveType = pointcloud ? GL_POINTS : GL_TRIANGLES;
         }
         else {
             i = parse(tokens, i + 1);

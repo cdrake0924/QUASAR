@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
 
     Node nodePointCloud = Node(&mesh);
     nodePointCloud.frustumCulled = false;
-    nodePointCloud.primativeType = GL_POINTS;
+    nodePointCloud.primitiveType = GL_POINTS;
     nodePointCloud.pointSize = 7.5f;
     nodePointCloud.visible = false;
     nodePointCloud.overrideMaterial = new UnlitMaterial({ .baseColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) });

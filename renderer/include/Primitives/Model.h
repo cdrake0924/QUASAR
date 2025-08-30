@@ -47,9 +47,9 @@ public:
     virtual void bindMaterial(Scene& scene, const glm::mat4& model,
                               const Material* overrideMaterial = nullptr, const Texture* prevIDMap = nullptr) override;
 
-    virtual RenderStats draw(GLenum primativeType, const Camera& camera, const glm::mat4& model,
+    virtual RenderStats draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model,
                              bool frustumCull = true, const Material* overrideMaterial = nullptr) override;
-    virtual RenderStats draw(GLenum primativeType, const Camera& camera, const glm::mat4& model,
+    virtual RenderStats draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model,
                              const BoundingSphere& boundingSphere, const Material* overrideMaterial = nullptr) override;
     virtual void updateAnimations(float dt) override;
 
@@ -68,11 +68,11 @@ private:
     int32_t getEmbeddedTextureId(const aiString& path);
 
     RenderStats drawNode(const Node* node,
-                         GLenum primativeType, const Camera& camera,
+                         GLenum primitiveType, const Camera& camera,
                          const glm::mat4& parentTransform, const glm::mat4& model,
                          bool frustumCull = true, const Material* overrideMaterial = nullptr);
     RenderStats drawNode(const Node* node,
-                         GLenum primativeType, const Camera& camera,
+                         GLenum primitiveType, const Camera& camera,
                          const glm::mat4& parentTransform, const glm::mat4& model,
                          const BoundingSphere& boundingSphere, const Material* overrideMaterial = nullptr);
 };

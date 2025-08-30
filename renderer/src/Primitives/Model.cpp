@@ -487,18 +487,18 @@ void Model::bindMaterial(Scene& scene, const glm::mat4& model, const Material* o
     }
 }
 
-RenderStats Model::draw(GLenum primativeType, const Camera& camera, const glm::mat4& model, bool frustumCull, const Material* overrideMaterial) {
-    RenderStats stats = drawNode(&rootNode, primativeType, camera, glm::mat4(1.0f), model, frustumCull, overrideMaterial);
+RenderStats Model::draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model, bool frustumCull, const Material* overrideMaterial) {
+    RenderStats stats = drawNode(&rootNode, primitiveType, camera, glm::mat4(1.0f), model, frustumCull, overrideMaterial);
     return stats;
 }
 
-RenderStats Model::draw(GLenum primativeType, const Camera& camera, const glm::mat4& model, const BoundingSphere& boundingSphere, const Material* overrideMaterial) {
-    RenderStats stats = drawNode(&rootNode, primativeType, camera, glm::mat4(1.0f), model, boundingSphere, overrideMaterial);
+RenderStats Model::draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model, const BoundingSphere& boundingSphere, const Material* overrideMaterial) {
+    RenderStats stats = drawNode(&rootNode, primitiveType, camera, glm::mat4(1.0f), model, boundingSphere, overrideMaterial);
     return stats;
 }
 
 RenderStats Model::drawNode(const Node* node,
-                            GLenum primativeType, const Camera& camera,
+                            GLenum primitiveType, const Camera& camera,
                             const glm::mat4& parentTransform, const glm::mat4& model,
                             bool frustumCull, const Material* overrideMaterial) {
     RenderStats stats;
@@ -506,18 +506,18 @@ RenderStats Model::drawNode(const Node* node,
     const glm::mat4& modelMatrix = model * globalTransform;
 
     for (int meshIndex : node->getMeshIndices()) {
-        stats += meshes[meshIndex]->draw(primativeType, camera, modelMatrix, frustumCull, overrideMaterial);
+        stats += meshes[meshIndex]->draw(primitiveType, camera, modelMatrix, frustumCull, overrideMaterial);
     }
 
     for (const auto* child : node->children) {
-        stats += drawNode(child, primativeType, camera, globalTransform, model, frustumCull, overrideMaterial);
+        stats += drawNode(child, primitiveType, camera, globalTransform, model, frustumCull, overrideMaterial);
     }
 
     return stats;
 }
 
 RenderStats Model::drawNode(const Node* node,
-                            GLenum primativeType, const Camera& camera,
+                            GLenum primitiveType, const Camera& camera,
                             const glm::mat4& parentTransform, const glm::mat4& model,
                             const BoundingSphere& boundingSphere, const Material* overrideMaterial) {
     RenderStats stats;
@@ -525,11 +525,11 @@ RenderStats Model::drawNode(const Node* node,
     const glm::mat4& modelMatrix = model * globalTransform;
 
     for (int meshIndex : node->getMeshIndices()) {
-        stats += meshes[meshIndex]->draw(primativeType, camera, modelMatrix, boundingSphere, overrideMaterial);
+        stats += meshes[meshIndex]->draw(primitiveType, camera, modelMatrix, boundingSphere, overrideMaterial);
     }
 
     for (const auto* child : node->children) {
-        stats += drawNode(child, primativeType, camera, globalTransform, model, boundingSphere, overrideMaterial);
+        stats += drawNode(child, primitiveType, camera, globalTransform, model, boundingSphere, overrideMaterial);
     }
 
     return stats;

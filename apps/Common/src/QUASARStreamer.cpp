@@ -109,7 +109,7 @@ QUASARStreamer::QUASARStreamer(
     depthNode.setEntity(&depthMesh);
     depthNode.frustumCulled = false;
     depthNode.visible = false;
-    depthNode.primativeType = GL_POINTS;
+    depthNode.primitiveType = GL_POINTS;
 
     // Setup hidden layers and wide fov RTs
     RenderTargetCreateParams rtParams = {
@@ -146,7 +146,7 @@ QUASARStreamer::QUASARStreamer(
         depthMeshsHidLayer.emplace_back(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
         depthNodesHidLayer.emplace_back(&depthMeshsHidLayer[layer]);
         depthNodesHidLayer[layer].frustumCulled = false;
-        depthNodesHidLayer[layer].primativeType = GL_POINTS;
+        depthNodesHidLayer[layer].primitiveType = GL_POINTS;
     }
 
     // Setup scene to use as mask for wide fov camera

@@ -79,7 +79,7 @@ QuadStreamStreamer::QuadStreamStreamer(
         depthMeshes.emplace_back(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
         depthNodes.emplace_back(&depthMeshes[view]);
         depthNodes[view].frustumCulled = false;
-        depthNodes[view].primativeType = GL_POINTS;
+        depthNodes[view].primitiveType = GL_POINTS;
 
         referenceFrameNodesRemote.emplace_back(&referenceFrameMeshes[view]);
         referenceFrameNodesRemote[view].frustumCulled = false;

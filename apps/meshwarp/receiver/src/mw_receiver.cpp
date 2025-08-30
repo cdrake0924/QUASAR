@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
     });
     Node node = Node(&mesh);
     node.frustumCulled = false;
-    node.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+    node.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
     scene.addChildNode(&node);
 
     Node nodeWireframe = Node(&mesh);
@@ -459,7 +459,7 @@ int main(int argc, char** argv) {
         poseStreamer.removePosesLessThan(std::min(poseIdColor, poseIdDepth));
 
         // Set render state
-        node.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+        node.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
         nodeWireframe.visible = renderState == RenderState::WIREFRAME;
 
         // Render all objects in scene

@@ -120,7 +120,7 @@ QuadsStreamer::QuadsStreamer(
     depthNode.setEntity(&depthMesh);
     depthNode.frustumCulled = false;
     depthNode.visible = false;
-    depthNode.primativeType = GL_POINTS;
+    depthNode.primitiveType = GL_POINTS;
 
     if (!receiverURL.empty()) {
         spdlog::info("Created QuadsStreamer that sends to URL: {}", receiverURL);
