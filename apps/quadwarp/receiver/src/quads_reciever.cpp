@@ -253,13 +253,8 @@ int main(int argc, char** argv) {
 
         if (showFramePreviewWindow) {
             flags = 0;
-            ImGui::Begin("Reference Frame", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadsReceiver.referenceColorTexture),
-                         ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
-            ImGui::End();
-
-            ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadsReceiver.residualColorTexture),
+            ImGui::Begin("texture", 0, flags);
+            ImGui::Image((void*)(intptr_t)(quadsReceiver.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }

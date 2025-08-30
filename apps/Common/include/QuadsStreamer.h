@@ -103,6 +103,7 @@ private:
     // Holds a copy of the current reference and residual frame
     FrameRenderTarget referenceCopyRT;
     FrameRenderTarget residualCopyRT;
+    FrameRenderTarget finalRT;
 
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;

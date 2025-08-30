@@ -67,6 +67,17 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
+    , finalRT({
+        .width = 2 * quadSet.getSize().x,
+        .height = quadSet.getSize().y,
+        .internalFormat = GL_RGB8,
+        .format = GL_RGB,
+        .type = GL_UNSIGNED_BYTE,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
     // We can use less vertices and indicies for the mask since it will be sparse
     , residualFrameMesh(quadSet, residualFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
@@ -232,6 +243,16 @@ void QuadsStreamer::generateFrame(
 
     residualFrameNodeLocal.visible = createResidualFrame;
 
+    // Update side-by-side texture
+    referenceCopyRT.blitToFrameRT(finalRT,
+        0, 0, referenceCopyRT.width, referenceCopyRT.height,
+        0, 0, referenceCopyRT.width, referenceCopyRT.height
+    );
+    residualCopyRT.blitToFrameRT(finalRT,
+        0, 0, residualCopyRT.width, residualCopyRT.height,
+        referenceCopyRT.width, 0, finalRT.width, finalRT.height
+    );
+
     // For debugging: Generate point cloud from depth map
     if (showDepth) {
         depthMesh.update(remoteCamera, referenceFrameRT);
@@ -272,11 +293,8 @@ size_t QuadsStreamer::writeToFile(const PerspectiveCamera& remoteCamera, const P
     cameraPose.writeToFile(cameraFileNamePrev);
 
     // Save color
-    Path colorFileNameRef = (outputPath / "color").withExtension(".jpg");
-    referenceCopyRT.writeColorAsJPG(colorFileNameRef);
-
-    Path colorFileNameRes = (outputPath / "color_residual").withExtension(".jpg");
-    residualCopyRT.writeColorAsJPG(colorFileNameRes);
+    Path colorFileName = (outputPath / "color").withExtension(".jpg");
+    finalRT.writeColorAsJPG(colorFileName);
 
     // Save proxies
     return referenceFrame.writeToFiles(outputPath) +
@@ -291,13 +309,8 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     cameraPose.writeToMemory(cameraData);
 
     // Save color data
-    std::vector<unsigned char> refColorData;
-    referenceCopyRT.writeColorJPGToMemory(refColorData);
-
-    std::vector<unsigned char> resColorData;
-    if (isResidualFrame) {
-        residualCopyRT.writeColorJPGToMemory(resColorData);
-    }
+    std::vector<unsigned char> colorData;
+    finalRT.writeColorJPGToMemory(colorData);
 
     // Save geometry data
     std::vector<char> geometryData;
@@ -311,17 +324,15 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     QuadsReceiver::Header header{
         .frameType = !isResidualFrame ? FrameType::REFERENCE : FrameType::RESIDUAL,
         .cameraSize = static_cast<uint32_t>(cameraData.size()),
-        .referenceColorSize = static_cast<uint32_t>(refColorData.size()),
-        .residualColorSize = static_cast<uint32_t>(resColorData.size()),
+        .colorSize = static_cast<uint32_t>(colorData.size()),
         .geometrySize = static_cast<uint32_t>(geometryData.size())
     };
 
     spdlog::debug("Writing camera size: {}", header.cameraSize);
-    spdlog::debug("Writing reference color size: {}", header.referenceColorSize);
-    spdlog::debug("Writing residual color size: {}", header.residualColorSize);
+    spdlog::debug("Writing color size: {}", header.colorSize);
     spdlog::debug("Writing geometry size: {}", header.geometrySize);
 
-    outputData.resize(sizeof(header) + cameraData.size() + refColorData.size() + resColorData.size() + geometryData.size());
+    outputData.resize(sizeof(header) + cameraData.size() + colorData.size() + geometryData.size());
 
     char* ptr = outputData.data();
     // Write header
@@ -330,12 +341,9 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     // Write camera data
     std::memcpy(ptr, cameraData.data(), cameraData.size());
     ptr += cameraData.size();
-    // Write reference color data
-    std::memcpy(ptr, refColorData.data(), refColorData.size());
-    ptr += refColorData.size();
-    // Write residual color data
-    std::memcpy(ptr, resColorData.data(), resColorData.size());
-    ptr += resColorData.size();
+    // Write side-by-side color data
+    std::memcpy(ptr, colorData.data(), colorData.size());
+    ptr += colorData.size();
     // Write geometry data
     std::memcpy(ptr, geometryData.data(), geometryData.size());
     ptr += geometryData.size();

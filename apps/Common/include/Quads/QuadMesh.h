@@ -32,6 +32,7 @@ public:
     } stats;
 
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxQuadsPerMesh = MAX_QUADS_PER_MESH);
+    QuadMesh(const QuadSet& quadSet, Texture& colorTexture, const glm::vec4& textureExtent, uint maxQuadsPerMesh = MAX_QUADS_PER_MESH);
     ~QuadMesh() = default;
 
     void appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isFullFrame = true);
@@ -40,6 +41,8 @@ public:
     BufferSizes getBufferSizes() const;
 
 private:
+    glm::vec4 textureExtent;
+
     QuadBuffers currentQuadBuffers;
 
     Buffer sizesBuffer;

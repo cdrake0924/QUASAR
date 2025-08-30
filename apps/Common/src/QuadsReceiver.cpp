@@ -11,7 +11,7 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
     : quadSet(quadSet)
     , streamerURL(streamerURL)
     , remoteCamera(quadSet.getSize())
-    , referenceColorTexture({
+    , colorTexture({
         .internalFormat = GL_RGB,
         .format = GL_RGB,
         .type = GL_UNSIGNED_BYTE,
@@ -20,18 +20,9 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , residualColorTexture({
-        .internalFormat = GL_RGB,
-        .format = GL_RGB,
-        .type = GL_UNSIGNED_BYTE,
-        .wrapS = GL_REPEAT,
-        .wrapT = GL_REPEAT,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
-    })
-    , referenceFrameMesh(quadSet, referenceColorTexture)
+    , referenceFrameMesh(quadSet, colorTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, residualColorTexture, MAX_QUADS_PER_MESH / 4)
+    , residualFrameMesh(quadSet, colorTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f), MAX_QUADS_PER_MESH / 4)
     , uncompressedQuads(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
     , uncompressedQuadsUpdated(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
     , uncompressedQuadsRevealed(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
@@ -83,21 +74,21 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     copyPoseToCamera(remoteCamera);
 
     Path colorFileNameRef = dataPath / "color.jpg";
-    referenceColorTexture.loadFromFile(colorFileNameRef, true, false);
+    colorTexture.loadFromFile(colorFileNameRef, true, false);
 
     referenceFrame.loadFromFiles(dataPath);
     stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     updateGeometry(FrameType::REFERENCE);
 
+    startTime = timeutils::getTimeMicros();
+
     Path cameraFileNamePrev = dataPath / "camera_prev.bin";
     cameraPose.loadFromFile(cameraFileNamePrev);
     copyPoseToCamera(remoteCameraPrev);
 
-    Path colorFileNameRes = dataPath / "color_residual.jpg";
-    residualColorTexture.loadFromFile(colorFileNameRes, true, false);
-
     residualFrame.loadFromFiles(dataPath);
+    stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     updateGeometry(FrameType::RESIDUAL);
     return FrameType::RESIDUAL;
@@ -115,7 +106,7 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     // Sanity check
     size_t expectedSize = sizeof(Header) +
                           header.cameraSize +
-                          header.referenceColorSize + header.residualColorSize +
+                          header.colorSize +
                           header.geometrySize;
     if (inputData.size() < expectedSize) {
         throw std::runtime_error("Input data size " +
@@ -125,8 +116,7 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     }
 
     spdlog::debug("Loading camera size: {}", header.cameraSize);
-    spdlog::debug("Loading reference color size: {}", header.referenceColorSize);
-    spdlog::debug("Loading residual color size: {}", header.residualColorSize);
+    spdlog::debug("Loading color size: {}", header.colorSize);
     spdlog::debug("Loading geometry size: {}", header.geometrySize);
 
     // Read camera data
@@ -134,14 +124,10 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     copyPoseToCamera(remoteCamera);
     ptr += header.cameraSize;
 
-    // Read reference color data
-    referenceColorData.resize(header.referenceColorSize);
-    std::memcpy(referenceColorData.data(), ptr, header.referenceColorSize);
-    ptr += header.referenceColorSize;
-
-    residualColorData.resize(header.residualColorSize);
-    std::memcpy(residualColorData.data(), ptr, header.residualColorSize);
-    ptr += header.residualColorSize;
+    // Read color data
+    colorData.resize(header.colorSize);
+    std::memcpy(colorData.data(), ptr, header.colorSize);
+    ptr += header.colorSize;
 
     // Read geometry data
     geometryData.resize(header.geometrySize);
@@ -152,17 +138,9 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     FileIO::flipVerticallyOnLoad(true);
     auto refFuture = std::async(std::launch::async, [this]() {
         int width, height, channels;
-        unsigned char* data = FileIO::loadImageFromMemory(referenceColorData.data(), referenceColorData.size(), &width, &height, &channels);
+        unsigned char* data = FileIO::loadImageFromMemory(colorData.data(), colorData.size(), &width, &height, &channels);
         return std::make_tuple(data, width, height, channels);
     });
-    std::future<std::tuple<unsigned char*, int, int, int>> resFuture;
-    if (header.residualColorSize > 0) {
-        resFuture = std::async(std::launch::async, [this]() {
-            int width, height, channels;
-            unsigned char* data = FileIO::loadImageFromMemory(residualColorData.data(), residualColorData.size(), &width, &height, &channels);
-            return std::make_tuple(data, width, height, channels);
-        });
-    }
 
     // Load QuadFrame
     if (header.frameType == FrameType::REFERENCE) {
@@ -176,16 +154,9 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     updateGeometry(header.frameType);
 
     // Wait for async to finish
-    if (header.residualColorSize > 0) {
-        auto [resData, resWidth, resHeight, resChannels] = resFuture.get();
-        residualColorTexture.resize(resWidth, resHeight);
-        residualColorTexture.loadFromData(resData);
-        FileIO::freeImage(resData);
-    }
-
     auto [refData, refWidth, refHeight, refChannels] = refFuture.get();
-    referenceColorTexture.resize(refWidth, refHeight);
-    referenceColorTexture.loadFromData(refData);
+    colorTexture.resize(refWidth, refHeight);
+    colorTexture.loadFromData(refData);
     FileIO::freeImage(refData);
 
     return header.frameType;

@@ -109,6 +109,17 @@ public:
     }
 
     void blitToFrameRT(FrameRenderTarget& frameRT, GLenum filter = GL_NEAREST) {
+        blitToFrameRT(frameRT,
+                      0, 0, width,  height,
+                      0, 0, frameRT.width, frameRT.height,
+                      filter);
+    }
+
+    void blitToFrameRT(FrameRenderTarget& frameRT,
+                       GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+                       GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
+                       GLenum filter = GL_NEAREST)
+    {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameRT.getFramebufferID());
 
@@ -116,31 +127,33 @@ public:
         glReadBuffer(GL_COLOR_ATTACHMENT0);
         GLenum drawBuffers0[] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, drawBuffers0);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
         // Normals
         glReadBuffer(GL_COLOR_ATTACHMENT1);
         GLenum drawBuffers1[] = { GL_COLOR_ATTACHMENT1 };
         glDrawBuffers(1, drawBuffers1);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
-        // Ids
+        // IDs
         glReadBuffer(GL_COLOR_ATTACHMENT2);
         GLenum drawBuffers2[] = { GL_COLOR_ATTACHMENT2 };
         glDrawBuffers(1, drawBuffers2);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         // Depth and stencil
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
+        // Restore color attachment
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 

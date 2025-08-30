@@ -16,8 +16,7 @@ public:
     struct Header {
         FrameType frameType;
         uint32_t cameraSize;
-        uint32_t referenceColorSize;
-        uint32_t residualColorSize;
+        uint32_t colorSize;
         uint32_t geometrySize;
     };
 
@@ -35,8 +34,7 @@ public:
     ReferenceFrame referenceFrame;
     ResidualFrame residualFrame;
 
-    Texture referenceColorTexture;
-    Texture residualColorTexture;
+    Texture colorTexture;
 
     QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL = "");
     QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL = "");
@@ -68,8 +66,7 @@ private:
     std::mutex m;
     std::deque<std::vector<char>> frames;
 
-    std::vector<unsigned char> referenceColorData;
-    std::vector<unsigned char> residualColorData;
+    std::vector<unsigned char> colorData;
     std::vector<char> geometryData;
     std::vector<char> uncompressedQuads, uncompressedOffsets;
     std::vector<char> uncompressedQuadsUpdated, uncompressedOffsetsUpdated;
