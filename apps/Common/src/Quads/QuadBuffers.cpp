@@ -102,7 +102,7 @@ size_t QuadBuffers::copyToCPU(std::vector<char>& outputData) {
 }
 #endif
 
-size_t QuadBuffers::copyFromCPU(const std::vector<char>& inputData, bool resizeNumProxies) {
+size_t QuadBuffers::copyFromCPU(const std::vector<char>& inputData) {
     size_t bufferOffset = 0;
     void* ptr;
 
@@ -146,6 +146,6 @@ size_t QuadBuffers::copyFromCPU(const std::vector<char>& inputData, bool resizeN
     bufferOffset += newNumProxies * sizeof(uint);
 
     // Set new number of proxies
-    if (resizeNumProxies) resize(newNumProxies);
+    resize(newNumProxies);
     return bufferOffset;
 }

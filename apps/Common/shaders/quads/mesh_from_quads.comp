@@ -21,13 +21,13 @@ layout(std430, binding = 2) buffer IndexBuffer {
     uint indices[];
 };
 
-layout(std430, binding = 3) buffer MeshIndirectCommandBuffer {
+layout(std430, binding = 3) buffer IndirectCommandBuffer {
     uint count;
     uint instanceCount;
     uint firstIndex;
     uint baseVertex;
     uint baseInstance;
-} meshIndirectCommandBuffer;
+} indirectCommandBuffer;
 
 layout(std430, binding = 4) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
@@ -41,15 +41,12 @@ layout(std430, binding = 6) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 7) readonly buffer quadIndexMap {
-    uint quadIndices[];
-};
-
-layout(std430, binding = 8) readonly buffer quadCreatedBuffer {
+layout(std430, binding = 7) readonly buffer quadCreatedBuffer {
     int quadCreatedFlags[];
 };
 
-layout(rgba16f, binding = 0) uniform readonly image2D depthOffsetsBuffer;
+layout(r32ui, binding = 0) uniform readonly uimage2D quadIndexMap;
+layout(rgba16f, binding = 1) uniform readonly image2D depthOffsetsBuffer;
 
 uniform vec2 gBufferSize;
 uniform uint currNumProxies;
@@ -109,8 +106,7 @@ vec4 loadDepthOffsets(in ivec2 pixelCoord) {
 }
 
 uint loadQuadMapIndex(ivec2 pixelCoords) {
-    uint pixelIndex = uint(pixelCoords.y) * uint(gBufferSize.x) + uint(pixelCoords.x);
-    return quadIndices[pixelIndex];
+    return imageLoad(quadIndexMap, pixelCoords).r;
 }
 
 Plane quadMapDataToPlane(in QuadMapData quadMapData) {
@@ -297,20 +293,20 @@ void storeSurfelsFromQuadMap(in QuadMapData quadMapData) {
 }
 
 void main() {
-    uvec2 quadIndicesPixelCoord = gl_GlobalInvocationID.xy;
-    if (quadIndicesPixelCoord.x >= uint(gBufferSize.x) || quadIndicesPixelCoord.y >= uint(gBufferSize.y)) {
+    uvec2 quadIndexMapPixelCoord = gl_GlobalInvocationID.xy;
+    if (quadIndexMapPixelCoord.x >= uint(gBufferSize.x) || quadIndexMapPixelCoord.y >= uint(gBufferSize.y)) {
         return;
     }
 
     // Reset buffers on first invocation
-    if (quadIndicesPixelCoord == uvec2(0u)) {
+    if (quadIndexMapPixelCoord == uvec2(0u)) {
         // Reset mesh buffers
         atomicExchange(numVertices, 0u);
         atomicExchange(numIndices, 0u);
-        atomicExchange(meshIndirectCommandBuffer.count, 0u);
+        atomicExchange(indirectCommandBuffer.count, 0u);
     }
 
-    uint quadMapIndex = loadQuadMapIndex(ivec2(quadIndicesPixelCoord));
+    uint quadMapIndex = loadQuadMapIndex(ivec2(quadIndexMapPixelCoord));
     if (quadMapIndex >= currNumProxies) {
         return;
     }
@@ -324,5 +320,5 @@ void main() {
     QuadMapData quadMapData = loadQuadMap(quadMapIndex);
     storeSurfelsFromQuadMap(quadMapData);
 
-    atomicExchange(meshIndirectCommandBuffer.count, numIndices);
+    atomicExchange(indirectCommandBuffer.count, numIndices);
 }

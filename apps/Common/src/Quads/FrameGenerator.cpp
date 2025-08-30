@@ -63,6 +63,9 @@ void FrameGenerator::createReferenceFrame(
         referenceFrame.depthOffsets.resize(offsetsFuture.get());
         stats.timeToCompressMs = referenceFrame.getTimeToCompress();
     }
+
+    auto refMeshBufferSizes = mesh.getBufferSizes();
+    spdlog::debug("ref mesh triangles: {}", refMeshBufferSizes.numIndices / 3);
 }
 
 void FrameGenerator::updateResidualRenderTargets(
@@ -206,4 +209,9 @@ void FrameGenerator::createResidualFrame(
         residualFrame.depthOffsetsRevealed.resize(offsetsRevealedFuture.get());
         stats.timeToCompressMs = residualFrame.getTimeToCompress();
     }
+
+    auto refMeshBufferSizes = referenceMesh.getBufferSizes();
+    auto resMeshBufferSizes = residualMesh.getBufferSizes();
+    spdlog::debug("ref mesh triangles: {}", refMeshBufferSizes.numIndices / 3);
+    spdlog::debug("res mesh triangles: {}", resMeshBufferSizes.numIndices / 3);
 }

@@ -42,10 +42,10 @@ public:
 private:
     QuadBuffers currentQuadBuffers;
 
-    Buffer meshSizesBuffer;
+    Buffer sizesBuffer;
 
+    Texture quadIndexMap;
     Buffer quadCreatedBuffer;
-    Buffer quadIndexMap;
 
     uint currNumProxies = 0;
 

@@ -1,5 +1,5 @@
 #ifndef QUAD_SET_H
-#define QUAD_SET_H\
+#define QUAD_SET_H
 
 #include <spdlog/spdlog.h>
 
@@ -84,9 +84,9 @@ public:
         };
     }
 
-    Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets, bool resizeNumProxies = true) {
+    Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
         double startTime = timeutils::getTimeMicros();
-        auto quadsSize = quadBuffers.copyFromCPU(inputQuads, resizeNumProxies);
+        auto quadsSize = quadBuffers.copyFromCPU(inputQuads);
         depthOffsets.copyFromCPU(inputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 

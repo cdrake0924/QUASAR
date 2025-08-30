@@ -211,8 +211,8 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         referenceFrameMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
         stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-        auto meshBufferSizes = referenceFrameMesh.getBufferSizes();
-        stats.totalTriangles += meshBufferSizes.numIndices / 3;
+        auto refMeshBufferSizes = referenceFrameMesh.getBufferSizes();
+        stats.totalTriangles += refMeshBufferSizes.numIndices / 3;
         stats.sizes += sizes;
         stats.timeToDecompressMs += referenceFrame.getTimeToDecompress();
 
@@ -228,20 +228,20 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         quadsUpdatedFuture.get(); offsetsUpdatedFuture.get();
 
         // Transfer updated proxies to GPU for reconstruction
-        auto sizesUpdated = quadSet.copyFromCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated, false);
+        auto sizesUpdated = quadSet.copyFromCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated);
         residualFrame.numQuadsUpdated = sizesUpdated.numQuads;
         residualFrame.numDepthOffsetsUpdated = sizesUpdated.numDepthOffsets;
-        stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
+        stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
 
         // Using GPU buffers, update reference frame mesh using proxies
         double startTime = timeutils::getTimeMicros();
         referenceFrameMesh.appendQuads(quadSet, gBufferSize, false /* is not reference frame */);
         referenceFrameMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCameraPrev);
-        stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // This will also wait for the GPU to finish
         auto refMeshBufferSizes = referenceFrameMesh.getBufferSizes();
-        stats.totalTriangles += refMeshBufferSizes.numIndices / 3;
+        stats.totalTriangles = refMeshBufferSizes.numIndices / 3;
 
         quadsRevealedFuture.get(); offsetsRevealedFuture.get();
 

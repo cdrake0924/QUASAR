@@ -46,7 +46,7 @@ public:
 #ifdef GL_CORE
     size_t copyToCPU(std::vector<char>& outputData);
 #endif
-    size_t copyFromCPU(const std::vector<char>& inputData, bool resizeNumProxies = true);
+    size_t copyFromCPU(const std::vector<char>& inputData);
 
 private:
 #if defined(HAS_CUDA)
