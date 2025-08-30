@@ -21,15 +21,10 @@ QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, const glm::vec
         .usage = GL_DYNAMIC_COPY,
     })
     , quadIndexMap({
-        .width = quadSet.getSize().x,
-        .height = quadSet.getSize().y,
-        .internalFormat = GL_R32UI,
-        .format = GL_RED_INTEGER,
-        .type = GL_UNSIGNED_INT,
-        .wrapS = GL_CLAMP_TO_EDGE,
-        .wrapT = GL_CLAMP_TO_EDGE,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
+        .target = GL_SHADER_STORAGE_BUFFER,
+        .dataSize = sizeof(uint),
+        .numElems = quadSet.getSize().x * quadSet.getSize().y,
+        .usage = GL_DYNAMIC_DRAW,
     })
     , quadCreatedBuffer({
         .target = GL_SHADER_STORAGE_BUFFER,
@@ -112,8 +107,7 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
         appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.metadatasBuffer);
 
         appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadCreatedBuffer);
-
-        appendQuadsShader.setImageTexture(0, quadIndexMap, 0, GL_FALSE, 0, GL_WRITE_ONLY, quadIndexMap.internalFormat);
+        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, quadIndexMap);
     }
     appendQuadsShader.dispatch((newNumProxies + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     appendQuadsShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
@@ -153,9 +147,9 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.metadatasBuffer);
 
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, quadCreatedBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 8, quadIndexMap);
 
-        createQuadMeshShader.setImageTexture(0, quadIndexMap, 0, GL_FALSE, 0, GL_READ_ONLY, quadIndexMap.internalFormat);
-        createQuadMeshShader.setImageTexture(1, quadSet.depthOffsets.texture, 0, GL_FALSE, 0, GL_READ_ONLY, quadSet.depthOffsets.texture.internalFormat);
+        createQuadMeshShader.setImageTexture(0, quadSet.depthOffsets.texture, 0, GL_FALSE, 0, GL_READ_ONLY, quadSet.depthOffsets.texture.internalFormat);
     }
     createQuadMeshShader.dispatch((quadSet.getSize().x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
                                   (quadSet.getSize().y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);

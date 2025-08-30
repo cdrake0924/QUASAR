@@ -47,7 +47,7 @@ private:
 
     Buffer sizesBuffer;
 
-    Texture quadIndexMap;
+    Buffer quadIndexMap;
     Buffer quadCreatedBuffer;
 
     uint currNumProxies = 0;

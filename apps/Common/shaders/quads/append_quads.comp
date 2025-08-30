@@ -26,18 +26,21 @@ layout(std430, binding = 5) writeonly buffer MetadatasBufferOutput {
     uint metadatasOutput[];
 };
 
-layout(std430, binding = 6) writeonly buffer quadCreatedBuffer {
+layout(std430, binding = 6) writeonly buffer QuadCreatedBuffer {
     int quadCreatedFlags[];
 };
 
-layout(r32ui, binding = 0) uniform writeonly uimage2D quadIndexMap;
+layout(std430, binding = 7) writeonly buffer QuadIndexMap {
+    uint quadIndexMap[];
+};
 
 uniform vec2 gBufferSize;
 uniform uint currNumProxies;
 uniform uint newNumProxies;
 
 void quadIndexStore(ivec2 pixelCoords, uint index) {
-    imageStore(quadIndexMap, pixelCoords, uvec4(index, 0, 0, 0));
+    uint pixelIndex = uint(pixelCoords.y) * uint(gBufferSize.x) + uint(pixelCoords.x);
+    quadIndexMap[pixelIndex] = index;
 }
 
 QuadMapData loadQuadMapInput(uint index) {

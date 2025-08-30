@@ -90,8 +90,8 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     residualFrame.loadFromFiles(dataPath);
     stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    updateGeometry(FrameType::RESIDUAL);
-    return FrameType::RESIDUAL;
+    // updateGeometry(FrameType::RESIDUAL);
+    return FrameType::REFERENCE;
 }
 
 FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
