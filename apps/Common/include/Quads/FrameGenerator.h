@@ -1,12 +1,13 @@
 #ifndef FRAME_GENERATOR_H
 #define FRAME_GENERATOR_H
 
+#include <BS_thread_pool/BS_thread_pool.hpp>
+
 #include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 #include <Quads/QuadsGenerator.h>
 #include <Renderers/DeferredRenderer.h>
 #include <RenderTargets/FrameRenderTarget.h>
-
 #include <Codec/ZSTDCodec.h>
 
 namespace quasar {
@@ -34,9 +35,8 @@ public:
     void createReferenceFrame(
         const FrameRenderTarget& referenceFrameRT,
         const PerspectiveCamera& remoteCamera,
-        QuadMesh& mesh,
-        ReferenceFrame& referenceFrame,
-        bool compress = true);
+        QuadMesh& referenceMesh,
+        ReferenceFrame& referenceFrame);
 
     void updateResidualRenderTargets(
         FrameRenderTarget& residualFrameMaskRT, FrameRenderTarget& residualFrameRT,
@@ -48,12 +48,13 @@ public:
         const FrameRenderTarget& residualFrameMaskRT, const FrameRenderTarget& residualFrameRT,
         const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev,
         QuadMesh& referenceMesh, QuadMesh& residualMesh,
-        ResidualFrame& residualFrame,
-        bool compress = true);
+        ResidualFrame& residualFrame);
 
 private:
     QuadSet& quadSet;
     std::shared_ptr<QuadsGenerator> quadsGenerator;
+
+    std::unique_ptr<BS::thread_pool<>> threadPool;
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;

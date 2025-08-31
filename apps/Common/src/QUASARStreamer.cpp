@@ -282,8 +282,7 @@ void QUASARStreamer::generateFrame(
         frameGenerator.createReferenceFrame(
             frameToUse, remoteCameraToUse,
             meshToUse,
-            referenceFrames[layer],
-            !createResidualFrame // No need to waste time compressing if we are generating a residual frame
+            referenceFrames[layer]
         );
 
         quadsGenerator->params = oldParams;

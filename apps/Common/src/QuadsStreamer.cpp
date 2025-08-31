@@ -296,7 +296,7 @@ void QuadsStreamer::sendProxies(const PerspectiveCamera& remoteCamera, bool crea
 }
 
 size_t QuadsStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath) {
-    // Save camera
+    // Save camera data
     Path cameraFileName = (outputPath / "camera").withExtension(".bin");
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
     cameraPose.setViewMatrix(remoteCamera.getViewMatrix());

@@ -48,32 +48,22 @@ public:
         , numDepthOffsets(0)
     {}
 
-    size_t getTotalNumQuads() const {
-        return numQuads;
-    }
-    size_t getTotalNumDepthOffsets() const {
-        return numDepthOffsets;
-    }
-    double getTotalQuadsSize() const {
-        return quads.size();
-    }
-    double getTotalDepthOffsetsSize() const {
-        return depthOffsets.size();
-    }
+    size_t getTotalNumQuads() const { return numQuads; }
+    size_t getTotalNumDepthOffsets() const { return numDepthOffsets; }
+    double getTotalQuadsSize() const { return quads.size(); }
+    double getTotalDepthOffsetsSize() const { return depthOffsets.size(); }
 
-    std::future<size_t> compressAndStoreQuads(const std::vector<char>& uncompressedQuads) {
-        auto quadsFuture = refQuadsCodec.compressAsync(
+    size_t compressAndStoreQuads(const std::vector<char>& uncompressedQuads) {
+        return refQuadsCodec.compress(
             uncompressedQuads.data(),
             quads,
             uncompressedQuads.size());
-        return quadsFuture;
     }
-    std::future<size_t> compressAndStoreDepthOffsets(const std::vector<char>& uncompressedOffsets) {
-        auto offsetsFuture = refOffsetsCodec.compressAsync(
+    size_t compressAndStoreDepthOffsets(const std::vector<char>& uncompressedOffsets) {
+        return refOffsetsCodec.compress(
             uncompressedOffsets.data(),
             depthOffsets,
             uncompressedOffsets.size());
-        return offsetsFuture;
     }
 
     std::future<size_t> decompressQuads(std::vector<char>& outputQuads) {
@@ -220,46 +210,34 @@ public:
         , numDepthOffsetsRevealed(0)
     {}
 
-    size_t getTotalNumQuads() const {
-        return numQuadsUpdated + numQuadsRevealed;
-    }
-    size_t getTotalNumDepthOffsets() const {
-        return numDepthOffsetsUpdated + numDepthOffsetsRevealed;
-    }
-    double getTotalQuadsSize() const {
-        return quadsUpdated.size() + depthOffsetsUpdated.size();
-    }
-    double getTotalDepthOffsetsSize() const {
-        return quadsRevealed.size() + depthOffsetsRevealed.size();
-    }
+    size_t getTotalNumQuads() const { return numQuadsUpdated + numQuadsRevealed; }
+    size_t getTotalNumDepthOffsets() const { return numDepthOffsetsUpdated + numDepthOffsetsRevealed; }
+    double getTotalQuadsSize() const { return quadsUpdated.size() + depthOffsetsUpdated.size(); }
+    double getTotalDepthOffsetsSize() const { return quadsRevealed.size() + depthOffsetsRevealed.size(); }
 
-    std::future<size_t> compressAndStoreUpdatedQuads(const std::vector<char>& uncompressedQuads) {
-        auto quadsFuture = resQuadsUpdatedCodec.compressAsync(
+    size_t compressAndStoreUpdatedQuads(const std::vector<char>& uncompressedQuads) {
+        return resQuadsUpdatedCodec.compress(
             uncompressedQuads.data(),
             quadsUpdated,
             uncompressedQuads.size());
-        return quadsFuture;
     }
-    std::future<size_t> compressAndStoreRevealedQuads(const std::vector<char>& uncompressedQuads) {
-        auto quadsFuture = resQuadsRevealedCodec.compressAsync(
+    size_t compressAndStoreRevealedQuads(const std::vector<char>& uncompressedQuads) {
+        return resQuadsRevealedCodec.compress(
             uncompressedQuads.data(),
             quadsRevealed,
             uncompressedQuads.size());
-        return quadsFuture;
     }
-    std::future<size_t> compressAndStoreUpdatedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
-        auto offsetsFuture = resOffsetsUpdatedCodec.compressAsync(
+    size_t compressAndStoreUpdatedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
+        return resOffsetsUpdatedCodec.compress(
             uncompressedOffsets.data(),
             depthOffsetsUpdated,
             uncompressedOffsets.size());
-        return offsetsFuture;
     }
-    std::future<size_t> compressAndStoreRevealedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
-        auto offsetsFuture = resOffsetsRevealedCodec.compressAsync(
+    size_t compressAndStoreRevealedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
+        return resOffsetsRevealedCodec.compress(
             uncompressedOffsets.data(),
             depthOffsetsRevealed,
             uncompressedOffsets.size());
-        return offsetsFuture;
     }
 
     std::future<size_t> decompressUpdatedQuads(std::vector<char>& outputQuads) {

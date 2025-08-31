@@ -31,7 +31,9 @@ public:
         , maxSavedPoses(maxSavedPoses)
         , DataReceiverUDP(streamerURL, sizeof(Pose))
     {
-        spdlog::info("Created PoseReceiver that recvs from URL: {}", this->streamerURL);
+        if (!streamerURL.empty()) {
+            spdlog::info("Created PoseReceiver that recvs from URL: {}", this->streamerURL);
+        }
     }
 
     void onDataReceived(const std::vector<char>& data) override {

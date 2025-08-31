@@ -54,43 +54,41 @@ void QuadsReceiver::onDataReceived(const std::vector<char>& data) {
     frames.push_back(std::move(data));
 }
 
-FrameType QuadsReceiver::recvData() {
-    FrameType frameType = FrameType::NONE;
-    std::lock_guard<std::mutex> lock(m);
-    if (!frames.empty()) {
-        auto data = frames.front();
-        frames.pop_front();
-        frameType = loadFromMemory(data);
-    }
-    return frameType;
-}
-
 FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     stats = { 0 };
+
     double startTime = timeutils::getTimeMicros();
 
+    // Read camera data
     Path cameraFileName = dataPath / "camera.bin";
     cameraPose.loadFromFile(cameraFileName);
     copyPoseToCamera(remoteCamera);
 
-    Path colorFileNameRef = dataPath / "color.jpg";
-    atlasTexture.loadFromFile(colorFileNameRef, true, false);
+    // Read color data
+    Path colorFileName = dataPath / "color.jpg";
+    atlasTexture.loadFromFile(colorFileName, true, false);
 
+    // Load reference frame
     referenceFrame.loadFromFiles(dataPath);
     stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
+    // Update GPU buffers
     updateGeometry(FrameType::REFERENCE);
 
     startTime = timeutils::getTimeMicros();
 
+    // Read previous camera data
     Path cameraFileNamePrev = dataPath / "camera_prev.bin";
     cameraPose.loadFromFile(cameraFileNamePrev);
     copyPoseToCamera(remoteCameraPrev);
 
+    // Load residual frame
     residualFrame.loadFromFiles(dataPath);
     stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
+    // Update GPU buffers
     updateGeometry(FrameType::RESIDUAL);
+
     return FrameType::RESIDUAL;
 }
 
@@ -233,4 +231,15 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         stats.sizes += sizesUpdated + sizesRevealed;
         stats.timeToDecompressMs += referenceFrame.getTimeToDecompress() + residualFrame.getTimeToDecompress();
     }
+}
+
+FrameType QuadsReceiver::recvData() {
+    FrameType frameType = FrameType::NONE;
+    std::lock_guard<std::mutex> lock(m);
+    if (!frames.empty()) {
+        auto data = frames.front();
+        frames.pop_front();
+        frameType = loadFromMemory(data);
+    }
+    return frameType;
 }
