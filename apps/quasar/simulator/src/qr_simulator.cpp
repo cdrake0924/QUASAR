@@ -17,7 +17,7 @@
 #include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
-#include <QUASARStreamer.h>
+#include <Streamers/QUASARStreamer.h>
 #include <HoleFiller.h>
 
 #include <PoseSendRecvSimulator.h>

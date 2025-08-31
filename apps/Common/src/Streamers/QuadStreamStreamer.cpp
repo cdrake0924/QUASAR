@@ -1,4 +1,4 @@
-#include <QuadStreamStreamer.h>
+#include <Streamers/QuadStreamStreamer.h>
 
 using namespace quasar;
 

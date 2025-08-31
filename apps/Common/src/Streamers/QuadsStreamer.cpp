@@ -1,4 +1,4 @@
-#include <QuadsStreamer.h>
+#include <Streamers/QuadsStreamer.h>
 
 using namespace quasar;
 
@@ -226,7 +226,7 @@ void QuadsStreamer::generateFrame(
             residualFrame
         );
         if (!showNormals) {
-            residualFrameRT.blitToFrameRT(residualFrameNoTone);
+            residualFrameRT.blit(residualFrameNoTone);
             toneMapper.setUniforms(residualFrameNoTone);
             toneMapper.drawToRenderTarget(remoteRenderer, residualFrameRT, false);
         }
@@ -257,12 +257,12 @@ void QuadsStreamer::generateFrame(
     residualFrameNodeLocal.visible = createResidualFrame;
 
     // Update atlas texture
-    referenceFrameRT.blitToFrameRT(atlasRT,
+    referenceFrameRT.blit(atlasRT,
         0, 0, referenceFrameRT.width, referenceFrameRT.height,
         0, 0, referenceFrameRT.width, referenceFrameRT.height
     );
     if (createResidualFrame) {
-        residualFrameRT.blitToFrameRT(atlasRT,
+        residualFrameRT.blit(atlasRT,
             0, 0, residualFrameRT.width, residualFrameRT.height,
             referenceFrameRT.width, 0, atlasRT.width, atlasRT.height
         );

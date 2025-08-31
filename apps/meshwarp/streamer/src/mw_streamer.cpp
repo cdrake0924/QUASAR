@@ -8,9 +8,9 @@
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
-#include <VideoStreamer.h>
-#include <BC4DepthStreamer.h>
-#include <PoseReceiver.h>
+#include <Streamers/VideoStreamer.h>
+#include <Streamers/BC4DepthStreamer.h>
+#include <Receivers/PoseReceiver.h>
 
 using namespace quasar;
 

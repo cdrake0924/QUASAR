@@ -1,4 +1,4 @@
-#include <QUASARStreamer.h>
+#include <Streamers/QUASARStreamer.h>
 
 using namespace quasar;
 
@@ -225,7 +225,7 @@ void QUASARStreamer::generateFrame(
         else if (layer != maxLayers - 1) {
             // Copy to render target
             if (!showNormals) {
-                remoteRendererDP.peelingLayers[hiddenIndex+1].blitToFrameRT(frameToUse);
+                remoteRendererDP.peelingLayers[hiddenIndex+1].blit(frameToUse);
                 toneMapper.setUniforms(frameToUse);
                 toneMapper.drawToRenderTarget(remoteRendererDP, copyRTs[layer], false);
             }

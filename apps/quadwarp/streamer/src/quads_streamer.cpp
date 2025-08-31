@@ -8,8 +8,8 @@
 #include <Renderers/DeferredRenderer.h>
 #include <PostProcessing/ToneMapper.h>
 
-#include <QuadsStreamer.h>
-#include <PoseReceiver.h>
+#include <Streamers/QuadsStreamer.h>
+#include <Receivers/PoseReceiver.h>
 
 using namespace quasar;
 

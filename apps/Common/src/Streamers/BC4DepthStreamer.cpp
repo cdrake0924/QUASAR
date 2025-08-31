@@ -1,7 +1,7 @@
 #include <spdlog/spdlog.h>
 
 #include <Utils/FileIO.h>
-#include <BC4DepthStreamer.h>
+#include <Streamers/BC4DepthStreamer.h>
 
 #include <shaders_common.h>
 

@@ -9,9 +9,9 @@
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
-#include <VideoTexture.h>
-#include <BC4DepthVideoTexture.h>
-#include <PoseStreamer.h>
+#include <Receivers/VideoTexture.h>
+#include <Receivers/BC4DepthVideoTexture.h>
+#include <Streamers/PoseStreamer.h>
 #include <shaders_common.h>
 
 #define THREADS_PER_LOCALGROUP 32

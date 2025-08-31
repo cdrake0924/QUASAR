@@ -13,7 +13,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <BC4DepthStreamer.h>
+#include <Streamers/BC4DepthStreamer.h>
 #include <PoseSendRecvSimulator.h>
 
 #include <shaders_common.h>

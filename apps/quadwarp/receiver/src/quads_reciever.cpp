@@ -10,8 +10,8 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <QuadsReceiver.h>
-#include <PoseStreamer.h>
+#include <Receivers/QuadsReceiver.h>
+#include <Streamers/PoseStreamer.h>
 
 using namespace quasar;
 

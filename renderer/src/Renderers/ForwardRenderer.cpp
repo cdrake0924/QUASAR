@@ -82,7 +82,7 @@ void ForwardRenderer::endRendering() {
         frameRT.unbind();
     }
     else {
-        frameRT_MS.blitToFrameRT(frameRT);
+        frameRT_MS.blit(frameRT);
         frameRT_MS.unbind();
     }
 #else

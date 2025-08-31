@@ -12,7 +12,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <QuadStreamStreamer.h>
+#include <Streamers/QuadStreamStreamer.h>
 
 #include <PoseSendRecvSimulator.h>
 

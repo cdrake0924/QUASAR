@@ -71,7 +71,7 @@ void DeferredRenderer::endRendering() {
         frameRT.unbind();
     }
     else {
-        frameRT_MS.blitToFrameRT(frameRT);
+        frameRT_MS.blit(frameRT);
         frameRT_MS.unbind();
     }
 #else
@@ -192,6 +192,6 @@ RenderStats DeferredRenderer::lightingPass(Scene& scene, const Camera& camera) {
 }
 
 void DeferredRenderer::copyToFrameRT(FrameRenderTarget& gBufferDst) {
-    frameRT.blitToFrameRT(gBufferDst); // copy normals, id, and depth
-    outputRT.blitToRenderTarget(gBufferDst); // copy color
+    frameRT.blit(gBufferDst); // copy normals, id, and depth
+    outputRT.blit(gBufferDst); // copy color
 }

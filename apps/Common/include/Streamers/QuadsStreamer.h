@@ -3,7 +3,7 @@
 
 #include <DepthMesh.h>
 #include <Quads/FrameGenerator.h>
-#include <QuadsReceiver.h>
+#include <Receivers/QuadsReceiver.h>
 #include <CameraPose.h>
 #include <Networking/DataStreamerTCP.h>
 #include <PostProcessing/ToneMapper.h>

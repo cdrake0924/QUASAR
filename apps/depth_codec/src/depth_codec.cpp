@@ -12,8 +12,8 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <BC4DepthStreamer.h>
-#include <PoseStreamer.h>
+#include <Streamers/BC4DepthStreamer.h>
+#include <Streamers/PoseStreamer.h>
 
 #include <shaders_common.h>
 

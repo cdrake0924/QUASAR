@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.19)
-project(lz4_stream)
+project(LZ4)
 
-set(OUR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
+set(OUR_DIR ..)
 
-set(TARGET      lz4_stream)
-set(LZ4_LIB_DIR ${OUR_DIR}/lz4/lib)
+set(TARGET      LZ4)
+set(LZ4_LIB_DIR ${OUR_DIR}/lib)
 
 set(LZ4_SRCS
     ${LZ4_LIB_DIR}/lz4.c
@@ -25,7 +25,6 @@ add_library(${TARGET} INTERFACE)
 
 target_include_directories(${TARGET}
     INTERFACE
-    ${OUR_DIR}
     ${LZ4_LIB_DIR}
 )
 

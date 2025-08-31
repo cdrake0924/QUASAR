@@ -1,6 +1,6 @@
 #include <sstream>
 #include <spdlog/spdlog.h>
-#include <VideoStreamer.h>
+#include <Streamers/VideoStreamer.h>
 #include <Utils/TimeUtils.h>
 #include <Networking/Utils.h>
 
@@ -139,7 +139,7 @@ void VideoStreamer::setTargetBitRate(uint targetBitRate) {
 void VideoStreamer::sendFrame(pose_id_t poseID) {
 #if defined(HAS_CUDA)
     bind();
-    blitToRenderTarget(*renderTargetCopy);
+    blit(*renderTargetCopy);
     unbind();
 
     cudaGLImage.map();

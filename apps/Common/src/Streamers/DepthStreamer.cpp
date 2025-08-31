@@ -1,5 +1,5 @@
 #include <spdlog/spdlog.h>
-#include <DepthStreamer.h>
+#include <Streamers/DepthStreamer.h>
 
 using namespace quasar;
 
@@ -51,7 +51,7 @@ void DepthStreamer::stop() {
 void DepthStreamer::sendFrame(pose_id_t poseID) {
 #if defined(HAS_CUDA)
     bind();
-    blitToRenderTarget(renderTargetCopy);
+    blit(renderTargetCopy);
     unbind();
 
     cudaGLImage.map();

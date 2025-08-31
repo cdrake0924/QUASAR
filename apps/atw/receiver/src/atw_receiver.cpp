@@ -12,8 +12,8 @@
 #include <CameraAnimator.h>
 #include <shaders_common.h>
 
-#include <VideoTexture.h>
-#include <PoseStreamer.h>
+#include <Receivers/VideoTexture.h>
+#include <Streamers/PoseStreamer.h>
 
 #define TEXTURE_PREVIEW_SIZE 500
 

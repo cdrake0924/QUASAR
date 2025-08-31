@@ -88,7 +88,7 @@ public:
         framebuffer.unbind();
     }
 
-    void blitToRenderTarget(RenderTarget& rt, GLenum filter = GL_NEAREST) {
+    void blit(RenderTarget& rt, GLenum filter = GL_NEAREST) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rt.getFramebufferID());
 
@@ -108,14 +108,14 @@ public:
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void blitToFrameRT(FrameRenderTarget& frameRT, GLenum filter = GL_NEAREST) {
-        blitToFrameRT(frameRT,
-                      0, 0, width,  height,
-                      0, 0, frameRT.width, frameRT.height,
-                      filter);
+    void blit(FrameRenderTarget& frameRT, GLenum filter = GL_NEAREST) {
+        blit(frameRT,
+             0, 0, width,  height,
+             0, 0, frameRT.width, frameRT.height,
+             filter);
     }
 
-    void blitToFrameRT(FrameRenderTarget& frameRT,
+    void blit(FrameRenderTarget& frameRT,
                        GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
                        GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
                        GLenum filter = GL_NEAREST)

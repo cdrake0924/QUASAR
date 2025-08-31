@@ -3,7 +3,7 @@
 
 #include <Utils/FileIO.h>
 #include <Utils/TimeUtils.h>
-#include <QuadsReceiver.h>
+#include <Receivers/QuadsReceiver.h>
 
 using namespace quasar;
 
@@ -31,7 +31,7 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
     , uncompressedOffsetsRevealed(quadSet.depthOffsets.getSize().x * quadSet.depthOffsets.getSize().y * 4 * sizeof(uint16_t))
     , DataReceiverTCP(streamerURL)
 {
-    threadPool = std::make_unique<BS::thread_pool<>>(4);
+    threadPool = std::make_unique<BS::thread_pool<>>(5);
     if (streamerURL.empty()) {
         spdlog::info("Created QuadsReceiver that recvs from URL: {}", streamerURL);
     }
@@ -55,14 +55,31 @@ void QuadsReceiver::onDataReceived(const std::vector<char>& data) {
     frames.push_back(std::move(data));
 }
 
+FrameType QuadsReceiver::recvData() {
+    FrameType frameType = FrameType::NONE;
+    std::vector<char> data;
+    {
+        std::unique_lock<std::mutex> lock(m);
+        if (!frames.empty()) {
+            data = std::move(frames.front());
+            frames.pop_front();
+        }
+    }
+
+    if (!data.empty()) {
+        frameType = loadFromMemory(data);
+    }
+    return frameType;
+}
+
 FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     stats = { 0 };
 
     double startTime = timeutils::getTimeMicros();
 
     // Read camera data
-    Path cameraFileName = dataPath / "camera.bin";
-    cameraPose.loadFromFile(cameraFileName);
+    Path cameraFileNamePrev = dataPath / "camera_prev.bin";
+    cameraPose.loadFromFile(cameraFileNamePrev);
     copyPoseToCamera(remoteCamera);
 
     // Read color data
@@ -79,9 +96,9 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     startTime = timeutils::getTimeMicros();
 
     // Read previous camera data
-    Path cameraFileNamePrev = dataPath / "camera_prev.bin";
-    cameraPose.loadFromFile(cameraFileNamePrev);
-    copyPoseToCamera(remoteCameraPrev);
+    Path cameraFileName = dataPath / "camera.bin";
+    cameraPose.loadFromFile(cameraFileName);
+    copyPoseToCamera(remoteCamera);
 
     // Load residual frame
     residualFrame.loadFromFiles(dataPath);
@@ -128,18 +145,18 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     std::memcpy(colorData.data(), ptr, header.colorSize);
     ptr += header.colorSize;
 
-    // Read geometry data
-    geometryData.resize(header.geometrySize);
-    std::memcpy(geometryData.data(), ptr, header.geometrySize);
-    ptr += header.geometrySize;
-
-    // Run async
+    // Run JPG decompression (asynchronous)
     FileIO::flipVerticallyOnLoad(true);
-    auto refFuture = std::async(std::launch::async, [this]() {
+    auto refFuture = threadPool->submit_task([this]() {
         int width, height, channels;
         unsigned char* data = FileIO::loadImageFromMemory(colorData.data(), colorData.size(), &width, &height, &channels);
         return std::make_tuple(data, width, height, channels);
     });
+
+    // Read geometry data
+    geometryData.resize(header.geometrySize);
+    std::memcpy(geometryData.data(), ptr, header.geometrySize);
+    ptr += header.geometrySize;
 
     // Load QuadFrame
     if (header.frameType == FrameType::REFERENCE) {
@@ -208,7 +225,6 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
             return residualFrame.decompressRevealedQuads(uncompressedQuadsRevealed);
         });
         quadsUpdatedFuture.get(); offsetsUpdatedFuture.get();
-        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress() + residualFrame.getTimeToDecompress();
 
         // Transfer updated proxies to GPU for reconstruction
         auto sizesUpdated = quadSet.copyFromCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated);
@@ -227,6 +243,7 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         stats.totalTriangles = refMeshBufferSizes.numIndices / 3;
 
         quadsRevealedFuture.get(); offsetsRevealedFuture.get();
+        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress() + residualFrame.getTimeToDecompress();
 
         // Transfer revealed proxies to GPU for reconstruction
         auto sizesRevealed = quadSet.copyFromCPU(uncompressedQuadsRevealed, uncompressedOffsetsRevealed);
@@ -244,15 +261,4 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         stats.totalTriangles += resMeshBufferSizes.numIndices / 3;
         stats.sizes += sizesUpdated + sizesRevealed;
     }
-}
-
-FrameType QuadsReceiver::recvData() {
-    FrameType frameType = FrameType::NONE;
-    std::lock_guard<std::mutex> lock(m);
-    if (!frames.empty()) {
-        auto data = frames.front();
-        frames.pop_front();
-        frameType = loadFromMemory(data);
-    }
-    return frameType;
 }

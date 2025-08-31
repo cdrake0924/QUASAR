@@ -11,7 +11,7 @@
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
-#include <QuadsStreamer.h>
+#include <Streamers/QuadsStreamer.h>
 #include <PoseSendRecvSimulator.h>
 
 using namespace quasar;

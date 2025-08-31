@@ -1,6 +1,6 @@
 #include <Utils/TimeUtils.h>
 
-#include <DepthVideoTexture.h>
+#include <Receivers/DepthVideoTexture.h>
 
 using namespace quasar;
 

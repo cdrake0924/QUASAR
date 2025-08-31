@@ -1,7 +1,7 @@
 #include <spdlog/spdlog.h>
 
 #include <Utils/TimeUtils.h>
-#include <BC4DepthVideoTexture.h>
+#include <Receivers/BC4DepthVideoTexture.h>
 
 using namespace quasar;
 
