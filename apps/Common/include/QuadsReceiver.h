@@ -34,7 +34,7 @@ public:
     ReferenceFrame referenceFrame;
     ResidualFrame residualFrame;
 
-    Texture colorTexture;
+    Texture atlasTexture;
 
     QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL = "");
     QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL = "");

@@ -45,7 +45,7 @@ struct TextureFileCreateParams {
 
 class Texture : public OpenGLObject {
 public:
-    uint width, height;
+    uint width, height, channels;
 
     GLint internalFormat = GL_RGB;
     GLenum format = GL_RGB;

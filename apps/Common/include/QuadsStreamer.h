@@ -70,7 +70,7 @@ public:
         bool createResidualFrame, bool showNormals = false, bool showDepth = false);
     void sendProxies(const PerspectiveCamera& remoteCamera, bool createResidualFrame);
 
-    size_t writeToFile(const PerspectiveCamera& remoteCamera, const Path& outputPath);
+    size_t writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath);
     size_t writeToMemory(const PerspectiveCamera& remoteCamera, bool isResidualFrame, std::vector<char>& outputData);
 
 private:
@@ -100,10 +100,9 @@ private:
     // Scenes with resulting meshes
     std::vector<Scene> meshScenes;
 
-    // Holds a copy of the current reference and residual frame
-    FrameRenderTarget referenceCopyRT;
-    FrameRenderTarget residualCopyRT;
-    FrameRenderTarget finalRT;
+    FrameRenderTarget referenceFrameNoTone;
+    FrameRenderTarget residualFrameNoTone;
+    FrameRenderTarget atlasRT;
 
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;

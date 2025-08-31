@@ -34,6 +34,28 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
+    , referenceFrameNoTone({
+        .width = quadSet.getSize().x,
+        .height = quadSet.getSize().y,
+        .internalFormat = GL_RGBA16F,
+        .format = GL_RGBA,
+        .type = GL_HALF_FLOAT,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
+    , residualFrameNoTone({
+        .width = quadSet.getSize().x,
+        .height = quadSet.getSize().y,
+        .internalFormat = GL_RGBA16F,
+        .format = GL_RGBA,
+        .type = GL_HALF_FLOAT,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
     , residualFrameMaskRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
@@ -45,29 +67,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , referenceCopyRT({
-        .width = quadSet.getSize().x,
-        .height = quadSet.getSize().y,
-        .internalFormat = GL_RGB8,
-        .format = GL_RGB,
-        .type = GL_UNSIGNED_BYTE,
-        .wrapS = GL_CLAMP_TO_EDGE,
-        .wrapT = GL_CLAMP_TO_EDGE,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
-    })
-    , residualCopyRT({
-        .width = quadSet.getSize().x,
-        .height = quadSet.getSize().y,
-        .internalFormat = GL_RGB8,
-        .format = GL_RGB,
-        .type = GL_UNSIGNED_BYTE,
-        .wrapS = GL_CLAMP_TO_EDGE,
-        .wrapT = GL_CLAMP_TO_EDGE,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
-    })
-    , finalRT({
+    , atlasRT({
         .width = 2 * quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGB8,
@@ -76,10 +76,10 @@ QuadsStreamer::QuadsStreamer(
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST
     })
     // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, residualFrameRT.colorTexture, MAX_QUADS_PER_MESH / 4)
+    , residualFrameMesh(quadSet, residualFrameNoTone.colorTexture, MAX_QUADS_PER_MESH / 4)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
@@ -92,7 +92,7 @@ QuadsStreamer::QuadsStreamer(
     referenceFrameWireframesLocal.reserve(meshScenes.size());
 
     for (int i = 0; i < meshScenes.size(); i++) {
-        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT.colorTexture);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameNoTone.colorTexture);
 
         referenceFrameNodes.emplace_back(&referenceFrameMeshes[i]);
         referenceFrameNodes[i].frustumCulled = false;
@@ -157,16 +157,14 @@ void QuadsStreamer::generateFrame(
         std::swap(currMeshIndex, prevMeshIndex);
     }
 
-    // Render remote scene normally
+    /*
+    ============================
+    Render scene normally to create Reference Frame textures
+    ============================
+    */
     double startTime = timeutils::getTimeMicros();
     remoteRenderer.drawObjects(remoteScene, remoteCameraToUse);
-    if (!showNormals) {
-        remoteRenderer.copyToFrameRT(referenceFrameRT);
-        toneMapper.drawToRenderTarget(remoteRenderer, referenceCopyRT);
-    }
-    else {
-        showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameRT);
-    }
+    remoteRenderer.copyToFrameRT(referenceFrameRT);
     stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
@@ -182,6 +180,13 @@ void QuadsStreamer::generateFrame(
         referenceFrameMeshes[currMeshIndex],
         createResidualFrame ? currReferenceFrame : referenceFrame
     );
+    if (!showNormals) {
+        remoteRenderer.copyToFrameRT(referenceFrameNoTone);
+        toneMapper.drawToRenderTarget(remoteRenderer, referenceFrameRT);
+    }
+    else {
+        showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameNoTone);
+    }
 
     stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
     stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
@@ -198,16 +203,22 @@ void QuadsStreamer::generateFrame(
     if (createResidualFrame) {
         /*
         ============================
-        Generate Residual Frame
+        Generate masked Residual Frame textures
         ============================
         */
-        quadsGenerator->params.expandEdges = true;
         frameGenerator.updateResidualRenderTargets(
             residualFrameMaskRT, residualFrameRT,
             remoteRenderer, remoteScene,
             meshScenes[currMeshIndex], meshScenes[prevMeshIndex],
             remoteCamera, remoteCameraPrev
         );
+
+        /*
+        ============================
+        Generate Residual Frame
+        ============================
+        */
+        quadsGenerator->params.expandEdges = true;
         frameGenerator.createResidualFrame(
             residualFrameMaskRT, residualFrameRT,
             remoteCamera, remoteCameraPrev,
@@ -215,10 +226,12 @@ void QuadsStreamer::generateFrame(
             residualFrame
         );
         if (!showNormals) {
-            toneMapper.drawToRenderTarget(remoteRenderer, residualCopyRT);
+            residualFrameRT.blitToFrameRT(residualFrameNoTone);
+            toneMapper.setUniforms(residualFrameNoTone);
+            toneMapper.drawToRenderTarget(remoteRenderer, residualFrameRT, false);
         }
         else {
-            showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameRT);
+            showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameNoTone);
         }
 
         stats.totalRenderTime += frameGenerator.stats.timeToUpdateRTsMs;
@@ -243,15 +256,17 @@ void QuadsStreamer::generateFrame(
 
     residualFrameNodeLocal.visible = createResidualFrame;
 
-    // Update side-by-side texture
-    referenceCopyRT.blitToFrameRT(finalRT,
-        0, 0, referenceCopyRT.width, referenceCopyRT.height,
-        0, 0, referenceCopyRT.width, referenceCopyRT.height
+    // Update atlas texture
+    referenceFrameRT.blitToFrameRT(atlasRT,
+        0, 0, referenceFrameRT.width, referenceFrameRT.height,
+        0, 0, referenceFrameRT.width, referenceFrameRT.height
     );
-    residualCopyRT.blitToFrameRT(finalRT,
-        0, 0, residualCopyRT.width, residualCopyRT.height,
-        referenceCopyRT.width, 0, finalRT.width, finalRT.height
-    );
+    if (createResidualFrame) {
+        residualFrameRT.blitToFrameRT(atlasRT,
+            0, 0, residualFrameRT.width, residualFrameRT.height,
+            referenceFrameRT.width, 0, atlasRT.width, atlasRT.height
+        );
+    }
 
     // For debugging: Generate point cloud from depth map
     if (showDepth) {
@@ -280,7 +295,7 @@ void QuadsStreamer::sendProxies(const PerspectiveCamera& remoteCamera, bool crea
     }
 }
 
-size_t QuadsStreamer::writeToFile(const PerspectiveCamera& remoteCamera, const Path& outputPath) {
+size_t QuadsStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath) {
     // Save camera
     Path cameraFileName = (outputPath / "camera").withExtension(".bin");
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
@@ -294,7 +309,7 @@ size_t QuadsStreamer::writeToFile(const PerspectiveCamera& remoteCamera, const P
 
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    finalRT.writeColorAsJPG(colorFileName);
+    atlasRT.writeColorAsJPG(colorFileName);
 
     // Save proxies
     return referenceFrame.writeToFiles(outputPath) +
@@ -310,7 +325,7 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
 
     // Save color data
     std::vector<unsigned char> colorData;
-    finalRT.writeColorJPGToMemory(colorData);
+    atlasRT.writeColorJPGToMemory(colorData);
 
     // Save geometry data
     std::vector<char> geometryData;
@@ -341,7 +356,7 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     // Write camera data
     std::memcpy(ptr, cameraData.data(), cameraData.size());
     ptr += cameraData.size();
-    // Write side-by-side color data
+    // Write atlas color data
     std::memcpy(ptr, colorData.data(), colorData.size());
     ptr += colorData.size();
     // Write geometry data

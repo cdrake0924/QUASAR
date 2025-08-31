@@ -11,18 +11,18 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
     : quadSet(quadSet)
     , streamerURL(streamerURL)
     , remoteCamera(quadSet.getSize())
-    , colorTexture({
+    , atlasTexture({
         .internalFormat = GL_RGB,
         .format = GL_RGB,
         .type = GL_UNSIGNED_BYTE,
-        .wrapS = GL_REPEAT,
-        .wrapT = GL_REPEAT,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , referenceFrameMesh(quadSet, colorTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
+    , referenceFrameMesh(quadSet, atlasTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, colorTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f), MAX_QUADS_PER_MESH / 4)
+    , residualFrameMesh(quadSet, atlasTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f), MAX_QUADS_PER_MESH / 4)
     , uncompressedQuads(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
     , uncompressedQuadsUpdated(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
     , uncompressedQuadsRevealed(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
@@ -74,7 +74,7 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     copyPoseToCamera(remoteCamera);
 
     Path colorFileNameRef = dataPath / "color.jpg";
-    colorTexture.loadFromFile(colorFileNameRef, true, false);
+    atlasTexture.loadFromFile(colorFileNameRef, true, false);
 
     referenceFrame.loadFromFiles(dataPath);
     stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
@@ -90,8 +90,8 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     residualFrame.loadFromFiles(dataPath);
     stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
-    // updateGeometry(FrameType::RESIDUAL);
-    return FrameType::REFERENCE;
+    updateGeometry(FrameType::RESIDUAL);
+    return FrameType::RESIDUAL;
 }
 
 FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
@@ -155,8 +155,8 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
 
     // Wait for async to finish
     auto [refData, refWidth, refHeight, refChannels] = refFuture.get();
-    colorTexture.resize(refWidth, refHeight);
-    colorTexture.loadFromData(refData);
+    atlasTexture.resize(refWidth, refHeight);
+    atlasTexture.loadFromData(refData);
     FileIO::freeImage(refData);
 
     return header.frameType;

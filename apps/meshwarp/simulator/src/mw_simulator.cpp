@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
             ImGui::MenuItem("Record", 0, &showRecordWindow);
             ImGui::MenuItem("Mesh Capture", 0, &showMeshCaptureWindow);
-            ImGui::MenuItem("Remote Frame Preview", 0, &showFramePreviewWindow);
+            ImGui::MenuItem("Frame Preview", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -452,7 +452,7 @@ int main(int argc, char** argv) {
 
         if (showFramePreviewWindow) {
             flags = 0;
-            ImGui::Begin("Remote Frame", 0, flags);
+            ImGui::Begin("Frame", 0, flags);
             ImGui::Image((void*)(intptr_t)(renderTarget.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }

@@ -118,7 +118,7 @@ void QuadsGenerator::generateInitialQuadMap(
         genQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, quadMaps[closestQuadMapIdx].depthsBuffer);
         genQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, quadMaps[closestQuadMapIdx].metadatasBuffer);
 
-        genQuadMapShader.setImageTexture(0, quadSet.depthOffsets.texture, 0, GL_FALSE, 0, GL_READ_WRITE, quadSet.depthOffsets.texture.internalFormat);
+        genQuadMapShader.setImageTexture(0, quadSet.depthOffsets.texture, 0, GL_FALSE, 0, GL_WRITE_ONLY, quadSet.depthOffsets.texture.internalFormat);
         genQuadMapShader.setImageTexture(1, colorTexture, 0, GL_FALSE, 0, GL_READ_WRITE, colorTexture.internalFormat);
     }
     genQuadMapShader.dispatch((gBufferSize.x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,

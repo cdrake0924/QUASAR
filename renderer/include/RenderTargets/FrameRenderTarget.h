@@ -152,8 +152,6 @@ public:
                           dstX0, dstY0, dstX1, dstY1,
                           GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
-        // Restore color attachment
-        glReadBuffer(GL_COLOR_ATTACHMENT0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
@@ -170,32 +168,37 @@ public:
         depthStencilTexture.resize(width, height);
     }
 
-    void readPixels(unsigned char *data, bool readAsFloat = false) {
+    void readPixels(unsigned char* data, bool readAsFloat = false) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.readPixels(data, readAsFloat);
         unbind();
     }
 
     void writeColorAsPNG(const std::string& path) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeToPNG(path);
         unbind();
     }
 
     void writeColorAsJPG(const std::string& path, int quality = 85) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeToJPG(path, quality);
         unbind();
     }
 
     void writeColorAsHDR(const std::string& path) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeToHDR(path);
         unbind();
     }
 
     void writeColorJPGToMemory(std::vector<unsigned char>& outputData, int quality = 85) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeJPGToMemory(outputData, quality);
         unbind();
     }
