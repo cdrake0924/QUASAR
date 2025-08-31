@@ -1,6 +1,8 @@
 #ifndef QUASAR_RECEIVER_H
 #define QUASAR_RECEIVER_H
 
+#include <BS_thread_pool/BS_thread_pool.hpp>
+
 #include <Path.h>
 #include <Quads/QuadSet.h>
 #include <Quads/QuadFrames.h>
@@ -37,6 +39,8 @@ public:
         // Camera has wider FOV
         remoteCameraWideFov.setFovyDegrees(remoteFOVWide);
         remoteCameraWideFov.setViewMatrix(remoteCamera.getViewMatrix());
+
+        threadPool = std::make_unique<BS::thread_pool<>>(maxLayers);
 
         TextureDataCreateParams texParams = {
             .internalFormat = GL_RGB,
@@ -81,8 +85,12 @@ public:
             stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             startTime = timeutils::getTimeMicros();
-            auto offsetsFuture = frames[layer].decompressDepthOffsets(uncompressedOffsets);
-            auto quadsFuture = frames[layer].decompressQuads(uncompressedQuads);
+            auto offsetsFuture = threadPool->submit_task([&]() {
+                return frames[layer].decompressDepthOffsets(uncompressedOffsets);
+            });
+            auto quadsFuture = threadPool->submit_task([&]() {
+                return frames[layer].decompressQuads(uncompressedQuads);
+            });
             quadsFuture.get(); offsetsFuture.get();
             stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
@@ -113,6 +121,8 @@ private:
     QuadMaterial quadMaterial;
     std::vector<Texture> colorTextures;
     std::vector<QuadMesh> meshes;
+
+    std::unique_ptr<BS::thread_pool<>> threadPool;
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;

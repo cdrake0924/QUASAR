@@ -1,7 +1,6 @@
 #ifndef QUAD_FRAME_H
 #define QUAD_FRAME_H
 
-#include <future>
 #include <algorithm>
 
 #include <spdlog/spdlog.h>
@@ -66,13 +65,11 @@ public:
             uncompressedOffsets.size());
     }
 
-    std::future<size_t> decompressQuads(std::vector<char>& outputQuads) {
-        auto quadsFuture = refQuadsCodec.decompressAsync(quads, outputQuads);
-        return quadsFuture;
+    size_t decompressQuads(std::vector<char>& outputQuads) {
+        return refQuadsCodec.decompress(quads, outputQuads);
     }
-    std::future<size_t> decompressDepthOffsets(std::vector<char>& outputOffsets) {
-        auto offsetsFuture = refOffsetsCodec.decompressAsync(depthOffsets, outputOffsets);
-        return offsetsFuture;
+    size_t decompressDepthOffsets(std::vector<char>& outputOffsets) {
+        return refOffsetsCodec.decompress(depthOffsets, outputOffsets);
     }
 
     double getTimeToCompress() const {
@@ -240,21 +237,17 @@ public:
             uncompressedOffsets.size());
     }
 
-    std::future<size_t> decompressUpdatedQuads(std::vector<char>& outputQuads) {
-        auto quadsFuture = resQuadsUpdatedCodec.decompressAsync(quadsUpdated, outputQuads);
-        return quadsFuture;
+    size_t decompressUpdatedQuads(std::vector<char>& outputQuads) {
+        return resQuadsUpdatedCodec.decompress(quadsUpdated, outputQuads);
     }
-    std::future<size_t> decompressRevealedQuads(std::vector<char>& outputQuads) {
-        auto quadsFuture = resQuadsRevealedCodec.decompressAsync(quadsRevealed, outputQuads);
-        return quadsFuture;
+    size_t decompressRevealedQuads(std::vector<char>& outputQuads) {
+        return resQuadsRevealedCodec.decompress(quadsRevealed, outputQuads);
     }
-    std::future<size_t> decompressUpdatedDepthOffsets(std::vector<char>& outputOffsets) {
-        auto offsetsFuture = resOffsetsUpdatedCodec.decompressAsync(depthOffsetsUpdated, outputOffsets);
-        return offsetsFuture;
+    size_t decompressUpdatedDepthOffsets(std::vector<char>& outputOffsets) {
+        return resOffsetsUpdatedCodec.decompress(depthOffsetsUpdated, outputOffsets);
     }
-    std::future<size_t> decompressRevealedDepthOffsets(std::vector<char>& outputOffsets) {
-        auto offsetsFuture = resOffsetsRevealedCodec.decompressAsync(depthOffsetsRevealed, outputOffsets);
-        return offsetsFuture;
+    size_t decompressRevealedDepthOffsets(std::vector<char>& outputOffsets) {
+        return resOffsetsRevealedCodec.decompress(depthOffsetsRevealed, outputOffsets);
     }
 
     double getTimeToCompress() const {

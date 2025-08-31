@@ -1,6 +1,8 @@
 #ifndef QUASAR_RECEIVER_H
 #define QUASAR_RECEIVER_H
 
+#include <BS_thread_pool/BS_thread_pool.hpp>
+
 #include <Path.h>
 #include <Quads/QuadSet.h>
 #include <Quads/QuadFrames.h>
@@ -35,6 +37,8 @@ public:
             remoteCameras.emplace_back(quadSet.getSize());
             remoteCameras[view].setFovyDegrees(remoteFOV);
         }
+
+        threadPool = std::make_unique<BS::thread_pool<>>(maxViews);
 
         PerspectiveCamera& remoteCameraCenter = remoteCameras[0];
         for (int view = 1; view < maxViews - 1; view++) {
@@ -97,8 +101,12 @@ public:
             stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
             startTime = timeutils::getTimeMicros();
-            auto offsetsFuture = frames[view].decompressDepthOffsets(uncompressedOffsets);
-            auto quadsFuture = frames[view].decompressQuads(uncompressedQuads);
+            auto offsetsFuture = threadPool->submit_task([&]() {
+                return frames[view].decompressDepthOffsets(uncompressedOffsets);
+            });
+            auto quadsFuture = threadPool->submit_task([&]() {
+                return frames[view].decompressQuads(uncompressedQuads);
+            });
             quadsFuture.get(); offsetsFuture.get();
             stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
@@ -138,6 +146,8 @@ private:
     QuadMaterial quadMaterial;
     std::vector<Texture> colorTextures;
     std::vector<QuadMesh> meshes;
+
+    std::unique_ptr<BS::thread_pool<>> threadPool;
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;

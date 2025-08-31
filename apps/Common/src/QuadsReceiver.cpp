@@ -31,7 +31,8 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
     , uncompressedOffsetsRevealed(quadSet.depthOffsets.getSize().x * quadSet.depthOffsets.getSize().y * 4 * sizeof(uint16_t))
     , DataReceiverTCP(streamerURL)
 {
-    if (!streamerURL.empty()) {
+    threadPool = std::make_unique<BS::thread_pool<>>(4);
+    if (streamerURL.empty()) {
         spdlog::info("Created QuadsReceiver that recvs from URL: {}", streamerURL);
     }
 }
@@ -164,9 +165,14 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
     const glm::vec2& gBufferSize = quadSet.getSize();
     if (frameType == FrameType::REFERENCE) {
         // Decompress proxies (asynchronous)
-        auto offsetsFuture = referenceFrame.decompressDepthOffsets(uncompressedOffsets);
-        auto quadsFuture = referenceFrame.decompressQuads(uncompressedQuads);
+        auto offsetsFuture = threadPool->submit_task([&]() {
+            return referenceFrame.decompressDepthOffsets(uncompressedOffsets);
+        });
+        auto quadsFuture = threadPool->submit_task([&]() {
+            return referenceFrame.decompressQuads(uncompressedQuads);
+        });
         quadsFuture.get(); offsetsFuture.get();
+        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress();
 
         // Transfer updated proxies to GPU for reconstruction
         auto sizes = quadSet.copyFromCPU(uncompressedQuads, uncompressedOffsets);
@@ -183,18 +189,26 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         auto refMeshBufferSizes = referenceFrameMesh.getBufferSizes();
         stats.totalTriangles += refMeshBufferSizes.numIndices / 3;
         stats.sizes += sizes;
-        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress();
 
         remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
     }
     else {
         // Decompress proxies (asynchronous)
-        auto offsetsUpdatedFuture = residualFrame.decompressUpdatedDepthOffsets(uncompressedOffsetsUpdated);
-        auto offsetsRevealedFuture = residualFrame.decompressRevealedDepthOffsets(uncompressedOffsetsRevealed);
-        auto quadsUpdatedFuture = residualFrame.decompressUpdatedQuads(uncompressedQuadsUpdated);
-        auto quadsRevealedFuture = residualFrame.decompressRevealedQuads(uncompressedQuadsRevealed);
+        auto offsetsUpdatedFuture = threadPool->submit_task([&]() {
+            return residualFrame.decompressUpdatedDepthOffsets(uncompressedOffsetsUpdated);
+        });
+        auto offsetsRevealedFuture = threadPool->submit_task([&]() {
+            return residualFrame.decompressRevealedDepthOffsets(uncompressedOffsetsRevealed);
+        });
+        auto quadsUpdatedFuture = threadPool->submit_task([&]() {
+            return residualFrame.decompressUpdatedQuads(uncompressedQuadsUpdated);
+        });
+        auto quadsRevealedFuture = threadPool->submit_task([&]() {
+            return residualFrame.decompressRevealedQuads(uncompressedQuadsRevealed);
+        });
         quadsUpdatedFuture.get(); offsetsUpdatedFuture.get();
+        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress() + residualFrame.getTimeToDecompress();
 
         // Transfer updated proxies to GPU for reconstruction
         auto sizesUpdated = quadSet.copyFromCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated);
@@ -229,7 +243,6 @@ void QuadsReceiver::updateGeometry(FrameType frameType) {
         auto resMeshBufferSizes = residualFrameMesh.getBufferSizes();
         stats.totalTriangles += resMeshBufferSizes.numIndices / 3;
         stats.sizes += sizesUpdated + sizesRevealed;
-        stats.timeToDecompressMs += referenceFrame.getTimeToDecompress() + residualFrame.getTimeToDecompress();
     }
 }
 

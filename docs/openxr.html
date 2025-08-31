@@ -373,7 +373,7 @@ cd apps/atw/streamer
     <p>Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
 cd apps/meshwarp/streamer
-./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --video-url &lt;headset's IP&gt;:12345 --depth-url &lt;headset's IP&gt;:65432 --depth-factor 4
+./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --video-url &lt;headset's IP&gt;:12345 --depth-url &lt;server's IP&gt;:65432 --depth-factor 4
 </code></pre>
 
     <h3 id="quads-viewer">QuadsViewer</h3>
@@ -390,7 +390,7 @@ cd apps/meshwarp/streamer
     <p>Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
 cd apps/quads/streamer
-./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --remote-fov 90 --quads-url 192.168.4.140:65432
+./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --remote-fov 90 --quads-url &lt;server's IP&gt;:65432
 </code></pre>
 
     <h3 id="quadstream-viewer">QuadStreamViewer</h3>

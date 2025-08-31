@@ -3,6 +3,8 @@
 
 #include <deque>
 
+#include <BS_thread_pool/BS_thread_pool.hpp>
+
 #include <Path.h>
 #include <CameraPose.h>
 #include <Quads/QuadFrames.h>
@@ -62,6 +64,8 @@ private:
 
     QuadMesh referenceFrameMesh;
     QuadMesh residualFrameMesh;
+
+    std::unique_ptr<BS::thread_pool<>> threadPool;
 
     std::mutex m;
     std::deque<std::vector<char>> frames;
