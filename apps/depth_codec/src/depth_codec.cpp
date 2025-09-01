@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 
     config.enableVSync = !args::get(novsync);
 
-    std::string sceneFile = args::get(sceneFileIn);
+    Path sceneFile = args::get(sceneFileIn);
 
     uint surfelSize = args::get(surfelSizeIn);
 

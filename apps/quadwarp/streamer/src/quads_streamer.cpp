@@ -27,8 +27,9 @@ int main(int argc, char** argv) {
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<bool> displayIn(parser, "display", "Show window", {'d', "display"}, true);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
-    args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "0.0.0.0:54321");
-    args::ValueFlag<std::string> quadsURLIn(parser, "quads", "Quads URL", {'e', "quads-url"}, "127.0.0.1:65432");
+    args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to recv video", {'c', "video-url"}, "127.0.0.1:12345");
+    args::ValueFlag<std::string> proxiesURLIn(parser, "proxies", "URL to send quad proxies", {'e', "proxies-url"}, "127.0.0.1:65432");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to send camera pose", {'p', "pose-url"}, "0.0.0.0:54321");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -58,8 +59,8 @@ int main(int argc, char** argv) {
     config.showWindow = args::get(displayIn);
 
     Path sceneFile = args::get(sceneFileIn);
-
-    std::string quadsURL = args::get(quadsURLIn);
+    std::string videoURL = args::get(videoURLIn);
+    std::string proxiesURL = args::get(proxiesURLIn);
     std::string poseURL = args::get(poseURLIn);
 
     auto window = std::make_shared<GLFWWindow>(config);
@@ -86,7 +87,7 @@ int main(int argc, char** argv) {
     glm::vec3 initialPosition = camera.getPosition();
 
     QuadSet quadSet(remoteWindowSize);
-    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, quadsURL);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, videoURL, proxiesURL);
 
     // "Local" scene for visualization
     Scene localScene;

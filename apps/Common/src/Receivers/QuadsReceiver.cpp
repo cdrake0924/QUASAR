@@ -28,11 +28,12 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
     remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
-    threadPool = std::make_unique<BS::thread_pool<>>(5);
     frameInUse = std::make_shared<Frame>(quadSet.getSize());
     framePending = std::make_shared<Frame>(quadSet.getSize());
 
-    if (streamerURL.empty()) {
+    threadPool = std::make_unique<BS::thread_pool<>>(5); // 1 thread for color, 4 threads for proxies
+
+    if (!streamerURL.empty()) {
         spdlog::info("Created QuadsReceiver that recvs from URL: {}", streamerURL);
     }
 }
@@ -59,6 +60,7 @@ FrameType QuadsReceiver::recvData() {
         return FrameType::NONE;
     }
 
+    // Wait for a written to frame
     std::shared_ptr<Frame> frame;
     {
         std::unique_lock<std::mutex> lock(m);
@@ -70,6 +72,7 @@ FrameType QuadsReceiver::recvData() {
         frameInUse = frame;
     }
 
+    // Reset frame
     FrameType type = loadFromFrame(frame);
     {
         std::lock_guard<std::mutex> lock(m);

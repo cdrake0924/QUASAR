@@ -26,8 +26,8 @@ int main(int argc, char** argv) {
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::Flag loadFromDisk(parser, "load-from-disk", "Load data from disk", {'L', "load-from-disk"}, false);
     args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
-    args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "127.0.0.1:54321");
-    args::ValueFlag<std::string> quadsURLIn(parser, "quads", "Quads URL", {'e', "quads-url"}, "0.0.0.0:65432");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to recv camera pose", {'p', "pose-url"}, "127.0.0.1:54321");
+    args::ValueFlag<std::string> proxiesURLIn(parser, "quads", "Quads URL", {'e', "quads-url"}, "0.0.0.0:65432");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     config.enableVSync = !args::get(novsync);
 
     Path dataPath = Path(args::get(dataPathIn));
-    std::string quadsURL = !loadFromDisk ? args::get(quadsURLIn) : "";
+    std::string proxiesURL = !loadFromDisk ? args::get(proxiesURLIn) : "";
     std::string poseURL = !loadFromDisk ? args::get(poseURLIn) : "";
 
     auto window = std::make_shared<GLFWWindow>(config);
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
     QuadSet quadSet(windowSize);
-    QuadsReceiver quadsReceiver(quadSet, quadsURL);
+    QuadsReceiver quadsReceiver(quadSet, proxiesURL);
 
     PoseStreamer poseStreamer(&camera, poseURL);
 

@@ -6,6 +6,7 @@
 #include <Receivers/QuadsReceiver.h>
 #include <CameraPose.h>
 #include <Networking/DataStreamerTCP.h>
+#include <Streamers/VideoStreamer.h>
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 
@@ -37,7 +38,8 @@ public:
     DepthMesh depthMesh;
     Node depthNode;
 
-    std::string receiverURL;
+    std::string videoURL;
+    std::string proxiesURL;
 
     struct Stats {
         double totalRenderTime = 0.0;
@@ -57,8 +59,9 @@ public:
     QuadsStreamer(
         QuadSet& quadSet,
         DeferredRenderer& remoteRenderer, Scene& remoteScene,
-        const std::string& receiverURL = "");
-    ~QuadsStreamer() = default;
+        const std::string& videoURL = "",
+        const std::string& proxiesURL = "");
+    ~QuadsStreamer();
 
     uint getNumTriangles() const;
     std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return frameGenerator.getQuadsGenerator(); }
@@ -67,13 +70,13 @@ public:
 
     void generateFrame(
         DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
-        bool createResidualFrame, bool showNormals = false, bool showDepth = false);
+        bool createResidualFrame,
+        bool showNormals = false, bool showDepth = false);
     void sendProxies(pose_id_t poseID, const PerspectiveCamera& remoteCamera, bool createResidualFrame);
 
     size_t writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath);
     size_t writeToMemory(
-        pose_id_t poseID,
-        const PerspectiveCamera& remoteCamera,
+        pose_id_t poseID, const PerspectiveCamera& remoteCamera,
         bool isResidualFrame,
         std::vector<char>& outputData);
 
@@ -106,7 +109,7 @@ private:
 
     FrameRenderTarget referenceFrameNoTone;
     FrameRenderTarget residualFrameNoTone;
-    FrameRenderTarget atlasRT;
+    VideoStreamer atlasVideoStreamer;
 
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;

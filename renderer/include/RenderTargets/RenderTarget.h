@@ -75,25 +75,36 @@ public:
 
     void readPixels(unsigned char* data, bool readAsFloat = false) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.readPixels(data, readAsFloat);
         unbind();
     }
 
     void writeColorAsPNG(const std::string& path) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeToPNG(path);
         unbind();
     }
 
     void writeColorAsJPG(const std::string& path, int quality = 85) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeToJPG(path, quality);
         unbind();
     }
 
     void writeColorAsHDR(const std::string& path) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeToHDR(path);
+        unbind();
+    }
+
+    void writeColorJPGToMemory(std::vector<unsigned char>& outputData, int quality = 85) {
+        bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeJPGToMemory(outputData, quality);
         unbind();
     }
 };

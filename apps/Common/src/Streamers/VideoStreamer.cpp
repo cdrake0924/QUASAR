@@ -39,6 +39,10 @@ VideoStreamer::VideoStreamer(
     openglFrameData.resize(width * height * 4);
 #endif
 
+    if (videoURL.empty()) {
+        return;
+    }
+
     gst_init(nullptr, nullptr);
 
     auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
@@ -102,6 +106,10 @@ VideoStreamer::VideoStreamer(
 }
 
 VideoStreamer::~VideoStreamer() {
+    if (videoURL.empty()) {
+        return;
+    }
+
     stop();
 }
 

@@ -89,6 +89,17 @@ public:
     }
 
     void blit(RenderTarget& rt, GLenum filter = GL_NEAREST) {
+        blit(rt,
+             0, 0, width,  height,
+             0, 0, rt.width, rt.height,
+             filter);
+    }
+
+    void blit(RenderTarget& rt,
+              GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+              GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
+              GLenum filter = GL_NEAREST)
+    {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rt.getFramebufferID());
 
@@ -96,13 +107,13 @@ public:
         glReadBuffer(GL_COLOR_ATTACHMENT0);
         GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, drawBuffers);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, rt.width, rt.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
         // Depth and stencil
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, rt.width, rt.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

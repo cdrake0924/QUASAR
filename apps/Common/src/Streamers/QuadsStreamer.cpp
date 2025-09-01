@@ -4,10 +4,11 @@ using namespace quasar;
 
 QuadsStreamer::QuadsStreamer(
         QuadSet& quadSet,
-        DeferredRenderer& remoteRenderer,
-        Scene& remoteScene,
-        const std::string& receiverURL)
-    : receiverURL(receiverURL)
+        DeferredRenderer& remoteRenderer, Scene& remoteScene,
+        const std::string& videoURL,
+        const std::string& proxiesURL)
+    : videoURL(videoURL)
+    , proxiesURL(proxiesURL)
     , quadSet(quadSet)
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
@@ -67,23 +68,23 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , atlasRT({
+    , atlasVideoStreamer({
         .width = 2 * quadSet.getSize().x,
         .height = quadSet.getSize().y,
-        .internalFormat = GL_RGB8,
+        .internalFormat = GL_SRGB8,
         .format = GL_RGB,
         .type = GL_UNSIGNED_BYTE,
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
-        .minFilter = GL_NEAREST,
-        .magFilter = GL_NEAREST
-    })
+        .minFilter = GL_LINEAR,
+        .magFilter = GL_LINEAR,
+    }, videoURL)
     // We can use less vertices and indicies for the mask since it will be sparse
     , residualFrameMesh(quadSet, residualFrameNoTone.colorTexture, MAX_QUADS_PER_MESH / 4)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
-    , DataStreamerTCP(receiverURL)
+    , DataStreamerTCP(proxiesURL)
 {
     meshScenes.resize(2);
     referenceFrameMeshes.reserve(meshScenes.size());
@@ -122,9 +123,13 @@ QuadsStreamer::QuadsStreamer(
     depthNode.visible = false;
     depthNode.primitiveType = GL_POINTS;
 
-    if (!receiverURL.empty()) {
-        spdlog::info("Created QuadsStreamer that sends to URL: {}", receiverURL);
+    if (!videoURL.empty() && !proxiesURL.empty()) {
+        spdlog::info("Created QuadsStreamer that sends to URL: {}", proxiesURL);
     }
+}
+
+QuadsStreamer::~QuadsStreamer() {
+    atlasVideoStreamer.stop();
 }
 
 uint QuadsStreamer::getNumTriangles() const {
@@ -145,7 +150,8 @@ void QuadsStreamer::addMeshesToScene(Scene& localScene) {
 
 void QuadsStreamer::generateFrame(
     DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
-    bool createResidualFrame, bool showNormals, bool showDepth)
+    bool createResidualFrame,
+    bool showNormals, bool showDepth)
 {
     // Reset stats
     stats = { 0 };
@@ -257,14 +263,14 @@ void QuadsStreamer::generateFrame(
     residualFrameNodeLocal.visible = createResidualFrame;
 
     // Update atlas texture
-    referenceFrameRT.blit(atlasRT,
+    referenceFrameRT.blit(atlasVideoStreamer,
         0, 0, referenceFrameRT.width, referenceFrameRT.height,
         0, 0, referenceFrameRT.width, referenceFrameRT.height
     );
     if (createResidualFrame) {
-        residualFrameRT.blit(atlasRT,
+        residualFrameRT.blit(atlasVideoStreamer,
             0, 0, residualFrameRT.width, residualFrameRT.height,
-            referenceFrameRT.width, 0, atlasRT.width, atlasRT.height
+            referenceFrameRT.width, 0, atlasVideoStreamer.width, atlasVideoStreamer.height
         );
     }
 
@@ -289,7 +295,10 @@ void QuadsStreamer::generateFrame(
 }
 
 void QuadsStreamer::sendProxies(pose_id_t poseID, const PerspectiveCamera& remoteCamera, bool createResidualFrame) {
-    if (!receiverURL.empty()) {
+    if (!videoURL.empty() && !proxiesURL.empty()) {
+        // Send atlas frame
+        atlasVideoStreamer.sendFrame(poseID);
+        // Send proxies
         writeToMemory(poseID, remoteCamera, createResidualFrame, compressedData);
         send(compressedData);
     }
@@ -309,7 +318,7 @@ size_t QuadsStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const 
 
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    atlasRT.writeColorAsJPG(colorFileName);
+    atlasVideoStreamer.writeColorAsJPG(colorFileName);
 
     // Save proxies
     return referenceFrame.writeToFiles(outputPath) +
@@ -317,8 +326,7 @@ size_t QuadsStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const 
 }
 
 size_t QuadsStreamer::writeToMemory(
-    pose_id_t poseID,
-    const PerspectiveCamera& remoteCamera,
+    pose_id_t poseID, const PerspectiveCamera& remoteCamera,
     bool isResidualFrame,
     std::vector<char>& outputData)
 {
@@ -329,7 +337,7 @@ size_t QuadsStreamer::writeToMemory(
     cameraPose.writeToMemory(cameraData);
 
     // Save color data
-    atlasRT.writeColorJPGToMemory(colorData);
+    atlasVideoStreamer.writeColorJPGToMemory(colorData);
 
     // Save geometry data
     if (!isResidualFrame) {
