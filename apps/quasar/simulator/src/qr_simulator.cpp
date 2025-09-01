@@ -630,7 +630,7 @@ int main(int argc, char** argv) {
                 remoteRenderer, remoteRendererDP, sendResidualFrame,
                 showNormals, showDepth);
 
-            std::string frameType = sendReferenceFrame ? "referenceFrame" : "residualFrame";
+            std::string frameType = sendReferenceFrame ? "Reference Frame" : "Residual Frame";
             spdlog::info("======================================================");
             spdlog::info("Rendering Time ({}): {:.3f}ms", frameType, quasar.stats.totalRenderTime);
             spdlog::info("Create Proxies Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateProxiesTime);

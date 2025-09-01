@@ -18,7 +18,7 @@ namespace quasar {
 
 class VideoTexture : public Texture {
 public:
-    std::string videoURL = "127.0.0.1:12345";
+    std::string videoURL = "0.0.0.0:12345";
 
     struct Stats {
         double timeToReceiveMs = 0.0;
@@ -41,10 +41,15 @@ public:
     void resize(uint width, uint height);
     pose_id_t draw(pose_id_t poseID = -1);
 
+#ifdef __ANDROID__
+    // Registers Android JNI with GStreamer
+    static void gst_android_glue_init(ANativeActivity* activity);
+#endif
+
 private:
     pose_id_t prevPoseID = -1;
     uint64_t framesReceived = 0;
-    size_t maxQueueSize = 10;
+    size_t maxQueueSize = 3;
 
     std::string udpSrcName = "udpsrc0";
     std::string appSinkName = "appsink0";

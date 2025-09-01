@@ -639,7 +639,7 @@ int main(int argc, char** argv) {
 
             // Save to file if requested
             if (writeToFile) {
-                quadstream.writeToFile(outputPath);
+                quadstream.writeToFiles(outputPath);
             }
 
             preventCopyingLocalPose = false;

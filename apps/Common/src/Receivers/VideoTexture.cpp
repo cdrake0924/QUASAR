@@ -7,14 +7,50 @@ using namespace quasar;
 
 #ifdef __ANDROID__
 extern "C" {
-    GST_PLUGIN_STATIC_DECLARE(app);
+    static JavaVM* _java_vm;
+    static jobject _app_context;
+    static jobject _class_loader;
+
+    /* AMC plugin uses needs these defined */
+    JavaVM* gst_android_get_java_vm(void) { return _java_vm; }
+    jobject gst_android_get_application_context(void) { return _app_context; }
+    jobject gst_android_get_application_class_loader(void) { return _class_loader; }
+
     GST_PLUGIN_STATIC_DECLARE(coreelements);
-    GST_PLUGIN_STATIC_DECLARE(udp);
+    GST_PLUGIN_STATIC_DECLARE(app);
+    GST_PLUGIN_STATIC_DECLARE(videoconvertscale);
+    GST_PLUGIN_STATIC_DECLARE(videorate);
     GST_PLUGIN_STATIC_DECLARE(rtp);
     GST_PLUGIN_STATIC_DECLARE(rtpmanager);
-    GST_PLUGIN_STATIC_DECLARE(libav);
-    GST_PLUGIN_STATIC_DECLARE(videoconvertscale);
+    GST_PLUGIN_STATIC_DECLARE(udp);
     GST_PLUGIN_STATIC_DECLARE(playback);
+    GST_PLUGIN_STATIC_DECLARE(androidmedia);
+    GST_PLUGIN_STATIC_DECLARE(videoparsersbad);
+}
+
+void VideoTexture::gst_android_glue_init(ANativeActivity* activity) {
+    JNIEnv* env = nullptr;
+    activity->vm->AttachCurrentThread(&env, nullptr);
+
+    // Save VM
+    _java_vm = activity->vm;
+
+    // Application Context
+    jclass activityClass = env->GetObjectClass(activity->clazz);
+    jmethodID getAppContext = env->GetMethodID(activityClass, "getApplicationContext", "()Landroid/content/Context;");
+    jobject appContextLocal = env->CallObjectMethod(activity->clazz, getAppContext);
+    _app_context = env->NewGlobalRef(appContextLocal);
+    env->DeleteLocalRef(appContextLocal);
+
+    // ClassLoader from Context
+    jclass contextCls = env->GetObjectClass(_app_context);
+    jmethodID getCL = env->GetMethodID(contextCls, "getClassLoader", "()Ljava/lang/ClassLoader;");
+    jobject clLocal = env->CallObjectMethod(_app_context, getCL);
+    _class_loader = env->NewGlobalRef(clLocal);
+    env->DeleteLocalRef(clLocal);
+
+    env->DeleteLocalRef(contextCls);
+    env->DeleteLocalRef(activityClass);
 }
 #endif
 
@@ -30,28 +66,48 @@ VideoTexture::VideoTexture(
 
     gst_init(nullptr, nullptr);
 #ifdef __ANDROID__
-    GST_PLUGIN_STATIC_REGISTER(app);
     GST_PLUGIN_STATIC_REGISTER(coreelements);
-    GST_PLUGIN_STATIC_REGISTER(udp);
+    GST_PLUGIN_STATIC_REGISTER(app);
+    GST_PLUGIN_STATIC_REGISTER(videoconvertscale);
+    GST_PLUGIN_STATIC_REGISTER(videorate);
     GST_PLUGIN_STATIC_REGISTER(rtp);
     GST_PLUGIN_STATIC_REGISTER(rtpmanager);
-    GST_PLUGIN_STATIC_REGISTER(libav);
-    GST_PLUGIN_STATIC_REGISTER(videoconvertscale);
+    GST_PLUGIN_STATIC_REGISTER(udp);
     GST_PLUGIN_STATIC_REGISTER(playback);
+    GST_PLUGIN_STATIC_REGISTER(androidmedia);
+    GST_PLUGIN_STATIC_REGISTER(videoparsersbad);
 #endif
+
+    GstRegistry *registry = gst_registry_get();
+    GList *factories = gst_registry_get_feature_list(registry, GST_TYPE_ELEMENT_FACTORY);
+    std::ostringstream codecs;
+    for (GList *l = factories; l != nullptr; l = l->next) {
+        GstElementFactory *factory = GST_ELEMENT_FACTORY(l->data);
+        const gchar *klass = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
+        const gchar *name  = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
+        if (klass && g_strrstr(klass, "Decoder")) {
+            codecs << name << " ";
+        }
+    }
+    spdlog::debug("Available Decoders: {}", codecs.str());
+    gst_plugin_feature_list_free(factories);
 
     // Parse host and port
     auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
+#ifndef __ANDROID__
     std::string decoderName = "avdec_h264";
+#else
+    std::string decoderName = "decodebin"; // decodebin should automatically select a hardware decoder
+#endif
 
     std::ostringstream oss;
     oss << "udpsrc name=" << udpSrcName
         << " address=" << host << " port=" << port << " "
-        << "caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96\" ! "
-        << "rtpjitterbuffer latency=0 drop-on-latency=true ! "
-        << "rtph264depay ! " << decoderName << " ! "
-        << "videoconvert ! video/x-raw,format=RGB ! "
+        << "caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000\" ! "
+        << "rtpjitterbuffer latency=100 drop-on-latency=false ! "
+        << "rtph264depay ! h264parse config-interval=-1 ! "
+        << decoderName << " ! " << "videoconvert ! video/x-raw,format=RGB ! "
         << "appsink name=" << appSinkName << " sync=false max-buffers=1 drop=true";
     std::string pipelineStr = oss.str();
 
@@ -223,6 +279,7 @@ pose_id_t VideoTexture::draw(pose_id_t poseID) {
 
     glPixelStorei(GL_UNPACK_ROW_LENGTH, videoWidth);
     loadFromData(frameData.buffer.data(), false);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
     prevPoseID = frameData.poseID;
     return frameData.poseID;

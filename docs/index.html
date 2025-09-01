@@ -455,7 +455,7 @@ cd apps/meshwarp/streamer
     <p>In a new terminal, to run the receiver:</p>
     <pre><code># in build directory
 cd apps/meshwarp/receiver
-./mw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --depth-url 0.0.0.0:65432</code></pre>
+./mw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --depth-url 127.0.0.1:65432</code></pre>
 
     <p>Note: Replace <code>127.0.0.1</code> with the IP address of the machine running the streamer if you are running the receiver on a different machine.</p>
 
@@ -481,7 +481,7 @@ cd apps/quadwarp/streamer
     <p>In a new terminal, to run the receiver:</p>
     <pre><code># in build directory
 cd apps/quadwarp/receiver
-./quads_receiver --size 1920x1080</code></pre>
+./quads_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --proxies-url 127.0.0.1:65432</code></pre>
     <p>You can loads frames saved to disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
 
     <h3 id="quadstream">QuadStream</h3>

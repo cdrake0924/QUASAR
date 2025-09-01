@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<bool> displayIn(parser, "display", "Show window", {'d', "display"}, true);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
     args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to send video", {'c', "video-url"}, "127.0.0.1:12345");
-    args::ValueFlag<std::string> proxiesURLIn(parser, "proxies", "URL to send quad proxies", {'e', "proxies-url"}, "127.0.0.1:65432");
+    args::ValueFlag<std::string> proxiesURLIn(parser, "proxies", "URL to send quad proxy metadata", {'e', "proxies-url"}, "127.0.0.1:65432");
     args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to send camera pose", {'p', "pose-url"}, "0.0.0.0:54321");
     try {
         parser.ParseCLI(argc, argv);
@@ -296,9 +296,9 @@ int main(int argc, char** argv) {
                 quadwarp.generateFrame(remoteRenderer, remoteScene, camera, sendResidualFrame, showNormals, showDepth);
 
                 // Show previous mesh
-                quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
-                quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = true;
-                quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = false;
+                quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = true;
+                quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = false;
+                quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = true;
 
                 spdlog::info("======================================================");
                 spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
@@ -329,6 +329,7 @@ int main(int argc, char** argv) {
         }
 
         quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = showWireframe;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.prevMeshIndex].visible = false;
         quadwarp.residualFrameWireframesLocal.visible = quadwarp.residualFrameNodeLocal.visible && showWireframe;
         quadwarp.depthNode.visible = showDepth;
 

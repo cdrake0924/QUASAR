@@ -389,8 +389,8 @@ cd apps/meshwarp/streamer
 </code></pre>
     <p>Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
-cd apps/quads/streamer
-./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --remote-fov 90 --quads-url &lt;server's IP&gt;:65432
+cd apps/quadwarp/streamer
+./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url &lt;headset's IP&gt;:12345 --proxies-url &lt;server's IP&gt;:65432
 </code></pre>
 
     <h3 id="quadstream-viewer">QuadStreamViewer</h3>

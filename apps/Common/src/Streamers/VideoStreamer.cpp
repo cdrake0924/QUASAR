@@ -45,6 +45,20 @@ VideoStreamer::VideoStreamer(
 
     gst_init(nullptr, nullptr);
 
+    GstRegistry *registry = gst_registry_get();
+    GList *factories = gst_registry_get_feature_list(registry, GST_TYPE_ELEMENT_FACTORY);
+    std::ostringstream codecs;
+    for (GList *l = factories; l != nullptr; l = l->next) {
+        GstElementFactory *factory = GST_ELEMENT_FACTORY(l->data);
+        const gchar *klass = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
+        const gchar *name  = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
+        if (klass && g_strrstr(klass, "Encoder")) {
+            codecs << name << " ";
+        }
+    }
+    spdlog::debug("Available Encoders: {}", codecs.str());
+    gst_plugin_feature_list_free(factories);
+
     auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
     std::string encoderName;

@@ -189,7 +189,7 @@ void QuadStreamStreamer::generateFrame(
     }
 }
 
-size_t QuadStreamStreamer::writeToFile(const Path& outputPath) {
+size_t QuadStreamStreamer::writeToFiles(const Path& outputPath) {
     size_t totalOutputSize = 0;
     for (int view = 0; view < maxViews; view++) {
         // Save color
