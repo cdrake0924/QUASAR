@@ -7,11 +7,14 @@
 
 using namespace quasar;
 
-QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
+QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& videoURL, const std::string& proxiesURL)
     : quadSet(quadSet)
-    , streamerURL(streamerURL)
+    , videoURL(videoURL)
+    , proxiesURL(proxiesURL)
     , remoteCamera(quadSet.getSize())
-    , atlasTexture({
+    , atlasVideoTexture({
+        .width = 2 * quadSet.getSize().x,
+        .height = quadSet.getSize().y,
         .internalFormat = GL_RGB,
         .format = GL_RGB,
         .type = GL_UNSIGNED_BYTE,
@@ -19,11 +22,11 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
-    })
-    , referenceFrameMesh(quadSet, atlasTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
+    }, videoURL)
+    , referenceFrameMesh(quadSet, atlasVideoTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, atlasTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f), MAX_QUADS_PER_MESH / 4)
-    , DataReceiverTCP(streamerURL)
+    , residualFrameMesh(quadSet, atlasVideoTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f), MAX_QUADS_PER_MESH / 4)
+    , DataReceiverTCP(proxiesURL)
 {
     remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -31,24 +34,19 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL)
     frameInUse = std::make_shared<Frame>(quadSet.getSize());
     framePending = std::make_shared<Frame>(quadSet.getSize());
 
-    threadPool = std::make_unique<BS::thread_pool<>>(5); // 1 thread for color, 4 threads for proxies
+    threadPool = std::make_unique<BS::thread_pool<>>(4);
 
-    if (!streamerURL.empty()) {
-        spdlog::info("Created QuadsReceiver that recvs from URL: {}", streamerURL);
+    if (!proxiesURL.empty()) {
+        spdlog::info("Created QuadsReceiver that recvs from URL: {}", proxiesURL);
     }
 }
 
-QuadsReceiver::QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL)
-    : QuadsReceiver(quadSet, streamerURL)
+QuadsReceiver::QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& videoURL, const std::string& proxiesURL)
+    : QuadsReceiver(quadSet, videoURL, proxiesURL)
 {
     remoteCamera.setFovyDegrees(remoteFOV);
     remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
-}
-
-void QuadsReceiver::copyPoseToCamera(PerspectiveCamera& camera) {
-    camera.setProjectionMatrix(cameraPose.mono.proj);
-    camera.setViewMatrix(cameraPose.mono.view);
 }
 
 void QuadsReceiver::onDataReceived(const std::vector<char>& data) {
@@ -56,21 +54,31 @@ void QuadsReceiver::onDataReceived(const std::vector<char>& data) {
 }
 
 FrameType QuadsReceiver::recvData() {
-    if (streamerURL.empty()) {
+    if (proxiesURL.empty()) {
         return FrameType::NONE;
     }
 
-    // Wait for a written to frame
+    // Wait for a frame that has been written to
     std::shared_ptr<Frame> frame;
     {
         std::unique_lock<std::mutex> lock(m);
         if (!framePending) {
             return FrameType::NONE;
         }
+
+        pose_id_t videoPoseID = atlasVideoTexture.getLatestPoseID();
+        if (videoPoseID < framePending->poseID) { // video is behind, wait until video catches up
+            return FrameType::NONE;
+        }
+
         frame = framePending;
         framePending.reset();
         frameInUse = frame;
     }
+
+    // if video is ahead, draw will search for a previous frame
+    atlasVideoTexture.bind();
+    atlasVideoTexture.draw(frame->poseID);
 
     // Reset frame
     FrameType type = loadFromFrame(frame);
@@ -95,7 +103,6 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
     // Sanity check
     size_t expectedSize = sizeof(Header) +
                           header.cameraSize +
-                          header.colorSize +
                           header.geometrySize;
     if (inputData.size() < expectedSize) {
         throw std::runtime_error("Input data size " +
@@ -103,25 +110,6 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
                                   " is smaller than expected from header " +
                                   std::to_string(expectedSize));
     }
-
-    spdlog::debug("Loading camera size: {}", header.cameraSize);
-    spdlog::debug("Loading color size: {}", header.colorSize);
-    spdlog::debug("Loading geometry size: {}", header.geometrySize);
-
-    // Read camera data
-    cameraPose.loadFromMemory(ptr, header.cameraSize);
-    copyPoseToCamera(remoteCamera);
-    ptr += header.cameraSize;
-
-    // Read color data
-    colorData.resize(header.colorSize);
-    std::memcpy(colorData.data(), ptr, header.colorSize);
-    ptr += header.colorSize;
-
-    // Read geometry data
-    geometryData.resize(header.geometrySize);
-    std::memcpy(geometryData.data(), ptr, header.geometrySize);
-    ptr += header.geometrySize;
 
     // Wait for a free frame
     std::shared_ptr<Frame> frame;
@@ -131,19 +119,24 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
         frame = frameFree;
         frameFree.reset();
     }
+    frame->poseID = header.poseID;
     frame->frameType = header.frameType;
+
+    spdlog::debug("Loading camera size: {}", header.cameraSize);
+    spdlog::debug("Loading geometry size: {}", header.geometrySize);
+
+    // Read camera data
+    frame->cameraPose.loadFromMemory(ptr, header.cameraSize);
+    ptr += header.cameraSize;
+
+    // Read geometry data
+    geometryData.resize(header.geometrySize);
+    std::memcpy(geometryData.data(), ptr, header.geometrySize);
+    ptr += header.geometrySize;
 
     stats.timeToLoadMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     startTime = timeutils::getTimeMicros();
-
-    // Run JPG decompression (asynchronous)
-    auto colFuture = threadPool->submit_task([&]() mutable {
-        FileIO::flipVerticallyOnLoad(true);
-        int width, height, channels;
-        unsigned char* data = FileIO::loadImageFromMemory(colorData.data(), colorData.size(), &width, &height, &channels);
-        return std::make_tuple(data, width, height, channels);
-    });
 
     if (header.frameType == FrameType::REFERENCE) {
         referenceFrame.loadFromMemory(geometryData);
@@ -157,11 +150,6 @@ FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
 
         frame->decompressResidualFrame(threadPool, residualFrame);
     }
-
-    auto [colData, colWidth, colHeight, colChannels] = colFuture.get();
-    frame->width = colWidth;
-    frame->height = colHeight;
-    frame->colorData = colData;
 
     stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
@@ -182,12 +170,12 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
 
     // Read camera data
     Path cameraFileNamePrev = dataPath / "camera_prev.bin";
-    cameraPose.loadFromFile(cameraFileNamePrev);
-    copyPoseToCamera(remoteCamera);
+    frameInUse->cameraPose.loadFromFile(cameraFileNamePrev);
+    frameInUse->cameraPose.copyPoseToCamera(remoteCamera);
 
     // Read color data
     Path colorFileName = dataPath / "color.jpg";
-    atlasTexture.loadFromFile(colorFileName, true, false);
+    atlasVideoTexture.loadFromFile(colorFileName, true, false);
 
     // Load reference frame
     referenceFrame.loadFromFiles(dataPath);
@@ -197,14 +185,14 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     frameInUse->decompressReferenceFrame(threadPool, referenceFrame);
 
     // Update GPU buffers
-    updateGeometry(frameInUse);
+    loadFromFrame(frameInUse);
 
     startTime = timeutils::getTimeMicros();
 
     // Read previous camera data
     Path cameraFileName = dataPath / "camera.bin";
-    cameraPose.loadFromFile(cameraFileName);
-    copyPoseToCamera(remoteCamera);
+    frameInUse->cameraPose.loadFromFile(cameraFileName);
+    frameInUse->cameraPose.copyPoseToCamera(remoteCamera);
 
     // Load residual frame
     residualFrame.loadFromFiles(dataPath);
@@ -214,21 +202,15 @@ FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     frameInUse->decompressResidualFrame(threadPool, residualFrame);
 
     // Update GPU buffers
-    updateGeometry(frameInUse);
+    loadFromFrame(frameInUse);
 
     return frameInUse->frameType;
 }
 
 FrameType QuadsReceiver::loadFromFrame(std::shared_ptr<Frame> frame) {
-    atlasTexture.resize(frame->width, frame->height);
-    atlasTexture.loadFromData(frame->colorData);
-
-    updateGeometry(frame);
     spdlog::debug("Reconstructing {} Frame...", frame->frameType == FrameType::REFERENCE ? "Reference" : "Residual");
-    return frame->frameType;
-}
+    frame->cameraPose.copyPoseToCamera(remoteCamera);
 
-void QuadsReceiver::updateGeometry(std::shared_ptr<Frame> frame) {
     const glm::vec2& gBufferSize = quadSet.getSize();
     if (frame->frameType == FrameType::REFERENCE) {
         // Transfer updated proxies to GPU for reconstruction
@@ -283,4 +265,6 @@ void QuadsReceiver::updateGeometry(std::shared_ptr<Frame> frame) {
         stats.totalTriangles += resMeshBufferSizes.numIndices / 3;
         stats.sizes += sizesUpdated + sizesRevealed;
     }
+
+    return frame->frameType;
 }

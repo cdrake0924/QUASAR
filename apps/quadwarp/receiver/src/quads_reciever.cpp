@@ -26,8 +26,9 @@ int main(int argc, char** argv) {
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::Flag loadFromDisk(parser, "load-from-disk", "Load data from disk", {'L', "load-from-disk"}, false);
     args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
-    args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to recv camera pose", {'p', "pose-url"}, "127.0.0.1:54321");
+    args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to recv video", {'c', "video-url"}, "0.0.0.0:12345");
     args::ValueFlag<std::string> proxiesURLIn(parser, "quads", "Quads URL", {'e', "quads-url"}, "0.0.0.0:65432");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to recv camera pose", {'p', "pose-url"}, "127.0.0.1:54321");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -51,6 +52,7 @@ int main(int argc, char** argv) {
     config.enableVSync = !args::get(novsync);
 
     Path dataPath = Path(args::get(dataPathIn));
+    std::string videoURL = !loadFromDisk ? args::get(videoURLIn) : "";
     std::string proxiesURL = !loadFromDisk ? args::get(proxiesURLIn) : "";
     std::string poseURL = !loadFromDisk ? args::get(poseURLIn) : "";
 
@@ -82,7 +84,7 @@ int main(int argc, char** argv) {
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
     QuadSet quadSet(windowSize);
-    QuadsReceiver quadsReceiver(quadSet, proxiesURL);
+    QuadsReceiver quadsReceiver(quadSet, videoURL, proxiesURL);
 
     PoseStreamer poseStreamer(&camera, poseURL);
 
@@ -254,7 +256,7 @@ int main(int argc, char** argv) {
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("texture", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadsReceiver.atlasTexture),
+            ImGui::Image((void*)(intptr_t)(quadsReceiver.atlasVideoTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
@@ -311,7 +313,8 @@ int main(int argc, char** argv) {
         camera.processScroll(scroll.y);
 
         // Send pose to streamer
-        poseStreamer.sendPose();
+        pose_id_t currPoseID = poseStreamer.sendPose();
+        poseStreamer.removePosesLessThan(currPoseID);
 
         FrameType frameType = quadsReceiver.recvData();
         if (frameType != FrameType::NONE) {

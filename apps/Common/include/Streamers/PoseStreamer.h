@@ -76,9 +76,9 @@ public:
         }
     }
 
-    bool sendPose() {
+    pose_id_t sendPose() {
         if (timeutils::getTimeMicros() - lastSendTime < MICROSECONDS_IN_SECOND / rate) {
-            return false;
+            return -1;
         }
         lastSendTime = timeutils::getTimeMicros();
 
@@ -108,8 +108,7 @@ public:
         currPoseID++;
 
         prevPose = currPose;
-
-        return true;
+        return currPose.id;
     }
 
 private:

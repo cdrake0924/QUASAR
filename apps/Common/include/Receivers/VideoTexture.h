@@ -28,9 +28,7 @@ public:
 
     uint videoWidth, videoHeight;
 
-    VideoTexture(
-        const TextureDataCreateParams& params,
-        const std::string& videoURL);
+    VideoTexture(const TextureDataCreateParams& params, const std::string& videoURL);
     ~VideoTexture();
 
     void stop();

@@ -2,8 +2,11 @@
 #define CAMERA_POSE_H
 
 #include <glm/glm.hpp>
+
 #include <Path.h>
 #include <Utils/FileIO.h>
+#include <Cameras/PerspectiveCamera.h>
+#include <Cameras/VRCamera.h>
 
 namespace quasar {
 
@@ -48,6 +51,28 @@ struct Pose {
     void setProjectionMatrices(const glm::mat4 (&projs)[2]) {
         stereo.projL = projs[0];
         stereo.projR = projs[1];
+    }
+
+    void copyPoseToCamera(PerspectiveCamera& camera) {
+        camera.setProjectionMatrix(mono.proj);
+        camera.setViewMatrix(mono.view);
+    }
+
+    void copyPoseToCamera(VRCamera& camera) {
+        camera.setProjectionMatrices({ stereo.projL, stereo.projR });
+        camera.setViewMatrices({ stereo.viewL, stereo.viewR });
+    }
+
+    void copyPoseFromCamera(const PerspectiveCamera& camera) {
+        mono.proj = camera.getProjectionMatrix();
+        mono.view = camera.getViewMatrix();
+    }
+
+    void copyPoseFromCamera(const VRCamera& camera) {
+        stereo.projL = camera.left.getProjectionMatrix();
+        stereo.viewL = camera.left.getViewMatrix();
+        stereo.projR = camera.right.getProjectionMatrix();
+        stereo.viewR = camera.right.getViewMatrix();
     }
 
     size_t writeToFile(const Path& outputPath) const {

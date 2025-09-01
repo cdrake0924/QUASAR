@@ -102,7 +102,7 @@ VideoStreamer::VideoStreamer(
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     videoStreamerThread = std::thread(&VideoStreamer::encodeAndSendFrames, this);
-    spdlog::info("Created VideoStreamer (GStreamer) that sends to: {}", videoURL);
+    spdlog::info("Created VideoStreamer (GStreamer) that sends to URL: {}", videoURL);
 }
 
 VideoStreamer::~VideoStreamer() {

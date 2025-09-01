@@ -10,6 +10,7 @@
 #include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 #include <Networking/DataReceiverTCP.h>
+#include <Receivers/VideoTexture.h>
 
 namespace quasar {
 
@@ -19,7 +20,6 @@ public:
         pose_id_t poseID;
         FrameType frameType;
         uint32_t cameraSize;
-        uint32_t colorSize;
         uint32_t geometrySize;
     };
 
@@ -32,20 +32,21 @@ public:
         QuadSet::Sizes sizes{};
     } stats;
 
-    std::string streamerURL;
+    std::string proxiesURL;
+    std::string videoURL;
 
-    Texture atlasTexture;
+    VideoTexture atlasVideoTexture;
 
-    QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL = "");
-    QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& streamerURL = "");
+    QuadsReceiver(QuadSet& quadSet, const std::string& videoURL = "", const std::string& proxiesURL = "");
+    QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& videoURL = "", const std::string& proxiesURL = "");
     ~QuadsReceiver() = default;
 
     QuadMesh& getReferenceMesh() { return referenceFrameMesh; }
     QuadMesh& getResidualMesh() { return residualFrameMesh; }
     PerspectiveCamera& getRemoteCamera() { return remoteCamera; }
     PerspectiveCamera& getRemoteCameraPrev() { return remoteCameraPrev; }
+    void copyPoseToCamera(PerspectiveCamera& camera) { frameInUse->cameraPose.copyPoseToCamera(camera); }
 
-    void copyPoseToCamera(PerspectiveCamera& camera);
     FrameType loadFromFiles(const Path& dataPath);
     FrameType loadFromMemory(const std::vector<char>& data);
 
@@ -55,25 +56,20 @@ private:
     QuadSet& quadSet;
     PerspectiveCamera remoteCamera;
     PerspectiveCamera remoteCameraPrev;
-    Pose cameraPose;
 
     QuadMesh referenceFrameMesh;
     QuadMesh residualFrameMesh;
 
     struct Frame {
+        pose_id_t poseID;
         FrameType frameType;
-        int width;
-        int height;
-        unsigned char* colorData;
+
+        Pose cameraPose;
 
         std::vector<char> uncompressedQuads, uncompressedOffsets;
         std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
-        Frame(const glm::vec2& gBufferSize)
-            : frameType(FrameType::NONE)
-            , width(0)
-            , height(0)
-            , colorData(nullptr)
+        Frame(const glm::vec2& gBufferSize) : frameType(FrameType::NONE)
         {
             const size_t quadsBytes = sizeof(uint) + MAX_QUADS_PER_MESH * sizeof(QuadMapDataPacked);
             const size_t offsetsBytes = static_cast<size_t>(gBufferSize.x) * static_cast<size_t>(gBufferSize.y) * 4u * sizeof(uint16_t);
@@ -84,9 +80,7 @@ private:
             uncompressedQuadsRevealed.resize(quadsBytes / 4);
             uncompressedOffsetsRevealed.resize(offsetsBytes);
         }
-        ~Frame() {
-            FileIO::freeImage(colorData);
-        }
+        ~Frame() = default;
 
         void decompressReferenceFrame(std::unique_ptr<BS::thread_pool<>>& threadPool, ReferenceFrame& referenceFrame) {
             // Decompress proxies (asynchronous)
@@ -129,13 +123,10 @@ private:
 
     std::unique_ptr<BS::thread_pool<>> threadPool;
 
-    std::vector<unsigned char> colorData;
     std::vector<char> geometryData;
 
-    FrameType loadFromFrame(std::shared_ptr<Frame> frame);
-
     void onDataReceived(const std::vector<char>& data) override;
-    void updateGeometry(std::shared_ptr<Frame> frame);
+    FrameType loadFromFrame(std::shared_ptr<Frame> frame);
 };
 
 } // namespace quasar

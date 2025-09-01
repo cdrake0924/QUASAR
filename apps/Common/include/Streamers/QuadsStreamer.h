@@ -109,13 +109,12 @@ private:
 
     FrameRenderTarget referenceFrameNoTone;
     FrameRenderTarget residualFrameNoTone;
-    VideoStreamer atlasVideoStreamer;
+    VideoStreamer atlasVideoStreamerRT;
 
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;
 
     std::vector<char> compressedData;
-    std::vector<unsigned char> colorData;
     std::vector<char> geometryData;
 
     ToneMapper toneMapper;

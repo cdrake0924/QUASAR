@@ -24,6 +24,10 @@ VideoTexture::VideoTexture(
     : videoURL(videoURL)
     , Texture(params)
 {
+    if (videoURL.empty()) {
+        return;
+    }
+
     gst_init(nullptr, nullptr);
 #ifdef __ANDROID__
     GST_PLUGIN_STATIC_REGISTER(app);
@@ -203,8 +207,9 @@ pose_id_t VideoTexture::unpackPoseIDFromFrame(const uint8_t* data, int width, in
 
 pose_id_t VideoTexture::draw(pose_id_t poseID) {
     std::lock_guard<std::mutex> lock(m);
-    if (!videoReady || frames.empty())
+    if (!videoReady || frames.empty()) {
         return -1;
+    }
 
     FrameData& frameData = frames.back();
     if (poseID != -1) {
@@ -217,7 +222,7 @@ pose_id_t VideoTexture::draw(pose_id_t poseID) {
     }
 
     glPixelStorei(GL_UNPACK_ROW_LENGTH, videoWidth);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, frameData.buffer.data());
+    loadFromData(frameData.buffer.data(), false);
 
     prevPoseID = frameData.poseID;
     return frameData.poseID;

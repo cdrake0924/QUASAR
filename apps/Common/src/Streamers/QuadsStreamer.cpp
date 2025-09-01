@@ -68,7 +68,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , atlasVideoStreamer({
+    , atlasVideoStreamerRT({
         .width = 2 * quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_SRGB8,
@@ -76,8 +76,8 @@ QuadsStreamer::QuadsStreamer(
         .type = GL_UNSIGNED_BYTE,
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
-        .minFilter = GL_LINEAR,
-        .magFilter = GL_LINEAR,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
     }, videoURL)
     // We can use less vertices and indicies for the mask since it will be sparse
     , residualFrameMesh(quadSet, residualFrameNoTone.colorTexture, MAX_QUADS_PER_MESH / 4)
@@ -129,7 +129,7 @@ QuadsStreamer::QuadsStreamer(
 }
 
 QuadsStreamer::~QuadsStreamer() {
-    atlasVideoStreamer.stop();
+    atlasVideoStreamerRT.stop();
 }
 
 uint QuadsStreamer::getNumTriangles() const {
@@ -263,14 +263,14 @@ void QuadsStreamer::generateFrame(
     residualFrameNodeLocal.visible = createResidualFrame;
 
     // Update atlas texture
-    referenceFrameRT.blit(atlasVideoStreamer,
+    referenceFrameRT.blit(atlasVideoStreamerRT,
         0, 0, referenceFrameRT.width, referenceFrameRT.height,
         0, 0, referenceFrameRT.width, referenceFrameRT.height
     );
     if (createResidualFrame) {
-        residualFrameRT.blit(atlasVideoStreamer,
+        residualFrameRT.blit(atlasVideoStreamerRT,
             0, 0, residualFrameRT.width, residualFrameRT.height,
-            referenceFrameRT.width, 0, atlasVideoStreamer.width, atlasVideoStreamer.height
+            referenceFrameRT.width, 0, atlasVideoStreamerRT.width, atlasVideoStreamerRT.height
         );
     }
 
@@ -291,13 +291,15 @@ void QuadsStreamer::generateFrame(
         stats.totalSizes.numDepthOffsets += residualFrame.getTotalNumDepthOffsets();
         stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
         stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
+        spdlog::info("Residual frame generated with {} quads ({} revealed), {} depth offsets",
+            residualFrame.getTotalNumQuads(), residualFrame.getTotalNumQuads(), residualFrame.getTotalNumDepthOffsets());
     }
 }
 
 void QuadsStreamer::sendProxies(pose_id_t poseID, const PerspectiveCamera& remoteCamera, bool createResidualFrame) {
     if (!videoURL.empty() && !proxiesURL.empty()) {
         // Send atlas frame
-        atlasVideoStreamer.sendFrame(poseID);
+        atlasVideoStreamerRT.sendFrame(poseID);
         // Send proxies
         writeToMemory(poseID, remoteCamera, createResidualFrame, compressedData);
         send(compressedData);
@@ -318,7 +320,7 @@ size_t QuadsStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const 
 
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    atlasVideoStreamer.writeColorAsJPG(colorFileName);
+    atlasVideoStreamerRT.writeColorAsJPG(colorFileName);
 
     // Save proxies
     return referenceFrame.writeToFiles(outputPath) +
@@ -336,9 +338,6 @@ size_t QuadsStreamer::writeToMemory(
     cameraPose.setViewMatrix(remoteCamera.getViewMatrix());
     cameraPose.writeToMemory(cameraData);
 
-    // Save color data
-    atlasVideoStreamer.writeColorJPGToMemory(colorData);
-
     // Save geometry data
     if (!isResidualFrame) {
         referenceFrame.writeToMemory(geometryData);
@@ -351,15 +350,13 @@ size_t QuadsStreamer::writeToMemory(
         .poseID = poseID,
         .frameType = !isResidualFrame ? FrameType::REFERENCE : FrameType::RESIDUAL,
         .cameraSize = static_cast<uint32_t>(cameraData.size()),
-        .colorSize = static_cast<uint32_t>(colorData.size()),
         .geometrySize = static_cast<uint32_t>(geometryData.size())
     };
 
     spdlog::debug("Writing camera size: {}", header.cameraSize);
-    spdlog::debug("Writing color size: {}", header.colorSize);
     spdlog::debug("Writing geometry size: {}", header.geometrySize);
 
-    outputData.resize(sizeof(header) + cameraData.size() + colorData.size() + geometryData.size());
+    outputData.resize(sizeof(header) + cameraData.size() + geometryData.size());
 
     char* ptr = outputData.data();
     // Write header
@@ -368,9 +365,6 @@ size_t QuadsStreamer::writeToMemory(
     // Write camera data
     std::memcpy(ptr, cameraData.data(), cameraData.size());
     ptr += cameraData.size();
-    // Write atlas color data
-    std::memcpy(ptr, colorData.data(), colorData.size());
-    ptr += colorData.size();
     // Write geometry data
     std::memcpy(ptr, geometryData.data(), geometryData.size());
     ptr += geometryData.size();

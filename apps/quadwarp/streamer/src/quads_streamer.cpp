@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<bool> displayIn(parser, "display", "Show window", {'d', "display"}, true);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
-    args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to recv video", {'c', "video-url"}, "127.0.0.1:12345");
+    args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to send video", {'c', "video-url"}, "127.0.0.1:12345");
     args::ValueFlag<std::string> proxiesURLIn(parser, "proxies", "URL to send quad proxies", {'e', "proxies-url"}, "127.0.0.1:65432");
     args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to send camera pose", {'p', "pose-url"}, "0.0.0.0:54321");
     try {
@@ -106,8 +106,8 @@ int main(int argc, char** argv) {
     bool sendResidualFrame = false;
     int refFrameInterval = 2;
 
-    const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
-    const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
+    const int serverFPSValues[] = {0, 1, 2, 3, 4, 5};
+    const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "2 FPS", "3 FPS", "4 FPS", "5 FPS"};
     int serverFPSIndex = 1; // default to 1 FPS
     double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
 
@@ -313,7 +313,7 @@ int main(int argc, char** argv) {
                 spdlog::info("Compress Time: {:.3f}ms", quadwarp.stats.totalCompressTime);
                 if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadwarp.stats.totalGenDepthTime);
                 spdlog::info("Frame Size: {:.3f}MB", (quadwarp.stats.totalSizes.quadsSize +
-                                                    quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
+                                                      quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
                 spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
 
                 // Restore camera position
