@@ -77,14 +77,14 @@ size_t BC4DepthStreamer::compress(bool compress) {
     bc4CompressionShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     if (compress) {
-        copyToCPU();
+        writeToMemory();
         return applyCodec();
     }
 
     return 0;
 }
 
-void BC4DepthStreamer::copyToCPU(pose_id_t poseID, void* cudaPtr) {
+void BC4DepthStreamer::writeToMemory(pose_id_t poseID, void* cudaPtr) {
     std::memcpy(data.data(), &poseID, sizeof(pose_id_t));
 
 #if defined(HAS_CUDA)
@@ -174,7 +174,7 @@ void BC4DepthStreamer::sendData() {
         time_t starttimeToTransferMs = timeutils::getTimeMicros();
 
         std::memcpy(data.data(), &cudaBufferStruct.poseID, sizeof(pose_id_t));
-        copyToCPU(cudaBufferStruct.poseID, cudaBufferStruct.buffer);
+        writeToMemory(cudaBufferStruct.poseID, cudaBufferStruct.buffer);
 
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - starttimeToTransferMs);
 

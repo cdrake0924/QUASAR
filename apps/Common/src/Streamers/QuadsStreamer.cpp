@@ -288,9 +288,9 @@ void QuadsStreamer::generateFrame(
     }
 }
 
-void QuadsStreamer::sendProxies(const PerspectiveCamera& remoteCamera, bool createResidualFrame) {
+void QuadsStreamer::sendProxies(pose_id_t poseID, const PerspectiveCamera& remoteCamera, bool createResidualFrame) {
     if (!receiverURL.empty()) {
-        writeToMemory(remoteCamera, createResidualFrame, compressedData);
+        writeToMemory(poseID, remoteCamera, createResidualFrame, compressedData);
         send(compressedData);
     }
 }
@@ -316,7 +316,12 @@ size_t QuadsStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const 
            residualFrame.writeToFiles(outputPath);
 }
 
-size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool isResidualFrame, std::vector<char>& outputData) {
+size_t QuadsStreamer::writeToMemory(
+    pose_id_t poseID,
+    const PerspectiveCamera& remoteCamera,
+    bool isResidualFrame,
+    std::vector<char>& outputData)
+{
     // Save camera data
     std::vector<char> cameraData;
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
@@ -324,11 +329,9 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     cameraPose.writeToMemory(cameraData);
 
     // Save color data
-    std::vector<unsigned char> colorData;
     atlasRT.writeColorJPGToMemory(colorData);
 
     // Save geometry data
-    std::vector<char> geometryData;
     if (!isResidualFrame) {
         referenceFrame.writeToMemory(geometryData);
     }
@@ -337,6 +340,7 @@ size_t QuadsStreamer::writeToMemory(const PerspectiveCamera& remoteCamera, bool 
     }
 
     QuadsReceiver::Header header{
+        .poseID = poseID,
         .frameType = !isResidualFrame ? FrameType::REFERENCE : FrameType::RESIDUAL,
         .cameraSize = static_cast<uint32_t>(cameraData.size()),
         .colorSize = static_cast<uint32_t>(colorData.size()),

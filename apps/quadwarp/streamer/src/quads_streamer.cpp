@@ -319,7 +319,7 @@ int main(int argc, char** argv) {
                 camera.setPosition(camera.getPosition() - initialPosition);
                 camera.updateViewMatrix();
 
-                quadwarp.sendProxies(camera, sendResidualFrame);
+                quadwarp.sendProxies(poseID, camera, sendResidualFrame);
 
                 sendReferenceFrame = false;
                 sendResidualFrame = false;

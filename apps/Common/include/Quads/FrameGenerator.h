@@ -58,7 +58,6 @@ private:
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;
-    std::vector<char> uncompressedQuadsUpdated, uncompressedOffsetsUpdated;
     std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 };
 

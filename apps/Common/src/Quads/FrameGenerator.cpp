@@ -32,7 +32,7 @@ void FrameGenerator::createReferenceFrame(
     stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer updated proxies to CPU for compression
-    auto sizes = quadSet.copyToCPU(uncompressedQuads, uncompressedOffsets);
+    auto sizes = quadSet.writeToMemory(uncompressedQuads, uncompressedOffsets);
     referenceFrame.numQuads = sizes.numQuads;
     referenceFrame.numDepthOffsets = sizes.numDepthOffsets;
     stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
@@ -140,17 +140,17 @@ void FrameGenerator::createResidualFrame(
     stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer updated proxies to CPU for compression
-    auto sizesUpdated = quadSet.copyToCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated);
+    auto sizesUpdated = quadSet.writeToMemory(uncompressedQuads, uncompressedOffsets);
     residualFrame.numQuadsUpdated = sizesUpdated.numQuads;
     residualFrame.numDepthOffsetsUpdated = sizesUpdated.numDepthOffsets;
     stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
 
     // Compress updated proxies (asynchronous)
     auto offsetsUpdatedFuture = threadPool->submit_task([&]() {
-        return residualFrame.compressAndStoreUpdatedDepthOffsets(uncompressedOffsetsUpdated);
+        return residualFrame.compressAndStoreUpdatedDepthOffsets(uncompressedOffsets);
     });
     auto quadsUpdatedFuture = threadPool->submit_task([&]() {
-        return residualFrame.compressAndStoreUpdatedQuads(uncompressedQuadsUpdated);
+        return residualFrame.compressAndStoreUpdatedQuads(uncompressedQuads);
     });
 
     // Using GPU buffers, update reference frame mesh using proxies
@@ -172,7 +172,7 @@ void FrameGenerator::createResidualFrame(
     stats.timeToCreateQuadsMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer revealed proxies to CPU for compression
-    auto sizesRevealed = quadSet.copyToCPU(uncompressedQuadsRevealed, uncompressedOffsetsRevealed);
+    auto sizesRevealed = quadSet.writeToMemory(uncompressedQuadsRevealed, uncompressedOffsetsRevealed);
     residualFrame.numQuadsRevealed = sizesRevealed.numQuads;
     residualFrame.numDepthOffsetsRevealed = sizesRevealed.numDepthOffsets;
     stats.timeToTransferMs += quadSet.stats.timeToTransferMs;

@@ -44,9 +44,9 @@ public:
     void resize(size_t newNumProxies);
 
 #ifdef GL_CORE
-    size_t copyToCPU(std::vector<char>& outputData);
+    size_t writeToMemory(std::vector<char>& outputData);
 #endif
-    size_t copyFromCPU(const std::vector<char>& inputData);
+    size_t loadFromMemory(const std::vector<char>& inputData);
 
 private:
 #if defined(HAS_CUDA)

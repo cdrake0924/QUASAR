@@ -66,14 +66,14 @@ public:
         quadBuffers.resize(numProxies);
     }
 
-    Sizes copyToCPU(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
+    Sizes writeToMemory(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
 #ifdef GL_CORE
         double startTime = timeutils::getTimeMicros();
-        quadBuffers.copyToCPU(outputQuads);
-        depthOffsets.copyToCPU(outputDepthOffsets);
+        quadBuffers.writeToMemory(outputQuads);
+        depthOffsets.writeToMemory(outputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 #else
-        spdlog::error("QuadSet::copyToCPU is only supported in OpenGL Core");
+        spdlog::error("QuadSet::writeToMemory is only supported in OpenGL Core");
 #endif
 
         return {
@@ -84,10 +84,10 @@ public:
         };
     }
 
-    Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
+    Sizes loadFromMemory(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
         double startTime = timeutils::getTimeMicros();
-        auto quadsSize = quadBuffers.copyFromCPU(inputQuads);
-        depthOffsets.copyFromCPU(inputDepthOffsets);
+        auto quadsSize = quadBuffers.loadFromMemory(inputQuads);
+        depthOffsets.loadFromMemory(inputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         return {

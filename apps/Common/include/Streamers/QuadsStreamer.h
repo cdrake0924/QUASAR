@@ -68,10 +68,14 @@ public:
     void generateFrame(
         DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
         bool createResidualFrame, bool showNormals = false, bool showDepth = false);
-    void sendProxies(const PerspectiveCamera& remoteCamera, bool createResidualFrame);
+    void sendProxies(pose_id_t poseID, const PerspectiveCamera& remoteCamera, bool createResidualFrame);
 
     size_t writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath);
-    size_t writeToMemory(const PerspectiveCamera& remoteCamera, bool isResidualFrame, std::vector<char>& outputData);
+    size_t writeToMemory(
+        pose_id_t poseID,
+        const PerspectiveCamera& remoteCamera,
+        bool isResidualFrame,
+        std::vector<char>& outputData);
 
 private:
     const std::vector<glm::vec4> colors = {
@@ -108,6 +112,8 @@ private:
     QuadMaterial maskWireframeMaterial;
 
     std::vector<char> compressedData;
+    std::vector<unsigned char> colorData;
+    std::vector<char> geometryData;
 
     ToneMapper toneMapper;
     ShowNormalsEffect showNormalsEffect;

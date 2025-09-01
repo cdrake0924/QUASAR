@@ -1,7 +1,7 @@
 #ifndef QUADS_RECEIVER_H
 #define QUADS_RECEIVER_H
 
-#include <deque>
+#include <array>
 
 #include <BS_thread_pool/BS_thread_pool.hpp>
 
@@ -16,6 +16,7 @@ namespace quasar {
 class QuadsReceiver : public DataReceiverTCP {
 public:
     struct Header {
+        pose_id_t poseID;
         FrameType frameType;
         uint32_t cameraSize;
         uint32_t colorSize;
@@ -33,9 +34,6 @@ public:
 
     std::string streamerURL;
 
-    ReferenceFrame referenceFrame;
-    ResidualFrame residualFrame;
-
     Texture atlasTexture;
 
     QuadsReceiver(QuadSet& quadSet, const std::string& streamerURL = "");
@@ -48,11 +46,8 @@ public:
     PerspectiveCamera& getRemoteCameraPrev() { return remoteCameraPrev; }
 
     void copyPoseToCamera(PerspectiveCamera& camera);
-
-    void onDataReceived(const std::vector<char>& data) override;
-
     FrameType loadFromFiles(const Path& dataPath);
-    FrameType loadFromMemory(const std::vector<char>& inputData);
+    FrameType loadFromMemory(const std::vector<char>& data);
 
     FrameType recvData();
 
@@ -65,18 +60,82 @@ private:
     QuadMesh referenceFrameMesh;
     QuadMesh residualFrameMesh;
 
-    std::unique_ptr<BS::thread_pool<>> threadPool;
+    struct Frame {
+        FrameType frameType;
+        int width;
+        int height;
+        unsigned char* colorData;
+
+        std::vector<char> uncompressedQuads, uncompressedOffsets;
+        std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
+
+        Frame(const glm::vec2& gBufferSize)
+            : frameType(FrameType::NONE)
+            , width(0)
+            , height(0)
+            , colorData(nullptr)
+        {
+            const size_t quadsBytes = sizeof(uint) + MAX_QUADS_PER_MESH * sizeof(QuadMapDataPacked);
+            const size_t offsetsBytes = static_cast<size_t>(gBufferSize.x) * static_cast<size_t>(gBufferSize.y) * 4u * sizeof(uint16_t);
+
+            uncompressedQuads.resize(quadsBytes);
+            uncompressedOffsets.resize(offsetsBytes);
+
+            uncompressedQuadsRevealed.resize(quadsBytes / 4);
+            uncompressedOffsetsRevealed.resize(offsetsBytes);
+        }
+        ~Frame() {
+            FileIO::freeImage(colorData);
+        }
+
+        void decompressReferenceFrame(std::unique_ptr<BS::thread_pool<>>& threadPool, ReferenceFrame& referenceFrame) {
+            // Decompress proxies (asynchronous)
+            auto offsetsFuture = threadPool->submit_task([&]() {
+                return referenceFrame.decompressDepthOffsets(uncompressedOffsets);
+            });
+            auto quadsFuture = threadPool->submit_task([&]() {
+                return referenceFrame.decompressQuads(uncompressedQuads);
+            });
+            quadsFuture.get(); offsetsFuture.get();
+        }
+
+        void decompressResidualFrame(std::unique_ptr<BS::thread_pool<>>& threadPool, ResidualFrame& residualFrame) {
+            // Decompress proxies (asynchronous)
+            auto offsetsUpdatedFuture = threadPool->submit_task([&]() {
+                return residualFrame.decompressUpdatedDepthOffsets(uncompressedOffsets);
+            });
+            auto offsetsRevealedFuture = threadPool->submit_task([&]() {
+                return residualFrame.decompressRevealedDepthOffsets(uncompressedOffsetsRevealed);
+            });
+            auto quadsUpdatedFuture = threadPool->submit_task([&]() {
+                return residualFrame.decompressUpdatedQuads(uncompressedQuads);
+            });
+            auto quadsRevealedFuture = threadPool->submit_task([&]() {
+                return residualFrame.decompressRevealedQuads(uncompressedQuadsRevealed);
+            });
+            quadsUpdatedFuture.get(); offsetsUpdatedFuture.get();
+            quadsRevealedFuture.get(); offsetsRevealedFuture.get();
+        }
+    };
 
     std::mutex m;
-    std::deque<std::vector<char>> frames;
+    std::condition_variable cv;
+    std::shared_ptr<Frame> frameInUse;
+    std::shared_ptr<Frame> framePending;
+    std::shared_ptr<Frame> frameFree;
+
+    ReferenceFrame referenceFrame;
+    ResidualFrame residualFrame;
+
+    std::unique_ptr<BS::thread_pool<>> threadPool;
 
     std::vector<unsigned char> colorData;
     std::vector<char> geometryData;
-    std::vector<char> uncompressedQuads, uncompressedOffsets;
-    std::vector<char> uncompressedQuadsUpdated, uncompressedOffsetsUpdated;
-    std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
-    void updateGeometry(FrameType frameType);
+    FrameType loadFromFrame(std::shared_ptr<Frame> frame);
+
+    void onDataReceived(const std::vector<char>& data) override;
+    void updateGeometry(std::shared_ptr<Frame> frame);
 };
 
 } // namespace quasar

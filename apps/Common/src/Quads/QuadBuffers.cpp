@@ -38,7 +38,7 @@ void QuadBuffers::resize(size_t newNumProxies) {
 }
 
 #ifdef GL_CORE
-size_t QuadBuffers::copyToCPU(std::vector<char>& outputData) {
+size_t QuadBuffers::writeToMemory(std::vector<char>& outputData) {
     outputData.resize(maxDataSize);
     size_t bufferOffset = 0;
 
@@ -102,7 +102,7 @@ size_t QuadBuffers::copyToCPU(std::vector<char>& outputData) {
 }
 #endif
 
-size_t QuadBuffers::copyFromCPU(const std::vector<char>& inputData) {
+size_t QuadBuffers::loadFromMemory(const std::vector<char>& inputData) {
     size_t bufferOffset = 0;
     void* ptr;
 

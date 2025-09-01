@@ -72,7 +72,7 @@ void QUASARReceiver::loadFromFiles(const Path& dataPath) {
         stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // Copy data to GPU
-        auto sizes = quadSet.copyFromCPU(uncompressedQuads, uncompressedOffsets);
+        auto sizes = quadSet.loadFromMemory(uncompressedQuads, uncompressedOffsets);
         stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
 
         // Update mesh

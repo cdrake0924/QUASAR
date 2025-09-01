@@ -28,7 +28,7 @@ DepthOffsets::DepthOffsets(const glm::uvec2& textureSize)
 #endif
 {}
 
-size_t DepthOffsets::copyToCPU(std::vector<char>& outputData) {
+size_t DepthOffsets::writeToMemory(std::vector<char>& outputData) {
 #ifdef GL_CORE
 #if defined(HAS_CUDA)
     size_t rowBytes = bytesPerRow(textureSize.x);
@@ -55,13 +55,13 @@ size_t DepthOffsets::copyToCPU(std::vector<char>& outputData) {
 #endif
 
 #else
-    spdlog::error("DepthOffsets::copyToCPU is only supported in OpenGL Core");
+    spdlog::error("DepthOffsets::writeToMemory is only supported in OpenGL Core");
 #endif
 
     return outputData.size();
 }
 
-size_t DepthOffsets::copyFromCPU(std::vector<char>& inputData) {
+size_t DepthOffsets::loadFromMemory(std::vector<char>& inputData) {
     uploadPBO.bind();
 
     // Map, copy, unmap
