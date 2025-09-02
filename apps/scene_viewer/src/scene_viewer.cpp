@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
                 ImGui::RadioButton("Show Normals", &shaderIndex, 2);
                 ImGui::RadioButton("Show Positions", &shaderIndex, 3);
                 ImGui::RadioButton("Show Object IDs", &shaderIndex, 4);
-                ImGui::RadioButton("Show Primative IDs", &shaderIndex, 5);
+                ImGui::RadioButton("Show Primitive IDs", &shaderIndex, 5);
             }
 
             ImGui::End();

@@ -1,5 +1,5 @@
-#ifndef PRIMATIVE_H
-#define PRIMATIVE_H
+#ifndef PRIMITIVE_H
+#define PRIMITIVE_H
 
 #include <Primitives/Mesh.h>
 #include <Primitives/Cube.h>
@@ -9,4 +9,4 @@
 
 #include <Primitives/Model.h>
 
-#endif // PRIMATIVE_H
+#endif // PRIMITIVE_H
