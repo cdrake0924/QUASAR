@@ -35,7 +35,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , referenceFrameNoTone({
+    , referenceFrameRT_noTone({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -46,7 +46,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , residualFrameNoTone({
+    , residualFrameRT_noTone({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_RGBA16F,
@@ -79,8 +79,8 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL)
-    // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, residualFrameNoTone.colorTexture, MAX_QUADS_PER_MESH / 4)
+    // We can use less vertices and indicies for the mask since it will be sparser
+    , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture, MAX_QUADS_PER_MESH / 4)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
@@ -93,7 +93,7 @@ QuadsStreamer::QuadsStreamer(
     referenceFrameWireframesLocal.reserve(meshScenes.size());
 
     for (int i = 0; i < meshScenes.size(); i++) {
-        referenceFrameMeshes.emplace_back(quadSet, referenceFrameNoTone.colorTexture);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT_noTone.colorTexture);
 
         referenceFrameNodes.emplace_back(&referenceFrameMeshes[i]);
         referenceFrameNodes[i].frustumCulled = false;
@@ -187,11 +187,11 @@ void QuadsStreamer::generateFrame(
         createResidualFrame ? currReferenceFrame : referenceFrame
     );
     if (!showNormals) {
-        remoteRenderer.copyToFrameRT(referenceFrameNoTone);
+        remoteRenderer.copyToFrameRT(referenceFrameRT_noTone);
         toneMapper.drawToRenderTarget(remoteRenderer, referenceFrameRT);
     }
     else {
-        showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameNoTone);
+        showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameRT_noTone);
     }
 
     stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
@@ -232,12 +232,12 @@ void QuadsStreamer::generateFrame(
             residualFrame
         );
         if (!showNormals) {
-            residualFrameRT.blit(residualFrameNoTone);
-            toneMapper.setUniforms(residualFrameNoTone);
+            residualFrameRT.blit(residualFrameRT_noTone);
+            toneMapper.setUniforms(residualFrameRT_noTone);
             toneMapper.drawToRenderTarget(remoteRenderer, residualFrameRT, false);
         }
         else {
-            showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameNoTone);
+            showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameRT_noTone);
         }
 
         stats.totalRenderTime += frameGenerator.stats.timeToUpdateRTsMs;
@@ -285,14 +285,17 @@ void QuadsStreamer::generateFrame(
         stats.totalSizes.numDepthOffsets += referenceFrame.getTotalNumDepthOffsets();
         stats.totalSizes.quadsSize += referenceFrame.getTotalQuadsSize();
         stats.totalSizes.depthOffsetsSize += referenceFrame.getTotalDepthOffsetsSize();
+        spdlog::debug("Reference frame generated with {} quads, {} depth offsets",
+                     referenceFrame.getTotalNumQuads(), referenceFrame.getTotalNumDepthOffsets());
     }
     else {
         stats.totalSizes.numQuads += residualFrame.getTotalNumQuads();
         stats.totalSizes.numDepthOffsets += residualFrame.getTotalNumDepthOffsets();
         stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
         stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
-        spdlog::info("Residual frame generated with {} quads ({} revealed), {} depth offsets",
-            residualFrame.getTotalNumQuads(), residualFrame.getTotalNumQuads(), residualFrame.getTotalNumDepthOffsets());
+        spdlog::debug("Residual frame generated with {} quads ({} revealed), {} depth offsets",
+                      residualFrame.getTotalNumQuads(),
+                      residualFrame.getTotalNumQuadsRevealed(), residualFrame.getTotalNumDepthOffsets());
     }
 }
 
@@ -308,6 +311,7 @@ void QuadsStreamer::sendProxies(pose_id_t poseID, const PerspectiveCamera& remot
 
 size_t QuadsStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath) {
     // Save camera data
+    Pose cameraPose;
     Path cameraFileName = (outputPath / "camera").withExtension(".bin");
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
     cameraPose.setViewMatrix(remoteCamera.getViewMatrix());
@@ -333,6 +337,7 @@ size_t QuadsStreamer::writeToMemory(
     std::vector<char>& outputData)
 {
     // Save camera data
+    Pose cameraPose;
     std::vector<char> cameraData;
     cameraPose.setProjectionMatrix(remoteCamera.getProjectionMatrix());
     cameraPose.setViewMatrix(remoteCamera.getViewMatrix());

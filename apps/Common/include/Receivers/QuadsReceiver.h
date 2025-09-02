@@ -1,8 +1,6 @@
 #ifndef QUADS_RECEIVER_H
 #define QUADS_RECEIVER_H
 
-#include <array>
-
 #include <BS_thread_pool/BS_thread_pool.hpp>
 
 #include <Path.h>
@@ -24,11 +22,11 @@ public:
     };
 
     struct Stats {
-        uint totalTriangles = 0;
         double timeToLoadMs = 0.0;
         double timeToDecompressMs = 0.0;
         double timeToTransferMs = 0.0;
         double timeToCreateMeshMs = 0.0;
+        uint totalTriangles = 0;
         QuadSet::Sizes sizes{};
     } stats;
 

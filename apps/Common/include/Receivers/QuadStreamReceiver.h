@@ -8,29 +8,37 @@
 #include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 #include <Quads/QuadMaterial.h>
+#include <CameraPose.h>
 
 namespace quasar {
 
 class QuadStreamReceiver {
 public:
     struct Stats {
-        uint totalTriangles = 0;
         double timeToLoadMs = 0.0;
         double timeToDecompressMs = 0.0;
         double timeToTransferMs = 0.0;
         double timeToCreateMeshMs = 0.0;
+        uint totalTriangles = 0;
         QuadSet::Sizes sizes{};
     } stats;
 
     uint maxViews;
     std::vector<ReferenceFrame> frames;
 
+    QuadStreamReceiver(QuadSet& quadSet, uint maxViews);
     QuadStreamReceiver(QuadSet& quadSet, uint maxViews, float remoteFOV, float remoteFOVWide, float viewBoxSize);
     ~QuadStreamReceiver() = default;
 
-    QuadMesh& getMesh(int view);
+    QuadMesh& getMesh(int view) { return meshes[view]; }
+    PerspectiveCamera& getRemoteCamera(int view = 0) { return remoteCameras[view]; }
+    void copyPoseToCamera(PerspectiveCamera& camera) {
+        PerspectiveCamera& remoteCameraCenter = remoteCameras[0];
+        camera.setViewMatrix(remoteCameraCenter.getViewMatrix());
+        camera.setProjectionMatrix(remoteCameraCenter.getProjectionMatrix());
+    }
 
-    PerspectiveCamera& getRemoteCamera(int view = 0);
+    void updateViewBox(float viewBoxSize);
 
     void loadFromFiles(const Path& dataPath);
 

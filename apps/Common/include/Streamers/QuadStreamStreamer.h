@@ -1,8 +1,11 @@
 #ifndef QUADSTREAM_SIMULATOR_H
 #define QUADSTREAM_SIMULATOR_H
 
+#include <CameraPose.h>
 #include <DepthMesh.h>
 #include <Quads/FrameGenerator.h>
+#include <Networking/DataStreamerTCP.h>
+#include <Streamers/VideoStreamer.h>
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 
@@ -11,10 +14,7 @@ namespace quasar {
 class QuadStreamStreamer {
 public:
     uint maxViews;
-
-    uint maxVertices = MAX_QUADS_PER_MESH * NUM_SUB_QUADS * VERTICES_IN_A_QUAD;
-    uint maxIndices = MAX_QUADS_PER_MESH * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
-    uint maxVerticesDepth;
+    float viewBoxSize;
 
     // Reference frame -- QS has no temporal compression (i.e. no residual frames)
     std::vector<FrameRenderTarget> referenceFrameRTs;
@@ -51,16 +51,17 @@ public:
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
         const PerspectiveCamera& remoteCamera,
-        FrameGenerator& frameGenerator);
+        float wideFOV);
     ~QuadStreamStreamer() = default;
 
     uint getNumTriangles() const;
+    std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return frameGenerator.getQuadsGenerator(); }
 
     void addMeshesToScene(Scene& localScene);
 
+    void updateViewBox(const PerspectiveCamera& remoteCamera, float viewBoxSize);
     void generateFrame(
-        const std::vector<PerspectiveCamera> remoteCameras, Scene& remoteScene,
-        DeferredRenderer& remoteRenderer,
+        DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
         bool showNormals = false, bool showDepth = false);
 
     size_t writeToFiles(const Path& outputPath);
@@ -79,17 +80,29 @@ private:
         glm::vec4(0.5f, 0.0f, 0.5f, 1.0f),
     };
 
+    const std::vector<glm::vec3> offsets = {
+        glm::vec3(-1.0f, +1.0f, -1.0f), // Top-left
+        glm::vec3(+1.0f, +1.0f, -1.0f), // Top-right
+        glm::vec3(+1.0f, -1.0f, -1.0f), // Bottom-right
+        glm::vec3(-1.0f, -1.0f, -1.0f), // Bottom-left
+        glm::vec3(-1.0f, +1.0f, +1.0f), // Top-left
+        glm::vec3(+1.0f, +1.0f, +1.0f), // Top-right
+        glm::vec3(+1.0f, -1.0f, +1.0f), // Bottom-right
+        glm::vec3(-1.0f, -1.0f, +1.0f), // Bottom-left
+    };
+
     QuadSet& quadSet;
-    FrameGenerator& frameGenerator;
+    FrameGenerator frameGenerator;
 
     DeferredRenderer& remoteRenderer;
     Scene& remoteScene;
+    std::vector<PerspectiveCamera> remoteCameras;
 
     // Scenes with resulting meshes
     Scene meshScene;
 
     // Holds a copies of the current frame
-    std::vector<FrameRenderTarget> copyRTs;
+    std::vector<FrameRenderTarget> referenceFrameRTs_noTone;
 
     // Shaders
     ToneMapper toneMapper;

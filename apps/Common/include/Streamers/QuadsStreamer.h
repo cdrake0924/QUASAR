@@ -1,10 +1,10 @@
 #ifndef QUADS_SIMULATOR_H
 #define QUADS_SIMULATOR_H
 
+#include <CameraPose.h>
 #include <DepthMesh.h>
 #include <Quads/FrameGenerator.h>
 #include <Receivers/QuadsReceiver.h>
-#include <CameraPose.h>
 #include <Networking/DataStreamerTCP.h>
 #include <Streamers/VideoStreamer.h>
 #include <PostProcessing/ToneMapper.h>
@@ -102,13 +102,11 @@ private:
 
     PerspectiveCamera remoteCameraPrev;
 
-    Pose cameraPose;
-
     // Scenes with resulting meshes
     std::vector<Scene> meshScenes;
 
-    FrameRenderTarget referenceFrameNoTone;
-    FrameRenderTarget residualFrameNoTone;
+    FrameRenderTarget referenceFrameRT_noTone;
+    FrameRenderTarget residualFrameRT_noTone;
     VideoStreamer atlasVideoStreamerRT;
 
     QuadMaterial wireframeMaterial;

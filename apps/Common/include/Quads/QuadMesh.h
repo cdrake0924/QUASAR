@@ -12,7 +12,7 @@
 
 namespace quasar {
 
-#define MAX_QUADS_PER_MESH 800000u
+#define MAX_QUADS_PER_MESH 600000u
 
 #define VERTICES_IN_A_QUAD 4
 #define INDICES_IN_A_QUAD 6

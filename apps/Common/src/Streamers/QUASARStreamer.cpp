@@ -14,7 +14,6 @@ QUASARStreamer::QUASARStreamer(
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
     , frameGenerator(frameGenerator)
-    , maxVerticesDepth(quadSet.getSize().x * quadSet.getSize().y)
     , referenceFrameRT({
         .width = quadSet.getSize().x,
         .height = quadSet.getSize().y,

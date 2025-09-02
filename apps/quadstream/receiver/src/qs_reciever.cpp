@@ -39,9 +39,6 @@ int main(int argc, char** argv) {
     args::ValueFlag<int> maxAdditionalViewsIn(parser, "maxViews", "Max views", {'l', "num-views"}, 8);
     args::Flag disableWideFov(parser, "disable-wide-fov", "Disable wide fov view", {'W', "disable-wide-fov"});
     args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
-    args::ValueFlag<float> viewBoxSizeIn(parser, "view-box-size", "Size of view box in m", {'B', "view-size"}, 0.5f);
-    args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
-    args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'R', "remote-fov-wide"}, 120.0f);
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -99,10 +96,7 @@ int main(int argc, char** argv) {
     }, renderer, toneMapper, dataPath, config.targetFramerate);
 
     QuadSet quadSet(windowSize);
-    float remoteFOV = args::get(remoteFOVIn);
-    float remoteFOVWide = args::get(remoteFOVWideIn);
-    float viewBoxSize = args::get(viewBoxSizeIn);
-    QuadStreamReceiver quadstreamReceiver(quadSet, maxViews, remoteFOV, remoteFOVWide, viewBoxSize);
+    QuadStreamReceiver quadstreamReceiver(quadSet, maxViews);
 
     // Create node and wireframe node
     std::vector<Node> nodes(maxViews);
@@ -122,6 +116,7 @@ int main(int argc, char** argv) {
 
     // Initial load
     quadstreamReceiver.loadFromFiles(dataPath);
+    quadstreamReceiver.copyPoseToCamera(camera);
 
     bool* showViews = new bool[maxViews];
     for (int i = 0; i < maxViews; ++i) {
@@ -220,14 +215,15 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            const int columns = 3;
-            for (int i = 0; i < maxViews; i++) {
-                ImGui::Checkbox(("Show View " + std::to_string(i)).c_str(), &showViews[i]);
-                if ((i + 1) % columns != 0) {
+            const int columns = 4;
+            for (int view = 0; view < maxViews; view++) {
+                ImGui::Checkbox(("Show View " + std::to_string(view)).c_str(), &showViews[view]);
+                if ((view + 1) % columns != 0) {
                     ImGui::SameLine();
                 }
             }
 
+            ImGui::NewLine();
             ImGui::Separator();
 
             if (ImGui::Button("Reload Data", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -311,6 +307,7 @@ int main(int argc, char** argv) {
 
         for (int i = 0; i < maxViews; i++) {
             nodes[i].visible = showViews[i];
+            nodeWireframes[i].visible = showViews[i];
         }
 
         // Render all objects in scene

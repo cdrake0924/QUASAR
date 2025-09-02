@@ -209,6 +209,8 @@ public:
 
     size_t getTotalNumQuads() const { return numQuadsUpdated + numQuadsRevealed; }
     size_t getTotalNumDepthOffsets() const { return numDepthOffsetsUpdated + numDepthOffsetsRevealed; }
+    size_t getTotalNumQuadsUpdated() const { return numQuadsUpdated; }
+    size_t getTotalNumQuadsRevealed() const { return numQuadsRevealed; }
     double getTotalQuadsSize() const { return quadsUpdated.size() + depthOffsetsUpdated.size(); }
     double getTotalDepthOffsetsSize() const { return quadsRevealed.size() + depthOffsetsRevealed.size(); }
 
