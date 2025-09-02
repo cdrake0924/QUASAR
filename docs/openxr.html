@@ -287,6 +287,7 @@
                     <li><a href="#meshwarp-viewer">MeshWarpViewer</a></li>
                     <li><a href="#meshwarp-client">MeshWarpClient</a></li>
                     <li><a href="#quads-viewer">QuadsViewer</a></li>
+                    <li><a href="#quads-client">QuadsClient</a></li>
                     <li><a href="#quadstream-viewer">QuadStreamViewer</a></li>
                     <li><a href="#quasar-viewer">QUASARViewer</a></li>
                 </ul>
@@ -372,7 +373,7 @@ cd apps/atw/streamer
     <p>Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
 cd apps/meshwarp/streamer
-./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --video-url &lt;headset's IP&gt;:12345 --depth-url &lt;headset's IP&gt;:65432 --depth-factor 4
+./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --video-url &lt;headset's IP&gt;:12345 --depth-url &lt;server's IP&gt;:65432 --depth-factor 4
 </code></pre>
 
     <h3 id="quads-viewer">QuadsViewer</h3>
@@ -380,6 +381,17 @@ cd apps/meshwarp/streamer
     <pre><code>std::string sceneName = "robot_lab"; // choose from robot_lab, sun_temple, viking_village, or san_miguel
 </code></pre>
     <p>in <code>QuestClientApps/Apps/QuadsViewer/include/QuadsViewer.h</code>.</p>
+
+    <h3 id="quads-client">QuadsClient</h3>
+    <p>The Quads Client app allows the headset to act as a receiver for an image and quad proxy metadata stream from the server sent across a network. The headset will reconstruct a mesh with the quads from the metadata stream and texture map it with the image for reprojection.</p>
+    <p>First, open <code>QuestClientApps/Apps/QuadsClient/include/QuadsClient.h</code> and change:</p>
+    <pre><code>std::string serverIP = "192.168.4.140";
+</code></pre>
+    <p>Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
+    <pre><code># in build directory
+cd apps/quadwarp/streamer
+./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url &lt;headset's IP&gt;:12345 --proxies-url &lt;server's IP&gt;:65432
+</code></pre>
 
     <h3 id="quadstream-viewer">QuadStreamViewer</h3>
     <p>The QuadStream Viewer app will load a saved static frame from QuadStream to view on the headset. You can change the scene by editing:</p>

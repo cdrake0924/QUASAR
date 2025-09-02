@@ -1,12 +1,13 @@
 #ifndef FRAME_GENERATOR_H
 #define FRAME_GENERATOR_H
 
+#include <BS_thread_pool/BS_thread_pool.hpp>
+
 #include <Quads/QuadFrames.h>
 #include <Quads/QuadMesh.h>
 #include <Quads/QuadsGenerator.h>
 #include <Renderers/DeferredRenderer.h>
 #include <RenderTargets/FrameRenderTarget.h>
-
 #include <Codec/ZSTDCodec.h>
 
 namespace quasar {
@@ -27,37 +28,37 @@ public:
         double timeToCompressMs = 0.0;
     } stats;
 
-    QuadsGenerator quadsGenerator;
-
     FrameGenerator(QuadSet& quadSet);
+
+    std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return quadsGenerator; }
 
     void createReferenceFrame(
         const FrameRenderTarget& referenceFrameRT,
         const PerspectiveCamera& remoteCamera,
-        QuadMesh& mesh,
-        ReferenceFrame& resultFrame,
-        bool compress = true);
+        QuadMesh& referenceMesh,
+        ReferenceFrame& referenceFrame);
 
     void updateResidualRenderTargets(
-        FrameRenderTarget& resFrameMaskRT, FrameRenderTarget& resFrameRT,
+        FrameRenderTarget& residualFrameMaskRT, FrameRenderTarget& residualFrameRT,
         DeferredRenderer& remoteRenderer, Scene& remoteScene,
         Scene& currMeshScene, Scene& prevMeshScene, // Scenes that contain the resulting reconstructed meshes
-        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera);
+        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev);
 
     void createResidualFrame(
-        const FrameRenderTarget& resFrameMaskRT, const FrameRenderTarget& resFrameRT,
-        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-        QuadMesh& mesh, QuadMesh& maskMesh,
-        ResidualFrame& resultFrame,
-        bool compress = true);
+        const FrameRenderTarget& residualFrameMaskRT, const FrameRenderTarget& residualFrameRT,
+        const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev,
+        QuadMesh& referenceMesh, QuadMesh& residualMesh,
+        ResidualFrame& residualFrame);
 
 private:
     QuadSet& quadSet;
+    std::shared_ptr<QuadsGenerator> quadsGenerator;
+
+    std::unique_ptr<BS::thread_pool<>> threadPool;
 
     // Temporary buffers for decompression
     std::vector<char> uncompressedQuads, uncompressedOffsets;
     std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
-    std::vector<char> uncompressedQuadsUpdated, uncompressedOffsetsUpdated;
 };
 
 } // namespace quasar

@@ -1,18 +1,14 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
-#include <CameraAnimator.h>
-
-#include <VideoStreamer.h>
-#include <PoseReceiver.h>
+#include <Streamers/VideoStreamer.h>
+#include <Receivers/PoseReceiver.h>
 
 using namespace quasar;
 
@@ -28,10 +24,10 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> sceneFileIn(parser, "scene", "Path to scene file", {'S', "scene"}, "../assets/scenes/sponza.json");
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<bool> displayIn(parser, "display", "Show window", {'d', "display"}, true);
-    args::ValueFlag<std::string> videoURLIn(parser, "video", "Video URL", {'c', "video-url"}, "127.0.0.1:12345");
-    args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "0.0.0.0:54321");
     args::ValueFlag<int> targetBitrateIn(parser, "targetBitrate", "Target bitrate (Mbps)", {'b', "target-bitrate"}, 50);
     args::Flag vrModeIn(parser, "vr", "Enable VR mode", {'r', "vr"}, false);
+    args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to send video", {'c', "video-url"}, "127.0.0.1:12345");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to send camera pose", {'p', "pose-url"}, "0.0.0.0:54321");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -55,7 +51,7 @@ int main(int argc, char** argv) {
     config.enableVSync = !args::get(novsync);
     config.showWindow = args::get(displayIn);
 
-    std::string sceneFile = args::get(sceneFileIn);
+    Path sceneFile = args::get(sceneFileIn);
     std::string videoURL = args::get(videoURLIn);
     std::string poseURL = args::get(poseURLIn);
 
@@ -101,7 +97,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, videoURL, config.targetFramerate, targetBitrate);
 
-    PoseReceiver poseReceiver = PoseReceiver(camera.get(), poseURL);
+    PoseReceiver poseReceiver(camera.get(), poseURL);
 
     // Post processing
     ToneMapper toneMapper;

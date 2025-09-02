@@ -5,16 +5,17 @@ using namespace quasar;
 
 FrameGenerator::FrameGenerator(QuadSet& quadSet)
     : quadSet(quadSet)
-    , quadsGenerator(quadSet)
-{}
+{
+    quadsGenerator = std::make_shared<QuadsGenerator>(quadSet);
+    threadPool = std::make_unique<BS::thread_pool<>>(4);
+}
 
 void FrameGenerator::createReferenceFrame(
     const FrameRenderTarget& referenceFrameRT, const PerspectiveCamera& remoteCamera,
-    QuadMesh& mesh,
-    ReferenceFrame& resultFrame,
-    bool compress)
+    QuadMesh& referenceMesh,
+    ReferenceFrame& referenceFrame)
 {
-    stats = {};
+    stats = { 0 };
 
     const glm::vec2 gBufferSize = glm::vec2(referenceFrameRT.width, referenceFrameRT.height);
 
@@ -24,32 +25,33 @@ void FrameGenerator::createReferenceFrame(
     ============================
     */
     double startTime = timeutils::getTimeMicros();
-    quadsGenerator.createProxiesFromRT(referenceFrameRT, remoteCamera);
-    stats.timeToGenerateQuadsMs = quadsGenerator.stats.timeToGenerateQuadsMs;
-    stats.timeToSimplifyQuadsMs = quadsGenerator.stats.timeToSimplifyQuadsMs;
-    stats.timeToGatherQuadsMs = quadsGenerator.stats.timeToGatherQuadsMs;
+    quadsGenerator->createProxiesFromRT(referenceFrameRT, remoteCamera);
+    stats.timeToGenerateQuadsMs = quadsGenerator->stats.timeToGenerateQuadsMs;
+    stats.timeToSimplifyQuadsMs = quadsGenerator->stats.timeToSimplifyQuadsMs;
+    stats.timeToGatherQuadsMs = quadsGenerator->stats.timeToGatherQuadsMs;
     stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer updated proxies to CPU for compression
-    auto sizes = quadSet.copyToCPU(uncompressedQuads, uncompressedOffsets);
-    resultFrame.numQuads = sizes.numQuads;
-    resultFrame.numDepthOffsets = sizes.numDepthOffsets;
+    auto sizes = quadSet.writeToMemory(uncompressedQuads, uncompressedOffsets);
+    referenceFrame.numQuads = sizes.numQuads;
+    referenceFrame.numDepthOffsets = sizes.numDepthOffsets;
     stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
 
     // Compress proxies (nonblocking)
-    std::future<size_t> quadsFuture, offsetsFuture;
-    if (compress) {
-        quadsFuture = resultFrame.compressAndStoreQuads(uncompressedQuads);
-        offsetsFuture = resultFrame.compressAndStoreDepthOffsets(uncompressedOffsets);
-    }
+    auto offsetsFuture = threadPool->submit_task([&]() {
+        return referenceFrame.compressAndStoreDepthOffsets(uncompressedOffsets);
+    });
+    auto quadsFuture = threadPool->submit_task([&]() {
+        return referenceFrame.compressAndStoreQuads(uncompressedQuads);
+    });
 
-    // Using GPU buffers, create mesh from proxies
+    // Using GPU buffers, reconstruct mesh using proxies
     startTime = timeutils::getTimeMicros();
-    mesh.appendQuads(quadSet, gBufferSize);
-    mesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
-    stats.timeToAppendQuadsMs = mesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs = mesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs = mesh.stats.timeToCreateMeshMs;
+    referenceMesh.appendQuads(quadSet, gBufferSize);
+    referenceMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
+    stats.timeToAppendQuadsMs = referenceMesh.stats.timeToAppendQuadsMs;
+    stats.timeToFillQuadIndicesMs = referenceMesh.stats.timeToGatherQuadsMs;
+    stats.timeToCreateVertIndMs = referenceMesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
@@ -57,22 +59,18 @@ void FrameGenerator::createReferenceFrame(
     Wait for asynchronous compression to finish and set resulting data sizes
     ============================
     */
-    if (compress) {
-        resultFrame.quads.resize(quadsFuture.get());
-        resultFrame.depthOffsets.resize(offsetsFuture.get());
-        stats.timeToCompressMs = resultFrame.getTimeToCompress();
-    }
+    referenceFrame.quads.resize(quadsFuture.get());
+    referenceFrame.depthOffsets.resize(offsetsFuture.get());
+    stats.timeToCompressMs = referenceFrame.getTimeToCompress();
 }
 
 void FrameGenerator::updateResidualRenderTargets(
-    FrameRenderTarget& resFrameMaskRT, FrameRenderTarget& resFrameRT,
+    FrameRenderTarget& residualFrameMaskRT, FrameRenderTarget& residualFrameRT,
     DeferredRenderer& remoteRenderer, Scene& remoteScene,
     Scene& currMeshScene, Scene& prevMeshScene,
-    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera)
+    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev)
 {
     stats.timeToUpdateRTsMs = 0.0;
-
-    const glm::vec2 gBufferSize = glm::vec2(resFrameRT.width, resFrameRT.height);
 
     /*
     ============================
@@ -81,30 +79,30 @@ void FrameGenerator::updateResidualRenderTargets(
     */
     double startTime = timeutils::getTimeMicros();
 
-    // Fill depth buffer with previous generated mesh
+    // Fill depth buffer with previous reconstructed mesh
     remoteRenderer.pipeline.writeMaskState.disableColorWrites();
-    remoteRenderer.drawObjectsNoLighting(prevMeshScene, prevRemoteCamera);
+    remoteRenderer.drawObjectsNoLighting(prevMeshScene, remoteCameraPrev);
 
-    // Use current generated mesh as a stencil mask
+    // Use current reconstructed mesh as a stencil mask
     remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
     remoteRenderer.pipeline.depthState.depthFunc = GL_EQUAL;
-    remoteRenderer.drawObjectsNoLighting(currMeshScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    remoteRenderer.drawObjectsNoLighting(currMeshScene, remoteCameraPrev, GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     // Render scene using stencil mask; this lets only content that is different pass
     remoteRenderer.pipeline.stencilState.enableRenderingUsingStencilBufferAsMask(GL_NOTEQUAL, 1);
     remoteRenderer.pipeline.depthState.depthFunc = GL_LESS;
     remoteRenderer.pipeline.writeMaskState.enableColorWrites();
-    remoteRenderer.drawObjects(remoteScene, prevRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    remoteRenderer.drawObjects(remoteScene, remoteCameraPrev, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     remoteRenderer.pipeline.stencilState.restoreStencilState();
-    remoteRenderer.copyToFrameRT(resFrameMaskRT); // Save result into a temporary render target
+    remoteRenderer.copyToFrameRT(residualFrameMaskRT); // Save result into a temporary render target
 
     /*
     ============================
     Generate frame from new camera pose using current frame as a mask to capture disocclusions due to camera movement
     ============================
     */
-    // Use current generated mesh as a stencil mask
+    // Use current reconstructed mesh as a stencil mask
     remoteRenderer.pipeline.stencilState.enableRenderingIntoStencilBuffer(GL_KEEP, GL_KEEP, GL_REPLACE);
     remoteRenderer.pipeline.writeMaskState.disableColorWrites();
     remoteRenderer.drawObjectsNoLighting(currMeshScene, currRemoteCamera);
@@ -115,23 +113,22 @@ void FrameGenerator::updateResidualRenderTargets(
     remoteRenderer.drawObjects(remoteScene, currRemoteCamera, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     remoteRenderer.pipeline.stencilState.restoreStencilState();
-    remoteRenderer.copyToFrameRT(resFrameRT);
+    remoteRenderer.copyToFrameRT(residualFrameRT);
 
     stats.timeToUpdateRTsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void FrameGenerator::createResidualFrame(
-    const FrameRenderTarget& resFrameMaskRT, const FrameRenderTarget& resFrameRT,
-    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& prevRemoteCamera,
-    QuadMesh& mesh, QuadMesh& maskMesh,
-    ResidualFrame& resultFrame,
-    bool compress)
+    const FrameRenderTarget& residualFrameMaskRT, const FrameRenderTarget& residualFrameRT,
+    const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev,
+    QuadMesh& referenceMesh, QuadMesh& residualMesh,
+    ResidualFrame& residualFrame)
 {
     double timeToUpdateRTsMs = stats.timeToUpdateRTsMs;
-    stats = {};
+    stats = { 0 };
     stats.timeToUpdateRTsMs = timeToUpdateRTsMs;
 
-    const glm::vec2 gBufferSize = glm::vec2(resFrameRT.width, resFrameRT.height);
+    const glm::vec2 gBufferSize = glm::vec2(residualFrameRT.width, residualFrameRT.height);
 
     /*
     ============================
@@ -139,29 +136,30 @@ void FrameGenerator::createResidualFrame(
     ============================
     */
     double startTime = timeutils::getTimeMicros();
-    quadsGenerator.createProxiesFromRT(resFrameMaskRT, prevRemoteCamera);
+    quadsGenerator->createProxiesFromRT(residualFrameMaskRT, remoteCameraPrev);
     stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer updated proxies to CPU for compression
-    auto sizesUpdated = quadSet.copyToCPU(uncompressedQuadsUpdated, uncompressedOffsetsUpdated);
-    resultFrame.numQuadsUpdated = sizesUpdated.numQuads;
-    resultFrame.numDepthOffsetsUpdated = sizesUpdated.numDepthOffsets;
+    auto sizesUpdated = quadSet.writeToMemory(uncompressedQuads, uncompressedOffsets);
+    residualFrame.numQuadsUpdated = sizesUpdated.numQuads;
+    residualFrame.numDepthOffsetsUpdated = sizesUpdated.numDepthOffsets;
     stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
 
-    // Compress proxies (asynchronous)
-    std::future<size_t> quadsUpdatedFuture, offsetsUpdatedFuture;
-    if (compress) {
-        quadsUpdatedFuture = resultFrame.compressAndStoreUpdatedQuads(uncompressedQuadsUpdated);
-        offsetsUpdatedFuture = resultFrame.compressAndStoreUpdatedDepthOffsets(uncompressedOffsetsUpdated);
-    }
+    // Compress updated proxies (asynchronous)
+    auto offsetsUpdatedFuture = threadPool->submit_task([&]() {
+        return residualFrame.compressAndStoreUpdatedDepthOffsets(uncompressedOffsets);
+    });
+    auto quadsUpdatedFuture = threadPool->submit_task([&]() {
+        return residualFrame.compressAndStoreUpdatedQuads(uncompressedQuads);
+    });
 
-    // Using GPU buffers, create mesh using proxies
+    // Using GPU buffers, update reference frame mesh using proxies
     startTime = timeutils::getTimeMicros();
-    mesh.appendQuads(quadSet, gBufferSize, false);
-    mesh.createMeshFromProxies(quadSet, gBufferSize, prevRemoteCamera);
-    stats.timeToAppendQuadsMs = mesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs = mesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs = mesh.stats.timeToCreateMeshMs;
+    referenceMesh.appendQuads(quadSet, gBufferSize, false /* is not reference frame */);
+    referenceMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCameraPrev);
+    stats.timeToAppendQuadsMs = referenceMesh.stats.timeToAppendQuadsMs;
+    stats.timeToFillQuadIndicesMs = referenceMesh.stats.timeToGatherQuadsMs;
+    stats.timeToCreateVertIndMs = referenceMesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
@@ -170,29 +168,30 @@ void FrameGenerator::createResidualFrame(
     ============================
     */
     startTime = timeutils::getTimeMicros();
-    quadsGenerator.createProxiesFromRT(resFrameRT, currRemoteCamera);
+    quadsGenerator->createProxiesFromRT(residualFrameRT, currRemoteCamera);
     stats.timeToCreateQuadsMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer revealed proxies to CPU for compression
-    auto sizesRevealed = quadSet.copyToCPU(uncompressedQuadsRevealed, uncompressedOffsetsRevealed);
-    resultFrame.numQuadsRevealed = sizesRevealed.numQuads;
-    resultFrame.numDepthOffsetsRevealed = sizesRevealed.numDepthOffsets;
+    auto sizesRevealed = quadSet.writeToMemory(uncompressedQuadsRevealed, uncompressedOffsetsRevealed);
+    residualFrame.numQuadsRevealed = sizesRevealed.numQuads;
+    residualFrame.numDepthOffsetsRevealed = sizesRevealed.numDepthOffsets;
     stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
 
-    // Compress proxies (asynchronous)
-    std::future<size_t> quadsRevealedFuture, offsetsRevealedFuture;
-    if (compress) {
-        quadsRevealedFuture = resultFrame.compressAndStoreRevealedQuads(uncompressedQuadsRevealed);
-        offsetsRevealedFuture = resultFrame.compressAndStoreRevealedDepthOffsets(uncompressedOffsetsRevealed);
-    }
+    // Compress revealed proxies (asynchronous)
+    auto quadsRevealedFuture = threadPool->submit_task([&]() {
+        return residualFrame.compressAndStoreRevealedQuads(uncompressedQuadsRevealed);
+    });
+    auto offsetsRevealedFuture = threadPool->submit_task([&]() {
+        return residualFrame.compressAndStoreRevealedDepthOffsets(uncompressedOffsetsRevealed);
+    });
 
-    // Using GPU buffers, create mesh using proxies
+    // Using GPU buffers, reconstruct revealed mesh using proxies
     startTime = timeutils::getTimeMicros();
-    maskMesh.appendQuads(quadSet, gBufferSize);
-    maskMesh.createMeshFromProxies(quadSet, gBufferSize, currRemoteCamera);
-    stats.timeToAppendQuadsMs += maskMesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs += maskMesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs += maskMesh.stats.timeToCreateMeshMs;
+    residualMesh.appendQuads(quadSet, gBufferSize);
+    residualMesh.createMeshFromProxies(quadSet, gBufferSize, currRemoteCamera);
+    stats.timeToAppendQuadsMs += residualMesh.stats.timeToAppendQuadsMs;
+    stats.timeToFillQuadIndicesMs += residualMesh.stats.timeToGatherQuadsMs;
+    stats.timeToCreateVertIndMs += residualMesh.stats.timeToCreateMeshMs;
     stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
@@ -200,11 +199,9 @@ void FrameGenerator::createResidualFrame(
     Wait for asynchronous compression to finish and set resulting data sizes
     ============================
     */
-    if (compress) {
-        resultFrame.quadsUpdated.resize(quadsUpdatedFuture.get());
-        resultFrame.depthOffsetsUpdated.resize(offsetsUpdatedFuture.get());
-        resultFrame.quadsRevealed.resize(quadsRevealedFuture.get());
-        resultFrame.depthOffsetsRevealed.resize(offsetsRevealedFuture.get());
-        stats.timeToCompressMs = resultFrame.getTimeToCompress();
-    }
+    residualFrame.quadsUpdated.resize(quadsUpdatedFuture.get());
+    residualFrame.quadsRevealed.resize(quadsRevealedFuture.get());
+    residualFrame.depthOffsetsUpdated.resize(offsetsUpdatedFuture.get());
+    residualFrame.depthOffsetsRevealed.resize(offsetsRevealedFuture.get());
+    stats.timeToCompressMs = residualFrame.getTimeToCompress();
 }

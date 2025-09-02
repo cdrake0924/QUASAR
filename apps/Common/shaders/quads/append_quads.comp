@@ -1,70 +1,99 @@
+#include "quads_utils.glsl"
+
 layout(local_size_x = THREADS_PER_LOCALGROUP, local_size_y = 1, local_size_z = 1) in;
 
-layout(std430, binding = 0) writeonly buffer CurrNumProxiesBuffer {
-    uint currNumProxies;
-};
-
-layout(std430, binding = 1) readonly buffer PrevNumProxiesBuffer {
-    uint prevNumProxies;
-};
-
-layout(std430, binding = 2) readonly buffer NormalSphericalsBufferInput {
+layout(std430, binding = 0) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
 };
 
-layout(std430, binding = 3) readonly buffer DepthsBufferInput {
+layout(std430, binding = 1) readonly buffer DepthsBufferInput {
     float depthsInput[];
 };
 
-layout(std430, binding = 4) readonly buffer MetadatasBufferInput {
+layout(std430, binding = 2) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 5) writeonly buffer NormalSphericalsBufferOutput {
+layout(std430, binding = 3) writeonly buffer NormalSphericalsBufferOutput {
     uint normalSphericalsOutput[];
 };
 
-layout(std430, binding = 6) writeonly buffer DepthsBufferOutput {
+layout(std430, binding = 4) writeonly buffer DepthsBufferOutput {
     float depthsOutput[];
 };
 
-layout(std430, binding = 7) writeonly buffer OffsetsBufferOutput {
+layout(std430, binding = 5) writeonly buffer MetadatasBufferOutput {
     uint metadatasOutput[];
 };
 
-uniform bool isRefFrame;
+layout(std430, binding = 6) writeonly buffer QuadCreatedBuffer {
+    int quadCreatedFlags[];
+};
+
+layout(std430, binding = 7) writeonly buffer QuadIndexMap {
+    uint quadIndexMap[];
+};
+
+uniform vec2 gBufferSize;
+uniform uint currNumProxies;
 uniform uint newNumProxies;
 
-shared uint localNumProxies;
+void quadIndexStore(ivec2 pixelCoords, uint index) {
+    uint pixelIndex = uint(pixelCoords.y) * uint(gBufferSize.x) + uint(pixelCoords.x);
+    quadIndexMap[pixelIndex] = index;
+}
+
+QuadMapData loadQuadMapInput(uint index) {
+    QuadMapDataPacked quadMapDataPacked;
+    quadMapDataPacked.normalSpherical = normalSphericalsInput[index];
+    quadMapDataPacked.depth = depthsInput[index];
+    quadMapDataPacked.metadata = metadatasInput[index];
+
+    QuadMapData quadMapData;
+    quadMapData.normal = unpackSphericalToNormal(quadMapDataPacked.normalSpherical);
+    quadMapData.depth = quadMapDataPacked.depth;
+
+    quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
+    quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
+
+    uint flattenedAndSize = quadMapDataPacked.metadata & 0xFFu;
+    quadMapData.size = (flattenedAndSize >> 1) & 0x7Fu;
+    quadMapData.flattened = (flattenedAndSize & 1u) != 0u;
+
+    return quadMapData;
+}
 
 void main() {
-    uint proxyIndex = gl_GlobalInvocationID.x;
-
-    // If RefFrame, start from the beginning
-    if (isRefFrame && proxyIndex == 0u) {
-        currNumProxies = 0u;
-    }
-
-    if (proxyIndex >= newNumProxies) {
+    uint quadIndex = gl_GlobalInvocationID.x;
+    if (quadIndex >= newNumProxies) {
         return;
     }
 
-    uint startIndex = isRefFrame ? 0u : prevNumProxies;
-    if (gl_LocalInvocationID.x == 0u) {
-        localNumProxies = 0u;
-    }
-    barrier();
+    // Clear quadCreatedBuffer
+    quadCreatedFlags[quadIndex] = 0;
 
-    atomicAdd(localNumProxies, 1u);
+    if (quadIndex >= currNumProxies) {
+        uint inputQuadIndex = quadIndex - currNumProxies;
 
-    uint globalIndex = startIndex + proxyIndex;
-    normalSphericalsOutput[globalIndex] = normalSphericalsInput[proxyIndex];
-    depthsOutput[globalIndex] = depthsInput[proxyIndex];
-    metadatasOutput[globalIndex] = metadatasInput[proxyIndex];
+        QuadMapData quadMapData = loadQuadMapInput(inputQuadIndex);
+        if (quadMapData.size == 0u) { // Ignore if quad is empty
+            return;
+        }
 
-    barrier();
+        // Store quadIndex into quadIndexMap
+        uint size = 1u << quadMapData.size;
+        uint halfSize = size / 2u;
+        ivec2 proxyPlanePixelCoords = ivec2(quadMapData.offset);
+        for (uint idx = 0u; idx < halfSize * halfSize; idx++) {
+            uint i = idx % halfSize;
+            uint j = idx / halfSize;
+            ivec2 pixelCoords = proxyPlanePixelCoords + ivec2(i, j);
+            quadIndexStore(pixelCoords, quadIndex);
+        }
 
-    if (gl_LocalInvocationID.x == 0u) {
-        atomicAdd(currNumProxies, localNumProxies);
+        // Append the quad map data
+        normalSphericalsOutput[quadIndex] = normalSphericalsInput[inputQuadIndex];
+        depthsOutput[quadIndex] = depthsInput[inputQuadIndex];
+        metadatasOutput[quadIndex] = metadatasInput[inputQuadIndex];
     }
 }

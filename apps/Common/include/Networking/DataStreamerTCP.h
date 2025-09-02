@@ -4,11 +4,11 @@
 #include <vector>
 #include <thread>
 #include <atomic>
-#include <concurrentqueue/concurrentqueue.h>
 
-#include <Utils/TimeUtils.h>
-#include <Networking/DataPacketUDP.h>
 #include <Networking/Socket.h>
+#include <Networking/DataPacketUDP.h>
+#include <Utils/TimeUtils.h>
+#include <concurrentqueue/concurrentqueue.h>
 
 namespace quasar {
 
@@ -27,9 +27,10 @@ public:
     ~DataStreamerTCP();
 
     int send(std::vector<char>& data, bool copy = false);
+    void stop();
 
 private:
-    SocketTCP socket;
+    std::unique_ptr<SocketTCP> socket;
 
     std::thread dataSendingThread;
 

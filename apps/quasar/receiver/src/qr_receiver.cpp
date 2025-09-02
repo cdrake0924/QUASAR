@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -11,7 +10,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <QUASARReceiver.h>
+#include <Receivers/QUASARReceiver.h>
 
 using namespace quasar;
 
@@ -119,18 +118,20 @@ int main(int argc, char** argv) {
 
     // Initial load
     quasarReceiver.loadFromFiles(dataPath);
+    quasarReceiver.copyPoseToCamera(camera);
 
     bool* showLayers = new bool[maxLayers];
     for (int i = 0; i < maxLayers; ++i) {
         showLayers[i] = true;
     }
+    bool showWireframe = false;
 
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = true;
         static bool showFrameCaptureWindow = false;
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static char fileNameBase[256] = "screenshot";
 
         ImGui::NewFrame();
@@ -203,16 +204,14 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load from disk: %.3f ms", quasarReceiver.stats.loadFromFilesTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quasarReceiver.stats.decompressTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quasarReceiver.stats.transferTime);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quasarReceiver.stats.createMeshTime);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to load data: %.3f ms", quasarReceiver.stats.timeToLoadMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to decompress data: %.3f ms", quasarReceiver.stats.timeToDecompressMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy data to GPU: %.3f ms", quasarReceiver.stats.timeToTransferMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to create mesh: %.3f ms", quasarReceiver.stats.timeToCreateMeshMs);
 
             ImGui::Separator();
 
-            bool showWireframe = !nodeWireframes.empty() && nodeWireframes[0].visible;
             ImGui::Checkbox("Show Wireframe", &showWireframe);
-            for (auto& wf : nodeWireframes) wf.visible = showWireframe;
 
             ImGui::Separator();
 
@@ -243,12 +242,12 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path filename = (dataPath / fileNameBase).appendToName("." + time);
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, saveToHDR);
+                recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
             ImGui::End();
@@ -307,6 +306,7 @@ int main(int argc, char** argv) {
 
         for (int i = 0; i < maxLayers; ++i) {
             nodes[i].visible = showLayers[i];
+            nodeWireframes[i].visible = showWireframe && showLayers[i];
         }
 
         // Render all objects in scene

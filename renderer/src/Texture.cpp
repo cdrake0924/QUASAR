@@ -52,6 +52,19 @@ void Texture::loadFromData(const void* data, bool resize) {
         glGenTextures(1, &ID);
     }
 
+    if (format == GL_RED) {
+        channels = 1;
+    }
+    else if (format == GL_RG) {
+        channels = 2;
+    }
+    else if (format == GL_RGB) {
+        channels = 3;
+    }
+    else if (format == GL_RGBA) {
+        channels = 4;
+    }
+
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
     glBindTexture(target, ID);
 
@@ -106,6 +119,7 @@ void Texture::loadFromFile(const std::string& path, bool flipVertically, bool ga
 
     width = texWidth;
     height = texHeight;
+    channels = texChannels;
 
     switch (texChannels) {
         case 1:
@@ -113,6 +127,12 @@ void Texture::loadFromFile(const std::string& path, bool flipVertically, bool ga
                 ? GL_R8
                 : GL_R16F;
             format = GL_RED;
+            break;
+        case 2:
+            internalFormat = (type == GL_UNSIGNED_BYTE)
+                ? GL_RG8
+                : GL_RG16F;
+            format = GL_RG;
             break;
         case 3:
             internalFormat = (type == GL_UNSIGNED_BYTE)
@@ -133,6 +153,10 @@ void Texture::loadFromFile(const std::string& path, bool flipVertically, bool ga
 }
 
 void Texture::resize(uint width, uint height) {
+    if (this->width == width && this->height == height) {
+        return;
+    }
+
     this->width = width;
     this->height = height;
     loadFromData(nullptr, true);
@@ -144,28 +168,28 @@ void Texture::readPixels(unsigned char* data, bool readAsFloat) {
     unbind();
 }
 
-void Texture::saveToPNG(const std::string& filename) {
-    std::vector<unsigned char> data(width * height * 4);
+void Texture::writeToPNG(const std::string& filename) {
+    std::vector<unsigned char> data(width * height * channels);
     readPixels(data.data());
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveToPNG(filename, width, height, 4, data.data());
+    FileIO::writeToPNG(filename, width, height, channels, data.data());
 }
 
-void Texture::saveToJPG(const std::string& filename, int quality) {
-    std::vector<unsigned char> data(width * height * 4);
+void Texture::writeToJPG(const std::string& filename, int quality) {
+    std::vector<unsigned char> data(width * height * channels);
     readPixels(data.data());
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveToJPG(filename, width, height, 4, data.data(), quality);
+    FileIO::writeToJPG(filename, width, height, channels, data.data(), quality);
 }
 
-void Texture::saveToHDR(const std::string& filename) {
-    std::vector<float> data(width * height * 4);
+void Texture::writeToHDR(const std::string& filename) {
+    std::vector<float> data(width * height * channels);
     readPixels(reinterpret_cast<unsigned char*>(data.data()), true);
 
     FileIO::flipVerticallyOnWrite(true);
-    FileIO::saveToHDR(filename, width, height, 4, data.data());
+    FileIO::writeToHDR(filename, width, height, channels, data.data());
 }
 
 #ifdef GL_CORE
@@ -176,6 +200,14 @@ void Texture::saveDepthToFile(const std::string& filename) {
     glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data.data());
     unbind();
 
-    FileIO::saveToBinaryFile(filename, data.data(), data.size());
+    FileIO::writeToBinaryFile(filename, data.data(), data.size());
 }
 #endif
+
+void Texture::writeJPGToMemory(std::vector<unsigned char>& outputData, int quality) {
+    outputData.resize(width * height * channels);
+    readPixels(outputData.data());
+
+    FileIO::flipVerticallyOnWrite(true);
+    FileIO::writeJPGToMemory(outputData, width, height, channels, outputData.data(), quality);
+}

@@ -62,7 +62,7 @@ Node* SceneLoader::findNodeByName(const std::string& name) {
 
 void SceneLoader::loadScene(const std::string& filename, Scene& scene, PerspectiveCamera& camera) {
     uint size;
-    std::string sceneJSON = FileIO::loadTextFile(filename, &size);
+    std::string sceneJSON = FileIO::loadFromTextFile(filename, &size);
     if (size == 0) {
         throw std::runtime_error("Scene file is empty: " + filename);
     }
@@ -470,7 +470,7 @@ int SceneLoader::parseNode(jsmntok_t* tokens, int i, const char* json, Scene& sc
         else if (compare(tok, json, "pointcloud") == 0) {
             bool pointcloud;
             i = parseBool(tokens, i + 1, json, &pointcloud);
-            node->primativeType = pointcloud ? GL_POINTS : GL_TRIANGLES;
+            node->primitiveType = pointcloud ? GL_POINTS : GL_TRIANGLES;
         }
         else {
             i = parse(tokens, i + 1);

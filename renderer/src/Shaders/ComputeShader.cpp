@@ -67,8 +67,19 @@ double ComputeShader::getElapsedTime() const {
     return timeutils::nanoToMillis(lastElapsedTime);
 }
 
+void ComputeShader::setBuffer(GLenum target, int slot, const Buffer& buffer) const {
+    glBindBufferBase(target, slot, buffer);
+}
+void ComputeShader::clearBuffer(GLenum target, int slot) const {
+    glBindBufferBase(target, slot, 0);
+}
+
+void ComputeShader::setImageTexture(int slot, const Texture& texture, GLuint level, GLboolean layered, GLuint layer, GLenum access, GLenum format) const {
+    glBindImageTexture(slot, texture, level, layered, layer, access, format);
+}
+
 void ComputeShader::loadFromFile(const std::string& computePath) {
-    std::string computeCode = FileIO::loadTextFile(computePath);
+    std::string computeCode = FileIO::loadFromTextFile(computePath);
 
     const char* cShaderCode = computeCode.c_str();
     size_t computeCodeSize = computeCode.size();

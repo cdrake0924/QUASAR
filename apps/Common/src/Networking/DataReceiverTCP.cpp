@@ -9,32 +9,35 @@ using namespace quasar;
 
 DataReceiverTCP::DataReceiverTCP(const std::string& url, bool nonBlocking)
     : url(url)
-    , socket(nonBlocking)
 {
-    start();
-}
+    if (url.empty()) {
+        return;
+    }
 
-DataReceiverTCP::~DataReceiverTCP() {
-    close();
-}
-
-void DataReceiverTCP::start() {
     ready = true;
+    socket = std::make_unique<SocketTCP>(nonBlocking);
     dataRecvingThread = std::thread(&DataReceiverTCP::recvData, this);
 }
 
-void DataReceiverTCP::close() {
+DataReceiverTCP::~DataReceiverTCP() {
+    stop();
+}
+
+void DataReceiverTCP::stop() {
+    if (url.empty()) {
+        return;
+    }
+
     ready = false;
     if (dataRecvingThread.joinable()) {
         dataRecvingThread.join();
     }
-    socket.close();
 }
 
 void DataReceiverTCP::recvData() {
     // Attempt to connect to the server
     while (true) {
-        if (socket.connect(url) < 0) {
+        if (socket->connect(url) < 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         else {
@@ -54,7 +57,7 @@ void DataReceiverTCP::recvData() {
 
         // Read header first to determine the size of the incoming data packet
         while (ready && expectedSize == 0) {
-            received = socket.recv(buffer, sizeof(expectedSize), 0);
+            received = socket->recv(buffer, sizeof(expectedSize), 0);
             if (received < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     continue; // retry if the socket is non-blocking and recv would block
@@ -76,7 +79,7 @@ void DataReceiverTCP::recvData() {
         // Read the actual data based on the expected size
         int totalReceived = 0;
         while (ready && totalReceived < expectedSize) {
-            received = socket.recv(buffer, std::min(MAX_RECV_SIZE, expectedSize - totalReceived), 0);
+            received = socket->recv(buffer, std::min(MAX_RECV_SIZE, expectedSize - totalReceived), 0);
             if (received < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     continue; // retry if the socket is non-blocking and recv would block
@@ -102,5 +105,5 @@ void DataReceiverTCP::recvData() {
         }
     }
 
-    socket.close();
+    socket->close();
 }

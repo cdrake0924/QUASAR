@@ -1,6 +1,8 @@
 #ifndef QUAD_SET_H
 #define QUAD_SET_H
 
+#include <spdlog/spdlog.h>
+
 #include <Path.h>
 #include <Utils/FileIO.h>
 #include <Codec/ZSTDCodec.h>
@@ -18,6 +20,14 @@ public:
         double quadsSize = 0.0;
         double depthOffsetsSize = 0.0;
 
+        Sizes operator+(const Sizes& other) const {
+            return {
+                numQuads + other.numQuads,
+                numDepthOffsets + other.numDepthOffsets,
+                quadsSize + other.quadsSize,
+                depthOffsetsSize + other.depthOffsetsSize
+            };
+        }
         Sizes& operator+=(const Sizes& other) {
             numQuads += other.numQuads;
             numDepthOffsets += other.numDepthOffsets;
@@ -44,7 +54,7 @@ public:
         return frameSize;
     }
 
-    uint getNumQuads() const {
+    uint getNumProxies() const {
         return quadBuffers.numProxies;
     }
 
@@ -52,16 +62,19 @@ public:
         return depthOffsets.getSize().x * depthOffsets.getSize().y;
     }
 
-    void setNumQuads(int numProxies) {
+    void setNumProxies(int numProxies) {
         quadBuffers.resize(numProxies);
     }
 
+    Sizes writeToMemory(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
 #ifdef GL_CORE
-    Sizes copyToCPU(std::vector<char>& outputQuads, std::vector<char>& outputDepthOffsets) {
         double startTime = timeutils::getTimeMicros();
-        quadBuffers.copyToCPU(outputQuads);
-        depthOffsets.copyToCPU(outputDepthOffsets);
+        quadBuffers.writeToMemory(outputQuads);
+        depthOffsets.writeToMemory(outputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+#else
+        spdlog::error("QuadSet::writeToMemory is only supported in OpenGL Core");
+#endif
 
         return {
             quadBuffers.numProxies,
@@ -70,18 +83,17 @@ public:
             static_cast<double>(outputDepthOffsets.size()),
         };
     }
-#endif
 
-    Sizes copyFromCPU(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
+    Sizes loadFromMemory(std::vector<char>& inputQuads, std::vector<char>& inputDepthOffsets) {
         double startTime = timeutils::getTimeMicros();
-        quadBuffers.copyFromCPU(inputQuads);
-        depthOffsets.copyFromCPU(inputDepthOffsets);
+        auto quadsSize = quadBuffers.loadFromMemory(inputQuads);
+        depthOffsets.loadFromMemory(inputDepthOffsets);
         stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         return {
             quadBuffers.numProxies,
             depthOffsets.getSize().x * depthOffsets.getSize().y,
-            static_cast<double>(inputQuads.size()),
+            static_cast<double>(quadsSize),
             static_cast<double>(inputDepthOffsets.size())
         };
     }

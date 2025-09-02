@@ -16,9 +16,9 @@ extern "C" {
 #include <string>
 #include <vector>
 #include <filesystem>
-#include <concurrentqueue/concurrentqueue.h>
 
 #include <BS_thread_pool/BS_thread_pool.hpp>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <Path.h>
 #include <RenderTargets/RenderTarget.h>
@@ -60,7 +60,7 @@ public:
         uint numThreads = 8);
     ~Recorder();
 
-    void saveScreenshotToFile(const Path& filename, bool saveToHDR = false);
+    void saveScreenshotToFile(const Path& filename, bool writeToHDR = false);
 
     void setOutputPath(const Path& path);
     void setFormat(OutputFormat format);

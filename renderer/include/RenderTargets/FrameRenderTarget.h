@@ -88,7 +88,18 @@ public:
         framebuffer.unbind();
     }
 
-    void blitToRenderTarget(RenderTarget& rt, GLenum filter = GL_NEAREST) {
+    void blit(RenderTarget& rt, GLenum filter = GL_NEAREST) {
+        blit(rt,
+             0, 0, width,  height,
+             0, 0, rt.width, rt.height,
+             filter);
+    }
+
+    void blit(RenderTarget& rt,
+              GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+              GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
+              GLenum filter = GL_NEAREST)
+    {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rt.getFramebufferID());
 
@@ -96,19 +107,30 @@ public:
         glReadBuffer(GL_COLOR_ATTACHMENT0);
         GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, drawBuffers);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, rt.width, rt.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
         // Depth and stencil
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, rt.width, rt.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void blitToFrameRT(FrameRenderTarget& frameRT, GLenum filter = GL_NEAREST) {
+    void blit(FrameRenderTarget& frameRT, GLenum filter = GL_NEAREST) {
+        blit(frameRT,
+             0, 0, width,  height,
+             0, 0, frameRT.width, frameRT.height,
+             filter);
+    }
+
+    void blit(FrameRenderTarget& frameRT,
+                       GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+                       GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
+                       GLenum filter = GL_NEAREST)
+    {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameRT.getFramebufferID());
 
@@ -116,29 +138,29 @@ public:
         glReadBuffer(GL_COLOR_ATTACHMENT0);
         GLenum drawBuffers0[] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, drawBuffers0);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
         // Normals
         glReadBuffer(GL_COLOR_ATTACHMENT1);
         GLenum drawBuffers1[] = { GL_COLOR_ATTACHMENT1 };
         glDrawBuffers(1, drawBuffers1);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
-        // Ids
+        // IDs
         glReadBuffer(GL_COLOR_ATTACHMENT2);
         GLenum drawBuffers2[] = { GL_COLOR_ATTACHMENT2 };
         glDrawBuffers(1, drawBuffers2);
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         // Depth and stencil
-        glBlitFramebuffer(0, 0, width, height,
-                          0, 0, frameRT.width, frameRT.height,
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
                           GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -157,27 +179,38 @@ public:
         depthStencilTexture.resize(width, height);
     }
 
-    void readPixels(unsigned char *data, bool readAsFloat = false) {
+    void readPixels(unsigned char* data, bool readAsFloat = false) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.readPixels(data, readAsFloat);
         unbind();
     }
 
-    void saveColorAsPNG(const std::string& path) {
+    void writeColorAsPNG(const std::string& path) {
         bind();
-        colorTexture.saveToPNG(path);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeToPNG(path);
         unbind();
     }
 
-    void saveColorAsJPG(const std::string& path, int quality = 95) {
+    void writeColorAsJPG(const std::string& path, int quality = 85) {
         bind();
-        colorTexture.saveToJPG(path, quality);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeToJPG(path, quality);
         unbind();
     }
 
-    void saveColorAsHDR(const std::string& path) {
+    void writeColorAsHDR(const std::string& path) {
         bind();
-        colorTexture.saveToHDR(path);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeToHDR(path);
+        unbind();
+    }
+
+    void writeColorJPGToMemory(std::vector<unsigned char>& outputData, int quality = 85) {
+        bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeJPGToMemory(outputData, quality);
         unbind();
     }
 };

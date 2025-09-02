@@ -1,10 +1,9 @@
-#include <Utils/FileIO.h>
-
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
+
+#include <Utils/FileIO.h>
 
 using namespace quasar;
 
@@ -77,7 +76,7 @@ std::ifstream::pos_type FileIO::getFileSize(const std::string& filename) {
 #endif
 }
 
-std::string FileIO::loadTextFile(const std::string& filename, uint* sizePtr) {
+std::string FileIO::loadFromTextFile(const std::string& filename, uint* sizePtr) {
 #ifndef __ANDROID__
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -107,7 +106,7 @@ std::string FileIO::loadTextFile(const std::string& filename, uint* sizePtr) {
 #endif
 }
 
-std::vector<char> FileIO::loadBinaryFile(const std::string& filename, uint* sizePtr) {
+std::vector<char> FileIO::loadFromBinaryFile(const std::string& filename, uint* sizePtr) {
 #ifndef __ANDROID__
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
@@ -189,7 +188,7 @@ float* FileIO::loadImageHDR(const std::string& filename, int* width, int* height
 #endif
 }
 
-size_t FileIO::saveToTextFile(const std::string& filename, const std::string& data, bool append) {
+size_t FileIO::writeToTextFile(const std::string& filename, const std::string& data, bool append) {
 #ifndef __ANDROID__
     std::ofstream file;
     if (append) {
@@ -226,7 +225,7 @@ size_t FileIO::saveToTextFile(const std::string& filename, const std::string& da
 #endif
 }
 
-size_t FileIO::saveToBinaryFile(const std::string& filename, const void* data, size_t size, bool append) {
+size_t FileIO::writeToBinaryFile(const std::string& filename, const void* data, size_t size, bool append) {
 #ifndef __ANDROID__
     std::ofstream file;
     if (append) {
@@ -263,22 +262,53 @@ size_t FileIO::saveToBinaryFile(const std::string& filename, const void* data, s
 #endif
 }
 
-void FileIO::saveToPNG(const std::string& filename, int width, int height, int channels, const void *data) {
+void FileIO::writeToPNG(const std::string& filename, int width, int height, int channels, const void *data) {
     if (!stbi_write_png(filename.c_str(), width, height, channels, data, width * channels)) {
         throw std::runtime_error("Failed to save PNG image: " + filename);
     }
 }
 
-void FileIO::saveToJPG(const std::string& filename, int width, int height, int channels, const void *data, int quality) {
+void FileIO::writeToJPG(const std::string& filename, int width, int height, int channels, const void *data, int quality) {
     if (!stbi_write_jpg(filename.c_str(), width, height, channels, data, quality)) {
         throw std::runtime_error("Failed to save JPG image: " + filename);
     }
 }
 
-void FileIO::saveToHDR(const std::string& filename, int width, int height, int channels, const float *data) {
+void FileIO::writeToHDR(const std::string& filename, int width, int height, int channels, const float *data) {
     if (!stbi_write_hdr(filename.c_str(), width, height, channels, data)) {
         throw std::runtime_error("Failed to save HDR image: " + filename);
     }
+}
+
+size_t FileIO::writeJPGToMemory(std::vector<unsigned char>& outputData, int width, int height, int channels, const void *data, int quality) {
+    auto write_func = [](void* context, void* d, int s) {
+        MemBuffer* mb = static_cast<MemBuffer*>(context);
+        if (mb->size + (size_t)s > mb->cap) {
+            size_t new_cap = mb->cap ? mb->cap * 2 : 64;
+            while (new_cap < mb->size + (size_t)s) new_cap *= 2;
+            unsigned char* nd = (unsigned char*)realloc(mb->data, new_cap);
+            if (!nd) return;
+            mb->data = nd;
+            mb->cap = new_cap;
+        }
+        memcpy(mb->data + mb->size, d, (size_t)s);
+        mb->size += (size_t)s;
+    };
+
+    MemBuffer mb{};
+    int ok = stbi_write_jpg_to_func(write_func, &mb, width, height, channels, data, quality);
+    if (!ok || mb.size == 0) {
+        if (mb.data) {
+            free(mb.data);
+        }
+        throw std::runtime_error("Failed to write JPG to memory");
+    }
+
+    outputData.resize(mb.size);
+    outputData.assign(mb.data, mb.data + mb.size);
+
+    free(mb.data);
+    return outputData.size();
 }
 
 void FileIO::freeImage(void* imageData) {

@@ -13,50 +13,47 @@ layout(std430, binding = 0) buffer MeshBufferSizes {
     uint numIndices;
 };
 
-layout(std430, binding = 1) readonly buffer QuadCreatedFlagsBuffer {
-    int quadCreatedFlags[];
-};
-
-layout(std430, binding = 2) buffer VertexBuffer {
+layout(std430, binding = 1) buffer VertexBuffer {
     Vertex vertices[];
 };
 
-layout(std430, binding = 3) buffer IndexBuffer {
+layout(std430, binding = 2) buffer IndexBuffer {
     uint indices[];
 };
 
-layout(std430, binding = 4) buffer MeshIndirectCommandBuffer {
+layout(std430, binding = 3) buffer IndirectCommandBuffer {
     uint count;
     uint instanceCount;
     uint firstIndex;
     uint baseVertex;
     uint baseInstance;
-} meshIndirectCommandBuffer;
+} indirectCommandBuffer;
 
-layout(std430, binding = 5) readonly buffer NormalSphericalsBufferInput {
+layout(std430, binding = 4) readonly buffer NormalSphericalsBufferInput {
     uint normalSphericalsInput[];
 };
 
-layout(std430, binding = 6) readonly buffer DepthsBufferInput {
+layout(std430, binding = 5) readonly buffer DepthsBufferInput {
     float depthsInput[];
 };
 
-layout(std430, binding = 7) readonly buffer MetadatasBufferInput {
+layout(std430, binding = 6) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 8) readonly buffer QuadIndicesMap {
-    uint quadIndices[];
+layout(std430, binding = 7) readonly buffer QuadCreatedBuffer {
+    int quadCreatedFlags[];
 };
 
-layout(std430, binding = 9) readonly buffer CurrNumProxiesBuffer {
-    uint currNumProxies;
+layout(std430, binding = 8) readonly buffer QuadIndexMap {
+    uint quadIndexMap[];
 };
 
 layout(rgba16f, binding = 0) uniform readonly image2D depthOffsetsBuffer;
 
 uniform vec2 gBufferSize;
-uniform vec2 atlasSize;
+uniform uint currNumProxies;
+uniform vec4 textureExtent;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -114,7 +111,7 @@ vec4 loadDepthOffsets(in ivec2 pixelCoord) {
 
 uint loadQuadMapIndex(ivec2 pixelCoords) {
     uint pixelIndex = uint(pixelCoords.y) * uint(gBufferSize.x) + uint(pixelCoords.x);
-    return quadIndices[pixelIndex];
+    return quadIndexMap[pixelIndex];
 }
 
 Plane quadMapDataToPlane(in QuadMapData quadMapData) {
@@ -202,10 +199,10 @@ void storeSurfel(in Quad quad, in Quad2D uvsSrc, in QuadMapData quadMapData) {
     // UV coordinates have to be in 3D to properly interpolate them in the fragment shader.
     // To do this, add a q component to the uvs and the fragment shader will perform perspective-correct interpolation.
     vec3 uvqs[4];
-    uvqs[0] = vec3(uvsSrc.bottomLeft,  1.0);
-    uvqs[1] = vec3(uvsSrc.bottomRight, 1.0);
-    uvqs[2] = vec3(uvsSrc.topRight,    1.0);
-    uvqs[3] = vec3(uvsSrc.topLeft,     1.0);
+    uvqs[0] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.bottomLeft),  1.0);
+    uvqs[1] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.bottomRight), 1.0);
+    uvqs[2] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.topRight),    1.0);
+    uvqs[3] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.topLeft),     1.0);
 
     // Adapted from:
     // https://www.roxlu.com/2014/026/mapping-a-texture-on-a-disc
@@ -244,12 +241,11 @@ void storeSurfelsFromQuadMap(in QuadMapData quadMapData) {
     // Extract the plane normal and point from the quad map
     Plane proxyPlane = quadMapDataToPlane(quadMapData);
 
-    uint halfSize = 1u << (quadMapData.size - 1u); // 2^size / 2
+    uint size = 1u << quadMapData.size;
+    uint halfSize = size / 2u;
+    float halfGridSize = float(size) * surfelSize / 2.0;
     vec2 proxyPlaneUV = (vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
     vec2 proxyPlanePixelCoords = vec2(proxyPlaneUV * gBufferSize);
-
-    uint size = 1u << quadMapData.size;
-    float halfGridSize = float(size) * surfelSize / 2.0;
 
     bool flattened = quadMapData.flattened;
     if (!flattened) {
@@ -302,21 +298,20 @@ void storeSurfelsFromQuadMap(in QuadMapData quadMapData) {
 }
 
 void main() {
-    uvec2 quadIndicesPixelCoord = gl_GlobalInvocationID.xy;
-    if (quadIndicesPixelCoord.x >= uint(gBufferSize.x) || quadIndicesPixelCoord.y >= uint(gBufferSize.y)) {
+    uvec2 quadIndexMapPixelCoord = gl_GlobalInvocationID.xy;
+    if (quadIndexMapPixelCoord.x >= uint(gBufferSize.x) || quadIndexMapPixelCoord.y >= uint(gBufferSize.y)) {
         return;
     }
 
     // Reset buffers on first invocation
-    if (quadIndicesPixelCoord == uvec2(0u)) {
+    if (quadIndexMapPixelCoord == uvec2(0u)) {
         // Reset mesh buffers
         atomicExchange(numVertices, 0u);
         atomicExchange(numIndices, 0u);
-        atomicExchange(meshIndirectCommandBuffer.count, 0u);
+        atomicExchange(indirectCommandBuffer.count, 0u);
     }
 
-    // Uint quadMapIndex = quadIndicesPixelCoord.y * uint(gBufferSize.x) + quadIndicesPixelCoord.x;
-    uint quadMapIndex = loadQuadMapIndex(ivec2(quadIndicesPixelCoord));
+    uint quadMapIndex = loadQuadMapIndex(ivec2(quadIndexMapPixelCoord));
     if (quadMapIndex >= currNumProxies) {
         return;
     }
@@ -330,5 +325,5 @@ void main() {
     QuadMapData quadMapData = loadQuadMap(quadMapIndex);
     storeSurfelsFromQuadMap(quadMapData);
 
-    atomicExchange(meshIndirectCommandBuffer.count, numIndices);
+    atomicExchange(indirectCommandBuffer.count, numIndices);
 }

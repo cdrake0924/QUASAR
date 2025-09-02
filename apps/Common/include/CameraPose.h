@@ -3,6 +3,11 @@
 
 #include <glm/glm.hpp>
 
+#include <Path.h>
+#include <Utils/FileIO.h>
+#include <Cameras/PerspectiveCamera.h>
+#include <Cameras/VRCamera.h>
+
 namespace quasar {
 
 typedef uint32_t pose_id_t;
@@ -46,6 +51,55 @@ struct Pose {
     void setProjectionMatrices(const glm::mat4 (&projs)[2]) {
         stereo.projL = projs[0];
         stereo.projR = projs[1];
+    }
+
+    void copyPoseToCamera(PerspectiveCamera& camera) {
+        camera.setProjectionMatrix(mono.proj);
+        camera.setViewMatrix(mono.view);
+    }
+
+    void copyPoseToCamera(VRCamera& camera) {
+        camera.setProjectionMatrices({ stereo.projL, stereo.projR });
+        camera.setViewMatrices({ stereo.viewL, stereo.viewR });
+    }
+
+    void copyPoseFromCamera(const PerspectiveCamera& camera) {
+        mono.proj = camera.getProjectionMatrix();
+        mono.view = camera.getViewMatrix();
+    }
+
+    void copyPoseFromCamera(const VRCamera& camera) {
+        stereo.projL = camera.left.getProjectionMatrix();
+        stereo.viewL = camera.left.getViewMatrix();
+        stereo.projR = camera.right.getProjectionMatrix();
+        stereo.viewR = camera.right.getViewMatrix();
+    }
+
+    size_t writeToFile(const Path& outputPath) const {
+        return FileIO::writeToBinaryFile(outputPath, this, sizeof(Pose));
+    }
+
+    size_t writeToMemory(std::vector<char>& outputData) const {
+        outputData.resize(sizeof(Pose));
+        std::memcpy(outputData.data(), this, sizeof(Pose));
+        return sizeof(Pose);
+    }
+
+    size_t loadFromFile(const Path& inputPath) {
+        std::vector<char> data = FileIO::loadFromBinaryFile(inputPath);
+        std::memcpy(this, data.data(), sizeof(Pose));
+        return sizeof(Pose);
+    }
+
+    size_t loadFromMemory(const char* inputData, size_t inputSize) {
+        if (inputSize < sizeof(Pose)) {
+            throw std::runtime_error("Input data size " +
+                                      std::to_string(inputSize) +
+                                      " is smaller than Pose size " +
+                                      std::to_string(sizeof(Pose)));
+        }
+        std::memcpy(this, inputData, sizeof(Pose));
+        return sizeof(Pose);
     }
 };
 

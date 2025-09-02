@@ -41,16 +41,9 @@ public:
     ComputeShader(const ComputeShaderDataCreateParams& params);
     ComputeShader(const ComputeShaderFileCreateParams& params);
 
-    void setBuffer(GLenum target, int slot, const Buffer& buffer) const {
-        glBindBufferBase(target, slot, buffer);
-    }
-    void clearBuffer(GLenum target, int slot) const {
-        glBindBufferBase(target, slot, 0);
-    }
-
-    void setImageTexture(int slot, const Texture& texture, GLuint level, GLboolean layered, GLuint layer, GLenum access, GLenum format) const {
-        glBindImageTexture(slot, texture, level, layered, layer, access, format);
-    }
+    void setBuffer(GLenum target, int slot, const Buffer& buffer) const;
+    void clearBuffer(GLenum target, int slot) const;
+    void setImageTexture(int slot, const Texture& texture, GLuint level, GLboolean layered, GLuint layer, GLenum access, GLenum format) const;
 
     void loadFromFile(const std::string& computePath);
     void loadFromData(const char* computeCodeData, const size_t computeCodeSize);

@@ -9,9 +9,9 @@
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
-#include <VideoTexture.h>
-#include <BC4DepthVideoTexture.h>
-#include <PoseStreamer.h>
+#include <Receivers/VideoTexture.h>
+#include <Receivers/BC4DepthVideoTexture.h>
+#include <Streamers/PoseStreamer.h>
 #include <shaders_common.h>
 
 #define THREADS_PER_LOCALGROUP 32
@@ -35,12 +35,12 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> sceneFileIn(parser, "scene", "Path to scene file", {'S', "scene"}, "../assets/scenes/sponza.json");
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<uint> surfelSizeIn(parser, "surfel", "Surfel size", {'z', "surfel-size"}, 1);
-    args::ValueFlag<std::string> videoURLIn(parser, "video", "Video URL", {'c', "video-url"}, "0.0.0.0:12345");
-    args::ValueFlag<std::string> depthURLIn(parser, "depth", "Depth URL", {'e', "depth-url"}, "0.0.0.0:65432");
-    args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "127.0.0.1:54321");
     args::ValueFlag<uint> depthFactorIn(parser, "factor", "Depth Resolution Factor", {'a', "depth-factor"}, 1);
-    args::ValueFlag<float> fovIn(parser, "fov", "Field of view", {'f', "fov"}, 60.0f);
+    args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote field of view", {'f', "remote-fov"}, 60.0f);
     args::ValueFlag<std::string> outputPathIn(parser, "output-path", "Directory to save outputs", {'o', "output-path"}, ".");
+    args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to recv video", {'c', "video-url"}, "0.0.0.0:12345");
+    args::ValueFlag<std::string> depthURLIn(parser, "depth", "URL to recv depth", {'e', "depth-url"}, "127.0.0.1:65432");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to recv camera pose", {'p', "pose-url"}, "127.0.0.1:54321");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
     config.enableVSync = !args::get(novsync);
 
-    std::string sceneFile = args::get(sceneFileIn);
+    Path sceneFile = args::get(sceneFileIn);
     std::string videoURL = args::get(videoURLIn);
     std::string depthURL = args::get(depthURLIn);
     std::string poseURL = args::get(poseURLIn);
@@ -109,13 +109,13 @@ int main(int argc, char** argv) {
 
     // "Remote" camera
     PerspectiveCamera remoteCamera(videoTextureColor.width, videoTextureColor.height);
-    remoteCamera.setFovyDegrees(args::get(fovIn));
+    float remoteFOV = args::get(remoteFOVIn);
 
     // "Local" scene
     Scene scene;
     PerspectiveCamera camera(windowSize);
 
-    PoseStreamer poseStreamer(&camera, poseURL);
+    PoseStreamer poseStreamer(&remoteCamera, poseURL);
 
     glm::uvec2 adjustedWindowSize = windowSize / surfelSize;
 
@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
     });
     Node node = Node(&mesh);
     node.frustumCulled = false;
-    node.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+    node.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
     scene.addChildNode(&node);
 
     Node nodeWireframe = Node(&mesh);
@@ -182,7 +182,7 @@ int main(int argc, char** argv) {
         static bool showFPS = true;
         static bool showUI = true;
         static bool showFrameCaptureWindow = false;
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static char fileNameBase[256] = "screenshot";
         static bool showVideoPreview = true;
 
@@ -250,6 +250,18 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
+            if (ImGui::CollapsingHeader("Background Settings")) {
+                if (ImGui::Button("Change Background Color", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                    ImGui::OpenPopup("Background Color Popup");
+                }
+                if (ImGui::BeginPopup("Background Color Popup")) {
+                    ImGui::ColorPicker3("Background Color", (float*)&scene.backgroundColor);
+                    ImGui::EndPopup();
+                }
+            }
+
+            ImGui::Separator();
+
             ImGui::Text("Remote Pose ID: RGB (%d), D (%d)", poseIdColor, poseIdDepth);
 
             glm::mat4 pose = glm::inverse(currentDepthFramePose.mono.view);
@@ -290,6 +302,10 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
+            ImGui::DragFloat("Remote FOV", &remoteFOV, 0.5f, 60.0f, 170.0f);
+
+            ImGui::Separator();
+
             ImGui::RadioButton("Show Mesh", (int*)&renderState, 0);
             ImGui::RadioButton("Show Point Cloud", (int*)&renderState, 1);
             ImGui::RadioButton("Show Wireframe", (int*)&renderState, 2);
@@ -315,12 +331,12 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path filename = (outputPath / fileNameBase).appendToName("." + time);
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, saveToHDR);
+                recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
             ImGui::End();
@@ -378,6 +394,10 @@ int main(int argc, char** argv) {
         camera.processScroll(scroll.y);
 
         // Send pose to streamer
+        remoteCamera.setFovyDegrees(remoteFOV);
+        remoteCamera.setPosition(camera.getPosition());
+        remoteCamera.setRotationQuat(camera.getRotationQuat());
+        remoteCamera.updateViewMatrix();
         poseStreamer.sendPose();
 
         // Render color video frame
@@ -395,11 +415,9 @@ int main(int argc, char** argv) {
 
         if (!mwEnabled) {
             if (poseIdColor != -1) poseStreamer.getPose(poseIdColor, &currentColorFramePose, &elapsedTimeColor);
-
             videoShader.bind();
             videoShader.setTexture("tex", videoTextureColor, 5);
             renderStats = renderer.drawToScreen(videoShader);
-
             return;
         }
 
@@ -441,7 +459,7 @@ int main(int argc, char** argv) {
         poseStreamer.removePosesLessThan(std::min(poseIdColor, poseIdDepth));
 
         // Set render state
-        node.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+        node.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
         nodeWireframe.visible = renderState == RenderState::WIREFRAME;
 
         // Render all objects in scene

@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -7,29 +6,17 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <QuadStreamStreamer.h>
+#include <Streamers/QuadStreamStreamer.h>
 
 #include <PoseSendRecvSimulator.h>
 
 using namespace quasar;
-
-const std::vector<glm::vec3> offsets = {
-    glm::vec3(-1.0f, +1.0f, -1.0f), // Top-left
-    glm::vec3(+1.0f, +1.0f, -1.0f), // Top-right
-    glm::vec3(+1.0f, -1.0f, -1.0f), // Bottom-right
-    glm::vec3(-1.0f, -1.0f, -1.0f), // Bottom-left
-    glm::vec3(-1.0f, +1.0f, +1.0f), // Top-left
-    glm::vec3(+1.0f, +1.0f, +1.0f), // Top-right
-    glm::vec3(+1.0f, -1.0f, +1.0f), // Bottom-right
-    glm::vec3(-1.0f, -1.0f, +1.0f), // Bottom-left
-};
 
 int main(int argc, char** argv) {
     Config config{};
@@ -103,38 +90,22 @@ int main(int argc, char** argv) {
 
     // "Remote" scene
     Scene remoteScene;
-    std::vector<PerspectiveCamera> remoteCameras; remoteCameras.reserve(maxViews);
-    for (int view = 0; view < maxViews; view++) {
-        if (view == maxViews - 1) {
-            remoteCameras.emplace_back(1280, 720);
-        }
-        remoteCameras.emplace_back(remoteRenderer.width, remoteRenderer.height);
-    }
-    PerspectiveCamera& remoteCameraCenter = remoteCameras[0];
+    PerspectiveCamera remoteCamera(remoteRenderer.width, remoteRenderer.height);
     SceneLoader loader;
-    loader.loadScene(sceneFile, remoteScene, remoteCameraCenter);
+    loader.loadScene(sceneFile, remoteScene, remoteCamera);
 
     float remoteFOV = args::get(remoteFOVIn);
-    // Make last camera have a larger fov
-    float remoteFOVWide = args::get(remoteFOVWideIn);
-    for (int view = 0; view < maxViews; view++) {
-        if (view != maxViews - 1) {
-            remoteCameras[view].setFovyDegrees(remoteFOV);
-        }
-        else {
-            remoteCameras[view].setFovyDegrees(remoteFOVWide);
-        }
-    }
+    remoteCamera.setFovyDegrees(remoteFOV);
 
-    // "Local" scene with all the meshLayers
+    // "Local" scene
     Scene localScene;
     localScene.envCubeMap = remoteScene.envCubeMap;
     PerspectiveCamera camera(windowSize);
-    camera.setViewMatrix(remoteCameraCenter.getViewMatrix());
+    camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     QuadSet quadSet(remoteWindowSize);
-    FrameGenerator frameGenerator(quadSet);
-    QuadStreamStreamer quadstream(quadSet, maxViews, remoteRenderer, remoteScene, remoteCameraCenter, frameGenerator);
+    float remoteFOVWide = args::get(remoteFOVWideIn);
+    QuadStreamStreamer quadstream(quadSet, maxViews, remoteRenderer, remoteScene, remoteCamera, remoteFOVWide);
 
     quadstream.addMeshesToScene(localScene);
 
@@ -162,10 +133,9 @@ int main(int argc, char** argv) {
 
     if (cameraPathFileIn) {
         cameraAnimator.copyPoseToCamera(camera);
-        cameraAnimator.copyPoseToCamera(remoteCameraCenter);
+        cameraAnimator.copyPoseToCamera(remoteCamera);
     }
 
-    bool saveToFile = false;
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
@@ -206,7 +176,7 @@ int main(int argc, char** argv) {
         static bool showFrameCaptureWindow = false;
         static bool showMeshCaptureWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -318,33 +288,33 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
-                auto& quadsGenerator = frameGenerator.quadsGenerator;
-                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
+                auto quadsGenerator = quadstream.getQuadsGenerator();
+                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator->params.correctOrientation)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
+                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator->params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
+                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
+                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
+                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
+                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
                     sendRemoteFrame = true;
                     runAnimations = false;
@@ -364,6 +334,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
                 rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+                runAnimations = true;
             }
 
             if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -412,7 +383,7 @@ int main(int argc, char** argv) {
 
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
                     ImGui::Image(
-                        (void*)(intptr_t)(quadstream.refFrameRTs[viewIdx].colorTexture.ID),
+                        (void*)(intptr_t)(quadstream.referenceFrameRTs[viewIdx].colorTexture.ID),
                         ImVec2(texturePreviewSize, texturePreviewSize),
                         ImVec2(0, 1), ImVec2(1, 0)
                     );
@@ -431,21 +402,21 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path basePath = outputPath / fileNameBase;
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
                 Path mainPath = basePath.appendToName("." + time);
-                recorder.saveScreenshotToFile(mainPath, saveToHDR);
+                recorder.saveScreenshotToFile(mainPath, writeToHDR);
 
                 for (int view = 1; view < maxViews; view++) {
                     Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
-                    if (saveToHDR) {
-                        quadstream.refFrameRTs[view].saveColorAsHDR(viewPath.withExtension(".hdr"));
+                    if (writeToHDR) {
+                        quadstream.referenceFrameRTs[view].writeColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
-                        quadstream.refFrameRTs[view].saveColorAsPNG(viewPath.withExtension(".png"));
+                        quadstream.referenceFrameRTs[view].writeColorAsPNG(viewPath.withExtension(".png"));
                     }
                 }
             }
@@ -504,10 +475,7 @@ int main(int argc, char** argv) {
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
             if (ImGui::Button("Save Proxies")) {
-                preventCopyingLocalPose = true;
-                sendRemoteFrame = true;
-                runAnimations = false;
-                saveToFile = true;
+                quadstream.writeToFiles(outputPath);
             }
 
             ImGui::End();
@@ -596,31 +564,13 @@ int main(int argc, char** argv) {
                 // "Receive" a predicted pose to render a new frame. this will wait until latency+/-jitter ms have passed
                 Pose clientPosePred;
                 if (poseSendRecvSimulator.recvPoseToRender(clientPosePred, now)) {
-                    remoteCameraCenter.setViewMatrix(clientPosePred.mono.view);
+                    remoteCamera.setViewMatrix(clientPosePred.mono.view);
                 }
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            // Update other cameras in view box corners
-            for (int view = 1; view < maxViews - 1; view++) {
-                const glm::vec3& offset = offsets[view - 1];
-                const glm::vec3& right = remoteCameraCenter.getRightVector();
-                const glm::vec3& up = remoteCameraCenter.getUpVector();
-                const glm::vec3& forward = remoteCameraCenter.getForwardVector();
-
-                glm::vec3 worldOffset =
-                    right   * offset.x * viewBoxSize / 2.0f +
-                    up      * offset.y * viewBoxSize / 2.0f +
-                    forward * -offset.z * viewBoxSize / 2.0f;
-
-                remoteCameras[view].setViewMatrix(remoteCameraCenter.getViewMatrix());
-                remoteCameras[view].setPosition(remoteCameraCenter.getPosition() + worldOffset);
-                remoteCameras[view].updateViewMatrix();
-            }
-            // Update wide fov camera
-            remoteCameras[maxViews-1].setViewMatrix(remoteCameraCenter.getViewMatrix());
-
-            quadstream.generateFrame(remoteCameras, remoteScene, remoteRenderer, showNormals, showDepth);
+            quadstream.updateViewBox(remoteCamera, viewBoxSize);
+            quadstream.generateFrame(remoteRenderer, remoteScene, remoteCamera, showNormals, showDepth);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", quadstream.stats.totalRenderTime);
@@ -628,7 +578,7 @@ int main(int argc, char** argv) {
             spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadstream.stats.totalGenQuadMapTime);
             spdlog::info("  Simplify Time: {:.3f}ms", quadstream.stats.totalSimplifyTime);
             spdlog::info("  Gather Quads Time: {:.3f}ms", quadstream.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time: {:.3f}ms", quadstream.stats.totalCreateMeshTime);
+            spdlog::info("Create Mesh Time: {:.3f}ms", quadstream.stats.totaltimeToCreateMeshMs);
             spdlog::info("  Append Quads Time: {:.3f}ms", quadstream.stats.totalAppendQuadsTime);
             spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadstream.stats.totalFillQuadsIndiciesTime);
             spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadstream.stats.totalCreateVertIndTime);
@@ -638,14 +588,8 @@ int main(int argc, char** argv) {
                                                   quadstream.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
             spdlog::info("Num Proxies: {}Proxies", quadstream.stats.totalSizes.numQuads);
 
-            // Save to file if requested
-            if (saveToFile) {
-                quadstream.saveToFile(outputPath);
-            }
-
             preventCopyingLocalPose = false;
             sendRemoteFrame = false;
-            saveToFile = false;
         }
 
         poseSendRecvSimulator.update(now);
@@ -653,14 +597,13 @@ int main(int argc, char** argv) {
         // Hide/show nodes based on user input
         for (int view = 0; view < maxViews; view++) {
             bool showView = showViews[view];
-
-            quadstream.refFrameNodesLocal[view].visible = showView;
-            quadstream.refFrameWireframesLocal[view].visible = showView && showWireframe;
+            quadstream.referenceFrameNodesLocal[view].visible = showView;
+            quadstream.referenceFrameWireframesLocal[view].visible = showView && showWireframe;
             quadstream.depthNodes[view].visible = showView && showDepth;
         }
 
         if (restrictMovementToViewBox) {
-            glm::vec3 remotePosition = remoteCameraCenter.getPosition();
+            glm::vec3 remotePosition = remoteCamera.getPosition();
             glm::vec3 position = camera.getPosition();
             // Restrict camera position to be inside position±viewBoxSize
             position.x = glm::clamp(position.x, remotePosition.x - viewBoxSize/2, remotePosition.x + viewBoxSize/2);
@@ -685,7 +628,7 @@ int main(int argc, char** argv) {
             spdlog::info("Client Render Time: {:.3f}ms", timeutils::secondsToMillis(window->getTime() - startTime));
         }
 
-        poseSendRecvSimulator.accumulateError(camera, remoteCameraCenter);
+        poseSendRecvSimulator.accumulateError(camera, remoteCamera);
 
         if (cameraPathFileIn) {
             recorder.captureFrame(camera);

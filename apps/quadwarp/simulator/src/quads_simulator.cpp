@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -7,18 +6,13 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
-
-#include <QuadsStreamer.h>
-
+#include <Streamers/QuadsStreamer.h>
 #include <PoseSendRecvSimulator.h>
-
-#define REF_FRAME_PERIOD 5
 
 using namespace quasar;
 
@@ -102,8 +96,11 @@ int main(int argc, char** argv) {
     camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     QuadSet quadSet(remoteWindowSize);
-    FrameGenerator frameGenerator(quadSet);
-    QuadsSimulator quadwarp(quadSet, remoteRenderer, remoteScene, remoteCamera, frameGenerator);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene);
+
+    std::vector<Node> referenceFrameNodesLocal;
+    std::vector<Node> referenceFrameWireframesLocal;
+    Node residualFrameWireframesLocal;
 
     // Add meshes to local scene
     quadwarp.addMeshesToScene(localScene);
@@ -135,7 +132,6 @@ int main(int argc, char** argv) {
         cameraAnimator.copyPoseToCamera(remoteCamera);
     }
 
-    bool saveToFile = false;
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
@@ -146,6 +142,7 @@ int main(int argc, char** argv) {
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
+    int refFrameInterval = 5;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
@@ -172,7 +169,7 @@ int main(int argc, char** argv) {
         static bool showMeshCaptureWindow = false;
         static bool showFramePreviewWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -269,7 +266,6 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::Checkbox("Show Wireframe", &showWireframe);
             if (ImGui::Checkbox("Show Depth Map as Point Cloud", &showDepth)) {
                 preventCopyingLocalPose = true;
                 sendReferenceFrame = true;
@@ -280,37 +276,38 @@ int main(int argc, char** argv) {
                 sendReferenceFrame = true;
                 runAnimations = false;
             }
+            ImGui::Checkbox("Show Wireframe", &showWireframe);
 
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
-                auto& quadsGenerator = frameGenerator.quadsGenerator;
-                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
+                auto quadsGenerator = quadwarp.getQuadsGenerator();
+                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator->params.correctOrientation)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
+                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator->params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
+                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
+                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
+                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
+                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
@@ -330,6 +327,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
                 rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+                runAnimations = true;
             }
 
             float windowWidth = ImGui::GetContentRegionAvail().x;
@@ -343,6 +341,7 @@ int main(int argc, char** argv) {
                 sendResidualFrame = true;
                 runAnimations = true;
             }
+            ImGui::DragInt("Ref Frame Interval", &refFrameInterval, 0.1, 1, 5);
 
             ImGui::Separator();
 
@@ -367,12 +366,12 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path filename = (outputPath / fileNameBase).appendToName("." + time);
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, saveToHDR);
+                recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
             ImGui::End();
@@ -429,10 +428,7 @@ int main(int argc, char** argv) {
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
             if (ImGui::Button("Save Proxies")) {
-                preventCopyingLocalPose = true;
-                sendReferenceFrame = true;
-                runAnimations = false;
-                saveToFile = true;
+                quadwarp.writeToFiles(remoteCamera, outputPath);
             }
 
             ImGui::End();
@@ -441,17 +437,17 @@ int main(int argc, char** argv) {
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("Reference Frame", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.refFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.referenceFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.resFrameMaskRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameMaskRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quadwarp.resFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
@@ -524,7 +520,7 @@ int main(int argc, char** argv) {
         totalDT += dt;
 
         if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
-            sendReferenceFrame = (frameCounter++) % REF_FRAME_PERIOD == 0; // insert Reference Frame every REF_FRAME_PERIOD frames
+            sendReferenceFrame = (frameCounter++) % refFrameInterval == 0; // insert Reference Frame every refFrameInterval frames
             sendResidualFrame = !sendReferenceFrame;
         }
         if (sendReferenceFrame || sendResidualFrame) {
@@ -546,7 +542,7 @@ int main(int argc, char** argv) {
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            quadwarp.generateFrame(remoteCamera, remoteScene, remoteRenderer, sendResidualFrame, showNormals, showDepth);
+            quadwarp.generateFrame(remoteRenderer, remoteScene, remoteCamera, sendResidualFrame, showNormals, showDepth);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
@@ -554,7 +550,7 @@ int main(int argc, char** argv) {
             spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadwarp.stats.totalGenQuadMapTime);
             spdlog::info("  Simplify Time: {:.3f}ms", quadwarp.stats.totalSimplifyTime);
             spdlog::info("  Gather Quads Time: {:.3f}ms", quadwarp.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totalCreateMeshTime);
+            spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totaltimeToCreateMeshMs);
             spdlog::info("  Append Quads Time: {:.3f}ms", quadwarp.stats.totalAppendQuadsTime);
             spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadwarp.stats.totalFillQuadsIndiciesTime);
             spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTime);
@@ -564,25 +560,19 @@ int main(int argc, char** argv) {
                                                   quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
             spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
 
-            // Save to file if requested
-            if (saveToFile) {
-                quadwarp.saveToFile(outputPath);
-            }
-
             preventCopyingLocalPose = false;
             sendReferenceFrame = false;
             sendResidualFrame = false;
-            saveToFile = false;
         }
 
         poseSendRecvSimulator.update(now);
 
-        // Show previous mesh
-        quadwarp.refFrameNodesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.refFrameNodesLocal[quadwarp.prevMeshIndex].visible = true;
-        quadwarp.refFrameWireframesLocal[quadwarp.currMeshIndex].visible = false;
-        quadwarp.refFrameWireframesLocal[quadwarp.prevMeshIndex].visible = showWireframe;
-        quadwarp.resFrameWireframeNodesLocal.visible = quadwarp.resFrameNode.visible && showWireframe;
+        // Show meshes
+        quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = true;
+        quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = false;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = showWireframe;
+        quadwarp.referenceFrameWireframesLocal[quadwarp.prevMeshIndex].visible = false;
+        quadwarp.residualFrameWireframesLocal.visible = quadwarp.residualFrameNodeLocal.visible && showWireframe;
         quadwarp.depthNode.visible = showDepth;
 
         if (restrictMovementToViewBox) {

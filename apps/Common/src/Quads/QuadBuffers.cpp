@@ -33,12 +33,12 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
     , maxDataSize(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked))
 {}
 
-void QuadBuffers::resize(size_t numProxies) {
-    this->numProxies = numProxies;
+void QuadBuffers::resize(size_t newNumProxies) {
+    numProxies = newNumProxies;
 }
 
 #ifdef GL_CORE
-size_t QuadBuffers::copyToCPU(std::vector<char>& outputData) {
+size_t QuadBuffers::writeToMemory(std::vector<char>& outputData) {
     outputData.resize(maxDataSize);
     size_t bufferOffset = 0;
 
@@ -62,36 +62,36 @@ size_t QuadBuffers::copyToCPU(std::vector<char>& outputData) {
 #else
     void* ptr;
 
-    ptr = normalSphericalsBuffer.mapToCPU(GL_MAP_READ_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+    ptr = normalSphericalsBuffer.mapToCPU(GL_MAP_READ_BIT);
     if (ptr) {
         std::memcpy(outputData.data() + bufferOffset, ptr, numProxies * sizeof(uint));
         normalSphericalsBuffer.unmapFromCPU();
     }
     else {
-        spdlog::warn("Failed to map normalSphericalsBuffer. Copying using setData");
-        normalSphericalsBuffer.setData(numProxies, outputData.data() + bufferOffset);
+        spdlog::warn("Failed to map normalSphericalsBuffer. Copying using getData");
+        normalSphericalsBuffer.getData(numProxies, outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(uint);
 
-    ptr = depthsBuffer.mapToCPU(GL_MAP_READ_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+    ptr = depthsBuffer.mapToCPU(GL_MAP_READ_BIT);
     if (ptr) {
         std::memcpy(outputData.data() + bufferOffset, ptr, numProxies * sizeof(float));
         depthsBuffer.unmapFromCPU();
     }
     else {
-        spdlog::warn("Failed to map depthsBuffer. Copying using setData");
-        depthsBuffer.setData(numProxies, outputData.data() + bufferOffset);
+        spdlog::warn("Failed to map depthsBuffer. Copying using getData");
+        depthsBuffer.getData(numProxies, outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(float);
 
-    ptr = metadatasBuffer.mapToCPU(GL_MAP_READ_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+    ptr = metadatasBuffer.mapToCPU(GL_MAP_READ_BIT);
     if (ptr) {
         std::memcpy(outputData.data() + bufferOffset, ptr, numProxies * sizeof(uint));
         metadatasBuffer.unmapFromCPU();
     }
     else {
-        spdlog::warn("Failed to map metadatasBuffer. Copying using setData");
-        metadatasBuffer.setData(numProxies, outputData.data() + bufferOffset);
+        spdlog::warn("Failed to map metadatasBuffer. Copying using getData");
+        metadatasBuffer.getData(numProxies, outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(uint);
 #endif
@@ -102,47 +102,50 @@ size_t QuadBuffers::copyToCPU(std::vector<char>& outputData) {
 }
 #endif
 
-size_t QuadBuffers::copyFromCPU(const std::vector<char>& inputData) {
+size_t QuadBuffers::loadFromMemory(const std::vector<char>& inputData) {
     size_t bufferOffset = 0;
     void* ptr;
 
-    numProxies = *reinterpret_cast<const uint*>(inputData.data());
+    uint newNumProxies = *reinterpret_cast<const uint*>(inputData.data());
     bufferOffset += sizeof(uint);
 
+    normalSphericalsBuffer.bind();
     ptr = normalSphericalsBuffer.mapToCPU(GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
     if (ptr) {
-        std::memcpy(ptr, inputData.data() + bufferOffset, numProxies * sizeof(uint));
+        std::memcpy(ptr, inputData.data() + bufferOffset, newNumProxies * sizeof(uint));
         normalSphericalsBuffer.unmapFromCPU();
     }
     else {
         spdlog::warn("Failed to map normalSphericalsBuffer. Copying using setData");
-        normalSphericalsBuffer.setData(numProxies, inputData.data() + bufferOffset);
+        normalSphericalsBuffer.setData(newNumProxies, inputData.data() + bufferOffset);
     }
-    bufferOffset += numProxies * sizeof(uint);
+    bufferOffset += newNumProxies * sizeof(uint);
 
+    depthsBuffer.bind();
     ptr = depthsBuffer.mapToCPU(GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
     if (ptr) {
-        std::memcpy(ptr, inputData.data() + bufferOffset, numProxies * sizeof(float));
+        std::memcpy(ptr, inputData.data() + bufferOffset, newNumProxies * sizeof(float));
         depthsBuffer.unmapFromCPU();
     }
     else {
         spdlog::warn("Failed to map depthsBuffer. Copying using setData");
-        depthsBuffer.setData(numProxies, inputData.data() + bufferOffset);
+        depthsBuffer.setData(newNumProxies, inputData.data() + bufferOffset);
     }
-    bufferOffset += numProxies * sizeof(float);
+    bufferOffset += newNumProxies * sizeof(float);
 
+    metadatasBuffer.bind();
     ptr = metadatasBuffer.mapToCPU(GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
     if (ptr) {
-        std::memcpy(ptr, inputData.data() + bufferOffset, numProxies * sizeof(uint));
+        std::memcpy(ptr, inputData.data() + bufferOffset, newNumProxies * sizeof(uint));
         metadatasBuffer.unmapFromCPU();
     }
     else {
         spdlog::warn("Failed to map metadatasBuffer. Copying using setData");
-        metadatasBuffer.setData(numProxies, inputData.data() + bufferOffset);
+        metadatasBuffer.setData(newNumProxies, inputData.data() + bufferOffset);
     }
-    bufferOffset += numProxies * sizeof(uint);
+    bufferOffset += newNumProxies * sizeof(uint);
 
     // Set new number of proxies
-    resize(numProxies);
-    return numProxies;
+    resize(newNumProxies);
+    return bufferOffset;
 }

@@ -1,22 +1,16 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
-#include <CameraAnimator.h>
-
-#include <Shaders/ComputeShader.h>
-#include <VideoStreamer.h>
-#include <DepthStreamer.h>
-#include <BC4DepthStreamer.h>
-#include <PoseReceiver.h>
+#include <Streamers/VideoStreamer.h>
+#include <Streamers/BC4DepthStreamer.h>
+#include <Receivers/PoseReceiver.h>
 
 using namespace quasar;
 
@@ -39,12 +33,12 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> sceneFileIn(parser, "scene", "Path to scene file", {'S', "scene"}, "../assets/scenes/sponza.json");
     args::Flag novsync(parser, "novsync", "Disable VSync", {'V', "novsync"}, false);
     args::ValueFlag<bool> displayIn(parser, "display", "Show window", {'d', "display"}, true);
-    args::ValueFlag<std::string> videoURLIn(parser, "video", "Video URL", {'c', "video-url"}, "127.0.0.1:12345");
-    args::ValueFlag<std::string> depthURLIn(parser, "depth", "Depth URL", {'e', "depth-url"}, "127.0.0.1:65432");
-    args::ValueFlag<std::string> poseURLIn(parser, "pose", "Pose URL", {'p', "pose-url"}, "0.0.0.0:54321");
-    args::ValueFlag<float> fovIn(parser, "fov", "Field of view", {'f', "fov"}, 60.0f);
     args::ValueFlag<int> targetBitrateIn(parser, "targetBitrate", "Target bitrate (Mbps)", {'b', "target-bitrate"}, 50);
     args::ValueFlag<int> depthFactorIn(parser, "factor", "Depth Resolution Factor", {'a', "depth-factor"}, 1);
+    args::ValueFlag<float> fovIn(parser, "fov", "Field of view", {'f', "fov"}, 60.0f);
+    args::ValueFlag<std::string> videoURLIn(parser, "video", "URL to send video", {'c', "video-url"}, "127.0.0.1:12345");
+    args::ValueFlag<std::string> depthURLIn(parser, "depth", "URL to send depth", {'e', "depth-url"}, "127.0.0.1:65432");
+    args::ValueFlag<std::string> poseURLIn(parser, "pose", "URL to send camera pose", {'p', "pose-url"}, "0.0.0.0:54321");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -68,7 +62,7 @@ int main(int argc, char** argv) {
     config.enableVSync = !args::get(novsync);
     config.showWindow = args::get(displayIn);
 
-    std::string sceneFile = args::get(sceneFileIn);
+    Path sceneFile = args::get(sceneFileIn);
     std::string videoURL = args::get(videoURLIn);
     std::string depthURL = args::get(depthURLIn);
     std::string poseURL = args::get(poseURLIn);
@@ -90,12 +84,12 @@ int main(int argc, char** argv) {
     SceneLoader loader;
     loader.loadScene(sceneFile, scene, camera);
 
-    // Set fov
-    camera.setFovyDegrees(args::get(fovIn));
+    float remoteFOV = args::get(fovIn);
+    camera.setFovyDegrees(remoteFOV);
 
     glm::vec3 initialPosition = camera.getPosition();
 
-    VideoStreamer videoStreamerColorRT = VideoStreamer({
+    VideoStreamer videoStreamerColorRT({
         .width = windowSize.x,
         .height = windowSize.y,
         .internalFormat = GL_SRGB8,
@@ -107,7 +101,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_LINEAR,
     }, videoURL, config.targetFramerate, targetBitrate);
 
-    BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
+    BC4DepthStreamer bc4DepthStreamerRT({
         .width = windowSize.x / depthFactor,
         .height = windowSize.y / depthFactor,
         .internalFormat = GL_R32F,
@@ -119,7 +113,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_NEAREST,
     }, depthURL);
 
-    PoseReceiver poseReceiver = PoseReceiver(&camera, poseURL);
+    PoseReceiver poseReceiver(&camera, poseURL);
 
     // Post processing
     ToneMapper toneMapper;
@@ -238,9 +232,8 @@ int main(int argc, char** argv) {
         scene.updateAnimations(dt);
 
         // Receive pose
-        pose_id_t poseID = poseReceiver.receivePose(false);
+        pose_id_t poseID = poseReceiver.receivePose();
         if (poseID != -1) {
-
             // Offset camera
             camera.setPosition(camera.getPosition() + initialPosition);
             camera.updateViewMatrix();

@@ -5,21 +5,24 @@ using namespace quasar;
 DataStreamerUDP::DataStreamerUDP(std::string url, int maxDataSize, bool nonBlocking)
     : url(url)
     , maxDataSize(maxDataSize)
-    , socket(nonBlocking)
 {
-    socket.setAddress(url);
+    if (url.empty()) {
+        return;
+    }
+
+    socket = std::make_unique<SocketUDP>(nonBlocking);
+    socket->setAddress(url);
 
     running = true;
     dataSendingThread = std::thread(&DataStreamerUDP::sendData, this);
 }
 
 DataStreamerUDP::~DataStreamerUDP() {
-    close();
+    stop();
 }
 
-void DataStreamerUDP::close() {
+void DataStreamerUDP::stop() {
     running = false;
-
     if (dataSendingThread.joinable()) {
         dataSendingThread.join();
     }
@@ -43,7 +46,7 @@ int DataStreamerUDP::send(const uint8_t* data) {
 }
 
 int DataStreamerUDP::sendPacket(DataPacketUDP* packet) {
-    return socket.send(packet, sizeof(DataPacketUDP), 0);
+    return socket->send(packet, sizeof(DataPacketUDP), 0);
 }
 
 void DataStreamerUDP::sendData() {
@@ -62,5 +65,5 @@ void DataStreamerUDP::sendData() {
         }
     }
 
-    socket.close();
+    socket->close();
 }

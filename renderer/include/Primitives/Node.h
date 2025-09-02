@@ -21,7 +21,7 @@ public:
     bool visible = true;
     bool frustumCulled = true;
 
-    GLenum primativeType = GL_TRIANGLES;
+    GLenum primitiveType = GL_TRIANGLES;
     float pointSize = 5.0f;
 
     bool wireframe = false;

@@ -49,7 +49,7 @@ public:
         framebuffer.unbind();
     }
 
-    void blitToRenderTarget(RenderTargetBase& rt) {
+    void blit(RenderTargetBase& rt) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rt.getFramebufferID());
 
@@ -59,7 +59,7 @@ public:
         glBlitFramebuffer(0, 0, width, height, 0, 0, rt.width, rt.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
 
-    void blitToRenderTarget(RenderTarget& rt) {
+    void blit(RenderTarget& rt) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rt.framebuffer.ID);
         glBlitFramebuffer(0, 0, width, height, 0, 0, rt.width, rt.height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
@@ -75,25 +75,36 @@ public:
 
     void readPixels(unsigned char* data, bool readAsFloat = false) {
         bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.readPixels(data, readAsFloat);
         unbind();
     }
 
-    void saveColorAsPNG(const std::string& path) {
+    void writeColorAsPNG(const std::string& path) {
         bind();
-        colorTexture.saveToPNG(path);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeToPNG(path);
         unbind();
     }
 
-    void saveColorAsJPG(const std::string& path, int quality = 95) {
+    void writeColorAsJPG(const std::string& path, int quality = 85) {
         bind();
-        colorTexture.saveToJPG(path, quality);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeToJPG(path, quality);
         unbind();
     }
 
-    void saveColorAsHDR(const std::string& path) {
+    void writeColorAsHDR(const std::string& path) {
         bind();
-        colorTexture.saveToHDR(path);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeToHDR(path);
+        unbind();
+    }
+
+    void writeColorJPGToMemory(std::vector<unsigned char>& outputData, int quality = 85) {
+        bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        colorTexture.writeJPGToMemory(outputData, quality);
         unbind();
     }
 };

@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -7,7 +6,6 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-
 #include <PostProcessing/ToneMapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
@@ -15,7 +13,7 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <BC4DepthStreamer.h>
+#include <Streamers/BC4DepthStreamer.h>
 #include <PoseSendRecvSimulator.h>
 
 #include <shaders_common.h>
@@ -166,7 +164,7 @@ int main(int argc, char** argv) {
 
     Node nodePointCloud = Node(&mesh);
     nodePointCloud.frustumCulled = false;
-    nodePointCloud.primativeType = GL_POINTS;
+    nodePointCloud.primitiveType = GL_POINTS;
     nodePointCloud.pointSize = 7.5f;
     nodePointCloud.visible = false;
     nodePointCloud.overrideMaterial = new UnlitMaterial({ .baseColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) });
@@ -242,7 +240,7 @@ int main(int argc, char** argv) {
         static bool showMeshCaptureWindow = false;
         static bool showFramePreviewWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -265,7 +263,7 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
             ImGui::MenuItem("Record", 0, &showRecordWindow);
             ImGui::MenuItem("Mesh Capture", 0, &showMeshCaptureWindow);
-            ImGui::MenuItem("Remote Frame Preview", 0, &showFramePreviewWindow);
+            ImGui::MenuItem("Frame Preview", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -360,6 +358,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
                 rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+                runAnimations = true;
             }
 
             if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -380,12 +379,12 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path filename = (outputPath / fileNameBase).appendToName("." + time);
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, saveToHDR);
+                recorder.saveScreenshotToFile(filename, writeToHDR);
             }
 
             ImGui::End();
@@ -442,10 +441,10 @@ int main(int argc, char** argv) {
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
             if (ImGui::Button("Save Depth")) {
-                bc4DepthStreamerRT.saveToFile(outputPath / "depth.bc4.zstd");
+                bc4DepthStreamerRT.writeToFile(outputPath / "depth.bc4.zstd");
                 Path colorFileName = outputPath / "color";
                 toneMapper.drawToRenderTarget(remoteRenderer, renderTargetCopy);
-                renderTargetCopy.saveColorAsJPG(colorFileName.appendToName(".jpg"));
+                renderTargetCopy.writeColorAsJPG(colorFileName.appendToName(".jpg"));
             }
 
             ImGui::End();
@@ -453,7 +452,7 @@ int main(int argc, char** argv) {
 
         if (showFramePreviewWindow) {
             flags = 0;
-            ImGui::Begin("Remote Frame", 0, flags);
+            ImGui::Begin("Frame", 0, flags);
             ImGui::Image((void*)(intptr_t)(renderTarget.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }

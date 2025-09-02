@@ -44,14 +44,14 @@ void Recorder::setTargetFrameRate(int targetFrameRate) {
     frameCount = 0;
 }
 
-void Recorder::saveScreenshotToFile(const Path& filename, bool saveToHDR) {
+void Recorder::saveScreenshotToFile(const Path& filename, bool writeToHDR) {
     effect.drawToRenderTarget(renderer, *this);
 
-    if (saveToHDR) {
-        saveColorAsHDR(filename.withExtension(".hdr"));
+    if (writeToHDR) {
+        writeColorAsHDR(filename.withExtension(".hdr"));
     }
     else {
-        saveColorAsPNG(filename.withExtension(".png"));
+        writeColorAsPNG(filename.withExtension(".png"));
     }
 }
 
@@ -178,10 +178,10 @@ void Recorder::saveFrames(int threadID) {
 
             FileIO::flipVerticallyOnWrite(true);
             if (outputFormat == OutputFormat::PNG) {
-                FileIO::saveToPNG(fileNameBase.withExtension(".png"), width, height, 4, renderTargetData.data());
+                FileIO::writeToPNG(fileNameBase.withExtension(".png"), width, height, 4, renderTargetData.data());
             }
             else {
-                FileIO::saveToJPG(fileNameBase.withExtension(".jpg"), width, height, 4, renderTargetData.data());
+                FileIO::writeToJPG(fileNameBase.withExtension(".jpg"), width, height, 4, renderTargetData.data());
             }
         }
 
@@ -192,7 +192,7 @@ void Recorder::saveFrames(int threadID) {
                      << frameData.position.x << " " << frameData.position.y << " " << frameData.position.z << " "
                      << frameData.euler.x << " " << frameData.euler.y << " " << frameData.euler.z << " "
                      << frameData.elapsedTime << std::endl;
-            FileIO::saveToTextFile(outputPath / "camera_path.txt", pathFile.str(), true);
+            FileIO::writeToTextFile(outputPath / "camera_path.txt", pathFile.str(), true);
         }
     }
 

@@ -153,7 +153,7 @@ public:
         framebuffer.unbind();
     }
 
-    void blitToFrameRT(FrameRenderTarget & frameRT, GLenum filter = GL_NEAREST) {
+    void blit(FrameRenderTarget & frameRT, GLenum filter = GL_NEAREST) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameRT.getFramebufferID());
 
@@ -181,7 +181,7 @@ public:
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void blitToFrameRT(GBuffer& gBuffer, GLenum filter = GL_NEAREST) {
+    void blit(GBuffer& gBuffer, GLenum filter = GL_NEAREST) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gBuffer.getFramebufferID());
 
@@ -240,15 +240,15 @@ public:
         unbind();
     }
 
-    void saveColorAsPNG(const std::string& path) {
+    void writeColorAsPNG(const std::string& path) {
         bind();
-        albedoTexture.saveToPNG(path);
+        albedoTexture.writeToPNG(path);
         unbind();
     }
 
-    void saveColorAsHDR(const std::string& path) {
+    void writeColorAsHDR(const std::string& path) {
         bind();
-        albedoTexture.saveToHDR(path);
+        albedoTexture.writeToHDR(path);
         unbind();
     }
 };

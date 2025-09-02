@@ -12,8 +12,8 @@
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
-#include <BC4DepthStreamer.h>
-#include <PoseStreamer.h>
+#include <Streamers/BC4DepthStreamer.h>
+#include <Streamers/PoseStreamer.h>
 
 #include <shaders_common.h>
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 
     config.enableVSync = !args::get(novsync);
 
-    std::string sceneFile = args::get(sceneFileIn);
+    Path sceneFile = args::get(sceneFileIn);
 
     uint surfelSize = args::get(surfelSizeIn);
 
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
     });
     Node node = Node(&mesh);
     node.frustumCulled = false;
-    node.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+    node.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
     node.pointSize = 7.5f;
     scene.addChildNode(&node);
 
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
     });
     Node nodeDecompressed = Node(&meshDecompressed);
     nodeDecompressed.frustumCulled = false;
-    nodeDecompressed.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+    nodeDecompressed.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
     nodeDecompressed.pointSize = 7.5f;
     scene.addChildNode(&nodeDecompressed);
 
@@ -270,7 +270,6 @@ int main(int argc, char** argv) {
 
         remoteRenderer.setWindowSize(width, height);
         renderer.setWindowSize(width, height);
-
         camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
@@ -388,8 +387,8 @@ int main(int argc, char** argv) {
                                         GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
 
         // Set render state
-        node.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
-        nodeDecompressed.primativeType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+        node.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
+        nodeDecompressed.primitiveType = renderState == RenderState::POINTCLOUD ? GL_POINTS : GL_TRIANGLES;
 
         // Render all objects in scene
         renderStats = renderer.drawObjects(scene, camera);

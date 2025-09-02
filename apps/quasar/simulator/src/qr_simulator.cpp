@@ -1,5 +1,4 @@
 #include <args/args.hxx>
-#include <spdlog/spdlog.h>
 
 #include <OpenGLApp.h>
 #include <SceneLoader.h>
@@ -18,12 +17,10 @@
 #include <Quads/QuadMaterial.h>
 #include <Quads/FrameGenerator.h>
 
-#include <QUASARStreamer.h>
+#include <Streamers/QUASARStreamer.h>
 #include <HoleFiller.h>
 
 #include <PoseSendRecvSimulator.h>
-
-#define REF_FRAME_PERIOD 5
 
 using namespace quasar;
 
@@ -99,28 +96,22 @@ int main(int argc, char** argv) {
 
     // "Remote" scene
     Scene remoteScene;
-    PerspectiveCamera remoteCameraCenter(remoteRendererDP.width, remoteRendererDP.height);
-    PerspectiveCamera remoteCameraWideFov(remoteRenderer.width, remoteRenderer.height);
-
+    PerspectiveCamera remoteCamera(remoteRendererDP.width, remoteRendererDP.height);
     SceneLoader loader;
-    loader.loadScene(sceneFile, remoteScene, remoteCameraCenter);
+    loader.loadScene(sceneFile, remoteScene, remoteCamera);
 
     float remoteFOV = args::get(remoteFOVIn);
-    remoteCameraCenter.setFovyDegrees(remoteFOV);
+    remoteCamera.setFovyDegrees(remoteFOV);
 
-     // Make last camera have a larger fov
-    float remoteFOVWide = args::get(remoteFOVWideIn);
-    remoteCameraWideFov.setFovyDegrees(remoteFOVWide);
-
-    // "Local" scene with all the meshLayers
+    // "Local" scene
     Scene localScene;
     localScene.envCubeMap = remoteScene.envCubeMap;
     PerspectiveCamera camera(windowSize);
-    camera.setViewMatrix(remoteCameraCenter.getViewMatrix());
+    camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     QuadSet quadSet(remoteWindowSize);
-    FrameGenerator frameGenerator(quadSet);
-    QUASARStreamer quasar(quadSet, maxLayersWideFOV, remoteRenderer, remoteScene, remoteCameraCenter, frameGenerator);
+    float remoteFOVWide = args::get(remoteFOVWideIn);
+    QUASARStreamer quasar(quadSet, maxLayersWideFOV, remoteRenderer, remoteScene, remoteCamera, remoteFOVWide);
 
     quasar.addMeshesToScene(localScene);
 
@@ -148,12 +139,9 @@ int main(int argc, char** argv) {
 
     if (cameraPathFileIn) {
         cameraAnimator.copyPoseToCamera(camera);
-        cameraAnimator.copyPoseToCamera(remoteCameraCenter);
+        cameraAnimator.copyPoseToCamera(remoteCamera);
     }
 
-    bool sendReferenceFrame = true;
-    bool sendResidualFrame = false;
-    bool saveToFile = false;
     bool showDepth = false;
     bool showNormals = false;
     bool showWireframe = false;
@@ -162,6 +150,10 @@ int main(int argc, char** argv) {
     bool restrictMovementToViewBox = !cameraPathFileIn;
     float viewSphereDiameter = args::get(viewSphereDiameterIn);
     remoteRendererDP.setViewSphereDiameter(viewSphereDiameter);
+
+    bool sendReferenceFrame = true;
+    bool sendResidualFrame = false;
+    int refFrameInterval = 5;
 
     const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
@@ -194,7 +186,7 @@ int main(int argc, char** argv) {
         static bool showMeshCaptureWindow = false;
         static bool showFramePreviewWindow = false;
         static char fileNameBase[256] = "screenshot";
-        static bool saveToHDR = false;
+        static bool writeToHDR = false;
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
@@ -307,33 +299,33 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Quad Generation Settings")) {
-                auto& quadsGenerator = frameGenerator.quadsGenerator;
-                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator.params.correctOrientation)) {
+                auto quadsGenerator = quasar.getQuadsGenerator();
+                if (ImGui::Checkbox("Correct Extreme Normals", &quadsGenerator->params.correctOrientation)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator.params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
+                if (ImGui::DragFloat("Depth Threshold", &quadsGenerator->params.depthThreshold, 0.0001f, 0.0f, 1.0f, "%.4f")) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator.params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
+                if (ImGui::DragFloat("Angle Threshold", &quadsGenerator->params.angleThreshold, 0.1f, 0.0f, 180.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator.params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
+                if (ImGui::DragFloat("Flatten Threshold", &quadsGenerator->params.flattenThreshold, 0.001f, 0.0f, 1.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator.params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
+                if (ImGui::DragFloat("Similarity Threshold", &quadsGenerator->params.proxySimilarityThreshold, 0.001f, 0.0f, 2.0f)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
                 }
-                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator.params.maxIterForceMerge, 1, 0, quadsGenerator.numQuadMaps/2)) {
+                if (ImGui::DragInt("Force Merge Iterations", &quadsGenerator->params.maxIterForceMerge, 1, 0, quadsGenerator->numQuadMaps/2)) {
                     preventCopyingLocalPose = true;
                     sendReferenceFrame = true;
                     runAnimations = false;
@@ -353,6 +345,7 @@ int main(int argc, char** argv) {
 
             if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
                 rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+                runAnimations = true;
             }
 
             float windowWidth = ImGui::GetContentRegionAvail().x;
@@ -366,6 +359,7 @@ int main(int argc, char** argv) {
                 sendResidualFrame = true;
                 runAnimations = true;
             }
+            ImGui::DragInt("Ref Frame Interval", &refFrameInterval, 0.1, 1, 5);
 
             ImGui::Separator();
 
@@ -395,7 +389,6 @@ int main(int argc, char** argv) {
             flags = ImGuiWindowFlags_AlwaysAutoResize;
 
             const int texturePreviewSize = (windowSize.x * 0.8) / maxLayersWideFOV;
-
             int rowSize = (maxLayersWideFOV + 1) / 2;
             for (int layer = 0; layer < maxLayersWideFOV; layer++) {
                 int viewIdx = maxLayersWideFOV - layer - 1;
@@ -410,7 +403,7 @@ int main(int argc, char** argv) {
 
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
                     if (viewIdx == 0) {
-                        ImGui::Image((void*)(intptr_t)(quasar.refFrameRT.colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
+                        ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
                     }
                     else {
                         ImGui::Image((void*)(intptr_t)(quasar.frameRTsHidLayer[viewIdx-1].colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
@@ -430,21 +423,21 @@ int main(int argc, char** argv) {
             std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
             Path basePath = outputPath / fileNameBase;
 
-            ImGui::Checkbox("Save as HDR", &saveToHDR);
+            ImGui::Checkbox("Save as HDR", &writeToHDR);
 
             ImGui::Separator();
 
             if (ImGui::Button("Capture Current Frame")) {
                 Path mainPath = basePath.appendToName("." + time);
-                recorder.saveScreenshotToFile(mainPath, saveToHDR);
+                recorder.saveScreenshotToFile(mainPath, writeToHDR);
 
                 for (int layer = 0; layer < maxLayersWideFOV - 1; layer++) {
                     Path viewPath = basePath.appendToName(".layer" + std::to_string(layer + 1) + "." + time);
-                    if (saveToHDR) {
-                        quasar.frameRTsHidLayer[layer].saveColorAsHDR(viewPath.withExtension(".hdr"));
+                    if (writeToHDR) {
+                        quasar.frameRTsHidLayer[layer].writeColorAsHDR(viewPath.withExtension(".hdr"));
                     }
                     else {
-                        quasar.frameRTsHidLayer[layer].saveColorAsPNG(viewPath.withExtension(".png"));
+                        quasar.frameRTsHidLayer[layer].writeColorAsPNG(viewPath.withExtension(".png"));
                     }
                 }
             }
@@ -503,10 +496,7 @@ int main(int argc, char** argv) {
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
             if (ImGui::Button("Save Proxies")) {
-                preventCopyingLocalPose = true;
-                sendReferenceFrame = true;
-                runAnimations = false;
-                saveToFile = true;
+                quasar.writeToFiles(remoteCamera, outputPath);
             }
 
             ImGui::End();
@@ -515,16 +505,16 @@ int main(int argc, char** argv) {
         if (showFramePreviewWindow) {
             flags = 0;
             ImGui::Begin("FrameRenderTarget Color", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasar.refFrameRT.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasar.resFrameMaskRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quasar.residualFrameMaskRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasar.resFrameRT.colorTexture),
+            ImGui::Image((void*)(intptr_t)(quasar.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
@@ -534,7 +524,6 @@ int main(int argc, char** argv) {
         windowSize = glm::uvec2(width, height);
         remoteRendererDP.setWindowSize(width, height);
         renderer.setWindowSize(width, height);
-
         camera.setAspect(windowSize);
         camera.updateProjectionMatrix();
     });
@@ -599,7 +588,7 @@ int main(int argc, char** argv) {
         totalDT += dt;
 
         if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
-            sendReferenceFrame = (frameCounter++) % REF_FRAME_PERIOD == 0; // insert Reference Frame every REF_FRAME_PERIOD frames
+            sendReferenceFrame = (frameCounter++) % refFrameInterval == 0; // insert Reference Frame every refFrameInterval frames
             sendResidualFrame = !sendReferenceFrame;
         }
         if (sendReferenceFrame || sendResidualFrame) {
@@ -616,27 +605,22 @@ int main(int argc, char** argv) {
                 // "Receive" a predicted pose to render a new frame. this will wait until latency+/-jitter ms have passed
                 Pose clientPosePred;
                 if (poseSendRecvSimulator.recvPoseToRender(clientPosePred, now)) {
-                    remoteCameraCenter.setViewMatrix(clientPosePred.mono.view);
+                    remoteCamera.setViewMatrix(clientPosePred.mono.view);
                 }
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            // Update wide fov camera
-            remoteCameraWideFov.setViewMatrix(remoteCameraCenter.getViewMatrix());
+            quasar.updateViewSphere(remoteCamera, viewSphereDiameter);
+            quasar.generateFrame(remoteRenderer, remoteRendererDP, remoteScene, remoteCamera, sendResidualFrame, showNormals, showDepth);
 
-            quasar.generateFrame(
-                remoteCameraCenter, remoteCameraWideFov, remoteScene,
-                remoteRenderer, remoteRendererDP, sendResidualFrame,
-                showNormals, showDepth);
-
-            std::string frameType = sendReferenceFrame ? "RefFrame" : "ResFrame";
+            std::string frameType = sendReferenceFrame ? "Reference Frame" : "Residual Frame";
             spdlog::info("======================================================");
             spdlog::info("Rendering Time ({}): {:.3f}ms", frameType, quasar.stats.totalRenderTime);
             spdlog::info("Create Proxies Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateProxiesTime);
             spdlog::info("  Gen Quad Map Time ({}): {:.3f}ms", frameType, quasar.stats.totalGenQuadMapTime);
             spdlog::info("  Simplify Time ({}): {:.3f}ms", frameType, quasar.stats.totalSimplifyTime);
             spdlog::info("  Gather Quads Time ({}): {:.3f}ms", frameType, quasar.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateMeshTime);
+            spdlog::info("Create Mesh Time ({}): {:.3f}ms", frameType, quasar.stats.totaltimeToCreateMeshMs);
             spdlog::info("  Append Quads Time ({}): {:.3f}ms", frameType, quasar.stats.totalAppendQuadsTime);
             spdlog::info("  Fill Output Quads Time ({}): {:.3f}ms", frameType, quasar.stats.totalFillQuadsIndiciesTime);
             spdlog::info("  Create Vert/Ind Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateVertIndTime);
@@ -646,15 +630,9 @@ int main(int argc, char** argv) {
                                                   quasar.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
             spdlog::info("Num Proxies: {}Proxies", quasar.stats.totalSizes.numQuads);
 
-            // Save to file if requested
-            if (saveToFile) {
-                quasar.saveToFile(outputPath);
-            }
-
             preventCopyingLocalPose = false;
             sendReferenceFrame = false;
             sendResidualFrame = false;
-            saveToFile = false;
         }
 
         poseSendRecvSimulator.update(now);
@@ -665,10 +643,10 @@ int main(int argc, char** argv) {
 
             if (layer == 0) {
                 // Show previous mesh
-                quasar.refFrameNodesLocal[quasar.currMeshIndex].visible = false;
-                quasar.refFrameNodesLocal[quasar.prevMeshIndex].visible = showLayer;
-                quasar.refFrameWireframesLocal[quasar.currMeshIndex].visible = false;
-                quasar.refFrameWireframesLocal[quasar.prevMeshIndex].visible = showLayer && showWireframe;
+                quasar.referenceFrameNodesLocal[quasar.currMeshIndex].visible = showLayer;
+                quasar.referenceFrameNodesLocal[quasar.prevMeshIndex].visible = false;
+                quasar.referenceFrameWireframesLocal[quasar.currMeshIndex].visible = showLayer && showWireframe;
+                quasar.referenceFrameWireframesLocal[quasar.prevMeshIndex].visible = false;
                 quasar.depthNode.visible = showLayer && showDepth;
             }
             else {
@@ -677,10 +655,10 @@ int main(int argc, char** argv) {
                 quasar.depthNodesHidLayer[layer-1].visible = showLayer && showDepth;
             }
         }
-        quasar.resFrameWireframeNodesLocal.visible = quasar.resFrameNode.visible && showWireframe;
+        quasar.residualFrameWireframesLocal.visible = quasar.residualFrameNode.visible && showWireframe;
 
         if (restrictMovementToViewBox) {
-            glm::vec3 remotePosition = remoteCameraCenter.getPosition();
+            glm::vec3 remotePosition = remoteCamera.getPosition();
             glm::vec3 position = camera.getPosition();
             glm::vec3 direction = position - remotePosition;
             float distanceSquared = glm::dot(direction, direction);
@@ -698,9 +676,9 @@ int main(int argc, char** argv) {
         renderStats = renderer.drawObjects(localScene, camera);
 
         // Render to screen
-        auto& quadsGenerator = frameGenerator.quadsGenerator;
+        auto quadsGenerator = quasar.getQuadsGenerator();
         holeFiller.enableToneMapping(!showNormals);
-        holeFiller.setDepthThreshold(quadsGenerator.params.depthThreshold);
+        holeFiller.setDepthThreshold(quadsGenerator->params.depthThreshold);
         holeFiller.drawToScreen(renderer);
         if (!updateClient) {
             return;
@@ -709,7 +687,7 @@ int main(int argc, char** argv) {
             spdlog::info("Client Render Time: {:.3f}ms", timeutils::secondsToMillis(window->getTime() - startTime));
         }
 
-        poseSendRecvSimulator.accumulateError(camera, remoteCameraCenter);
+        poseSendRecvSimulator.accumulateError(camera, remoteCamera);
 
         if (cameraPathFileIn) {
             recorder.captureFrame(camera);
