@@ -183,10 +183,10 @@ int main(int argc, char** argv) {
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = !saveImages;
-        static bool showLayerPreviews = false;
         static bool showFrameCaptureWindow = false;
         static bool showMeshCaptureWindow = false;
         static bool showFramePreviewWindow = false;
+        static bool showLayerPreviews = false;
         static char fileNameBase[256] = "screenshot";
         static bool writeToHDR = false;
         static bool showRecordWindow = false;
@@ -211,8 +211,8 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
             ImGui::MenuItem("Record", 0, &showRecordWindow);
             ImGui::MenuItem("Mesh Capture", 0, &showMeshCaptureWindow);
-            ImGui::MenuItem("Layer Previews", 0, &showLayerPreviews);
             ImGui::MenuItem("Frame Previews", 0, &showFramePreviewWindow);
+            ImGui::MenuItem("Layer Previews", 0, &showLayerPreviews);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -387,34 +387,6 @@ int main(int argc, char** argv) {
             ImGui::End();
         }
 
-        if (showLayerPreviews) {
-            flags = ImGuiWindowFlags_AlwaysAutoResize;
-
-            const int texturePreviewSize = (windowSize.x * 0.8) / maxLayersWideFOV;
-            int rowSize = (maxLayersWideFOV + 1) / 2;
-            for (int layer = 0; layer < maxLayersWideFOV; layer++) {
-                int viewIdx = maxLayersWideFOV - layer - 1;
-                if (showLayers[viewIdx]) {
-                    int row = layer / rowSize;
-                    int col = layer % rowSize;
-
-                    ImGui::SetNextWindowPos(
-                        ImVec2(windowSize.x - (col + 1) * texturePreviewSize - 30, 40 + row * (texturePreviewSize + 20)),
-                        ImGuiCond_FirstUseEver
-                    );
-
-                    ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
-                    if (viewIdx == 0) {
-                        ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
-                    }
-                    else {
-                        ImGui::Image((void*)(intptr_t)(quasar.frameRTsHidLayer[viewIdx-1].colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
-                    }
-                    ImGui::End();
-                }
-            }
-        }
-
         if (showFrameCaptureWindow) {
             ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 90), ImGuiCond_FirstUseEver);
@@ -506,8 +478,9 @@ int main(int argc, char** argv) {
 
         if (showFramePreviewWindow) {
             flags = 0;
-            ImGui::Begin("FrameRenderTarget Color", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture), ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Begin("Reference Frame", 0, flags);
+            ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture),
+                         ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
             ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
@@ -519,6 +492,25 @@ int main(int argc, char** argv) {
             ImGui::Image((void*)(intptr_t)(quasar.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
+        }
+
+        if (showLayerPreviews) {
+            flags = ImGuiWindowFlags_AlwaysAutoResize;
+            for (int layer = 0; layer < maxLayersWideFOV; layer++) {
+                int viewIdx = maxLayersWideFOV - layer - 1;
+                if (showLayers[viewIdx]) {
+                    ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
+                    if (viewIdx == 0) {
+                        ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture.ID),
+                                     ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+                    }
+                    else {
+                        ImGui::Image((void*)(intptr_t)(quasar.frameRTsHidLayer[viewIdx-1].colorTexture.ID),
+                                     ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
+                    }
+                    ImGui::End();
+                }
+            }
         }
     });
 
@@ -639,15 +631,16 @@ int main(int argc, char** argv) {
         poseSendRecvSimulator.update(now);
 
         // Hide/show nodes based on user input
+        int currentIndex  = quasar.lastMeshIndex % 2;
+        int previousIndex = (quasar.lastMeshIndex + 1) % 2;
         for (int layer = 0; layer < maxLayersWideFOV; layer++) {
             bool showLayer = showLayers[layer];
-
             if (layer == 0) {
-                // Show previous mesh
-                quasar.referenceFrameNodesLocal[quasar.currMeshIndex].visible = showLayer;
-                quasar.referenceFrameNodesLocal[quasar.prevMeshIndex].visible = false;
-                quasar.referenceFrameWireframesLocal[quasar.currMeshIndex].visible = showLayer && showWireframe;
-                quasar.referenceFrameWireframesLocal[quasar.prevMeshIndex].visible = false;
+                // Show current mesh
+                quasar.referenceFrameNodesLocal[currentIndex].visible = showLayer;
+                quasar.referenceFrameNodesLocal[previousIndex].visible = false;
+                quasar.referenceFrameWireframesLocal[currentIndex].visible = showLayer && showWireframe;
+                quasar.referenceFrameWireframesLocal[previousIndex].visible = false;
                 quasar.depthNode.visible = showLayer && showDepth;
             }
             else {

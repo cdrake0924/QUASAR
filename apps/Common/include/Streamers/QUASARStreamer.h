@@ -23,13 +23,13 @@ public:
     std::vector<QuadMesh> referenceFrameMeshes;
     std::vector<Node> referenceFrameNodes;
     std::vector<Node> referenceFrameWireframesLocal;
-    int currMeshIndex = 0, prevMeshIndex = 1;
+    int meshIndex = 0, lastMeshIndex = 1;
 
     // Residual frame -- we only create the residuals to the visible layer
     FrameRenderTarget residualFrameRT;
     // Render target to hold updated/masked depth and normals for residual frames
     FrameRenderTarget residualFrameMaskRT;
-    std::vector<ResidualFrame> residualFrames;
+    ResidualFrame residualFrame;
     QuadMesh residualFrameMesh;
     Node residualFrameNode;
 

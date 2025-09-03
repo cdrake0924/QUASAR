@@ -103,7 +103,6 @@ QUASARStreamer::QUASARStreamer(
     referenceFrameWireframesLocal.reserve(meshScenes.size());
 
     referenceFrames.resize(maxLayers);
-    residualFrames.resize(maxLayers);
 
     uint numHidLayers = maxLayers - 1;
     frameRTsHidLayer.reserve(numHidLayers);
@@ -113,6 +112,9 @@ QUASARStreamer::QUASARStreamer(
     nodesHidLayer.reserve(numHidLayers);
     wireframesHidLayer.reserve(numHidLayers);
     depthNodesHidLayer.reserve(numHidLayers);
+
+    remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
+    remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
     remoteCameraWideFOV.setProjectionMatrix(remoteCamera.getProjectionMatrix());
     remoteCameraWideFOV.setFovyDegrees(wideFOV);
@@ -212,6 +214,7 @@ QUASARStreamer::~QUASARStreamer() {
 }
 
 uint QUASARStreamer::getNumTriangles() const {
+    int currMeshIndex  = meshIndex % 2;
     auto refMeshSizes = referenceFrameMeshes[currMeshIndex].getBufferSizes();
     uint numTriangles = refMeshSizes.numIndices / 3; // Each triangle has 3 indices
     for (const auto& mesh : meshesHidLayer) {
@@ -246,14 +249,13 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
     // Reset stats
     stats = { 0 };
 
+    int currMeshIndex  = meshIndex % 2;
+    int prevMeshIndex  = (meshIndex + 1) % 2;
+
     // Update wide FOV camera
     remoteCameraWideFOV.setViewMatrix(remoteCamera.getViewMatrix());
 
     auto quadsGenerator = frameGenerator.getQuadsGenerator();
-
-    if (!createResidualFrame) {
-        std::swap(currMeshIndex, prevMeshIndex);
-    }
 
     /*
     ============================
@@ -322,12 +324,12 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
             quadsGenerator->params.maxIterForceMerge = 4;
         }
         quadsGenerator->params.expandEdges = false;
-        ReferenceFrame currReferenceFrame;
+        ReferenceFrame dummyFrame;
         frameGenerator.createReferenceFrame(
             (layer != 0 && layer != maxLayers - 1) ? frameToUse_noTone : frameToUse,
             remoteCameraToUse,
             meshToUse,
-            ((layer == 0) && createResidualFrame) ? currReferenceFrame : referenceFrames[layer]
+            (layer == 0 && createResidualFrame) ? dummyFrame : referenceFrames[layer] // Don't save output of this reference frame
         );
         if (!showNormals) {
             if (layer == 0) {
@@ -359,7 +361,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
         stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
         stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
 
-        if (layer != 0 || !createResidualFrame) {
+        if (!createResidualFrame || layer != 0) {
             stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
         }
 
@@ -392,7 +394,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
                     residualFrameMaskRT, residualFrameRT,
                     remoteCamera, remoteCameraPrev,
                     referenceFrameMeshes[prevMeshIndex], residualFrameMesh,
-                    residualFrames[layer]
+                    residualFrame
                 );
                 if (!showNormals) {
                     residualFrameRT.blit(residualFrameRT_noTone);
@@ -417,14 +419,15 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
 
                 stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
             }
-
-            residualFrameNode.visible = createResidualFrame;
-
-            // Only update the previous camera pose if we are not generating a Residual Frame
-            if (!createResidualFrame) {
+            else if (!createResidualFrame) {
+                // Only update the previous camera pose if we are not generating a Residual Frame
+                remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
                 remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
+                lastMeshIndex = meshIndex;
+                meshIndex++;
             }
         }
+        residualFrameNode.visible = createResidualFrame;
 
         // For debugging: Generate point cloud from depth map
         if (showDepth) {
@@ -432,17 +435,24 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
             stats.totalGenDepthTime += meshToUseDepth.stats.genDepthTime;
         }
 
-        if (!createResidualFrame) {
+        if (!(createResidualFrame && layer == 0)) {
             stats.totalSizes.numQuads += referenceFrames[layer].getTotalNumQuads();
             stats.totalSizes.numDepthOffsets += referenceFrames[layer].getTotalNumDepthOffsets();
             stats.totalSizes.quadsSize += referenceFrames[layer].getTotalQuadsSize();
             stats.totalSizes.depthOffsetsSize += referenceFrames[layer].getTotalDepthOffsetsSize();
+            spdlog::debug("Reference frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
+                          referenceFrames[layer].getTotalNumQuads(), referenceFrames[layer].getTotalQuadsSize() / BYTES_PER_MEGABYTE,
+                          referenceFrames[layer].getTotalNumDepthOffsets(), referenceFrames[layer].getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
         }
         else {
-            stats.totalSizes.numQuads += residualFrames[layer].getTotalNumQuads();
-            stats.totalSizes.numDepthOffsets += residualFrames[layer].getTotalNumDepthOffsets();
-            stats.totalSizes.quadsSize += residualFrames[layer].getTotalQuadsSize();
-            stats.totalSizes.depthOffsetsSize += residualFrames[layer].getTotalDepthOffsetsSize();
+            stats.totalSizes.numQuads += residualFrame.getTotalNumQuads();
+            stats.totalSizes.numDepthOffsets += residualFrame.getTotalNumDepthOffsets();
+            stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
+            stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
+            spdlog::debug("Residual frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
+                          residualFrame.getTotalNumQuads(),
+                          residualFrame.getTotalQuadsSize() / BYTES_PER_MEGABYTE,
+                          residualFrame.getTotalNumDepthOffsets(), residualFrame.getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
         }
     }
 
@@ -504,10 +514,11 @@ size_t QUASARStreamer::writeToFiles(const Path& outputPath) {
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
     atlasVideoStreamerRT.writeColorAsJPG(colorFileName);
 
+    // Save proxies
     size_t totalOutputSize = 0;
     for (int layer = 0; layer < maxLayers; layer++) {
-        // Save proxies
         totalOutputSize += referenceFrames[layer].writeToFiles(outputPath, layer);
     }
+    totalOutputSize += residualFrame.writeToFiles(outputPath, maxLayers);
     return totalOutputSize;
 }

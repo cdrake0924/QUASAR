@@ -95,6 +95,9 @@ QuadsStreamer::QuadsStreamer(
     referenceFrameNodesLocal.reserve(meshScenes.size());
     referenceFrameWireframesLocal.reserve(meshScenes.size());
 
+    remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
+    remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
+
     for (int i = 0; i < meshScenes.size(); i++) {
         referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT_noTone.colorTexture);
 
@@ -137,6 +140,7 @@ QuadsStreamer::~QuadsStreamer() {
 }
 
 uint QuadsStreamer::getNumTriangles() const {
+    int currMeshIndex  = meshIndex % 2;
     auto refMeshSizes = referenceFrameMeshes[currMeshIndex].getBufferSizes();
     auto maskMeshSizes = residualFrameMesh.getBufferSizes();
     return (refMeshSizes.numIndices + maskMeshSizes.numIndices) / 3; // Each triangle has 3 indices
@@ -152,17 +156,16 @@ void QuadsStreamer::addMeshesToScene(Scene& localScene) {
     localScene.addChildNode(&depthNode);
 }
 
-void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bool showDepth)
-{
+void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bool showDepth) {
+    // Reset stats
     // Reset stats
     stats = { 0 };
 
+    int currMeshIndex  = meshIndex % 2;
+    int prevMeshIndex  = (meshIndex + 1) % 2;
+
     auto& remoteCameraToUse = createResidualFrame ? remoteCameraPrev : remoteCamera;
     auto quadsGenerator = frameGenerator.getQuadsGenerator();
-
-    if (!createResidualFrame) {
-        std::swap(currMeshIndex, prevMeshIndex);
-    }
 
     /*
     ============================
@@ -180,12 +183,12 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
     ============================
     */
     quadsGenerator->params.expandEdges = false;
-    ReferenceFrame currReferenceFrame;
+    ReferenceFrame dummyFrame;
     frameGenerator.createReferenceFrame(
         referenceFrameRT,
         remoteCameraToUse,
         referenceFrameMeshes[currMeshIndex],
-        createResidualFrame ? currReferenceFrame : referenceFrame
+        createResidualFrame ? dummyFrame : referenceFrame // Don't save output of this reference frame
     );
     if (!showNormals) {
         remoteRenderer.copyToFrameRT(referenceFrameRT_noTone);
@@ -259,6 +262,8 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
         // Only update the previous camera pose if we are not generating a Residual Frame
         remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
+        lastMeshIndex = meshIndex;
+        meshIndex++;
     }
 
     residualFrameNodeLocal.visible = createResidualFrame;
@@ -286,17 +291,18 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
         stats.totalSizes.numDepthOffsets += referenceFrame.getTotalNumDepthOffsets();
         stats.totalSizes.quadsSize += referenceFrame.getTotalQuadsSize();
         stats.totalSizes.depthOffsetsSize += referenceFrame.getTotalDepthOffsetsSize();
-        spdlog::debug("Reference frame generated with {} quads, {} depth offsets",
-                     referenceFrame.getTotalNumQuads(), referenceFrame.getTotalNumDepthOffsets());
+        spdlog::debug("Reference frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
+                      referenceFrame.getTotalNumQuads(), referenceFrame.getTotalQuadsSize() / BYTES_PER_MEGABYTE,
+                      referenceFrame.getTotalNumDepthOffsets(), referenceFrame.getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
     }
     else {
         stats.totalSizes.numQuads += residualFrame.getTotalNumQuads();
         stats.totalSizes.numDepthOffsets += residualFrame.getTotalNumDepthOffsets();
         stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
         stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
-        spdlog::debug("Residual frame generated with {} quads ({} revealed), {} depth offsets",
-                      residualFrame.getTotalNumQuads(),
-                      residualFrame.getTotalNumQuadsRevealed(), residualFrame.getTotalNumDepthOffsets());
+        spdlog::debug("Residual frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
+                      residualFrame.getTotalNumQuads(), residualFrame.getTotalQuadsSize() / BYTES_PER_MEGABYTE,
+                      residualFrame.getTotalNumDepthOffsets(), residualFrame.getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
     }
 }
 

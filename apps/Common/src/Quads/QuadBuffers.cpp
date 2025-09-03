@@ -69,7 +69,7 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData) {
     }
     else {
         spdlog::warn("Failed to map normalSphericalsBuffer. Copying using getData");
-        normalSphericalsBuffer.getData(numProxies, outputData.data() + bufferOffset);
+        normalSphericalsBuffer.getData(outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(uint);
 
@@ -80,7 +80,7 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData) {
     }
     else {
         spdlog::warn("Failed to map depthsBuffer. Copying using getData");
-        depthsBuffer.getData(numProxies, outputData.data() + bufferOffset);
+        depthsBuffer.getData(outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(float);
 
@@ -91,7 +91,7 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData) {
     }
     else {
         spdlog::warn("Failed to map metadatasBuffer. Copying using getData");
-        metadatasBuffer.getData(numProxies, outputData.data() + bufferOffset);
+        metadatasBuffer.getData(outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(uint);
 #endif

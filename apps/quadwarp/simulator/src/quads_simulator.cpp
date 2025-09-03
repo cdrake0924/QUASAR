@@ -568,10 +568,12 @@ int main(int argc, char** argv) {
         poseSendRecvSimulator.update(now);
 
         // Show meshes
-        quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = true;
-        quadwarp.referenceFrameNodesLocal[quadwarp.prevMeshIndex].visible = false;
-        quadwarp.referenceFrameWireframesLocal[quadwarp.currMeshIndex].visible = showWireframe;
-        quadwarp.referenceFrameWireframesLocal[quadwarp.prevMeshIndex].visible = false;
+        int currentIndex  = quadwarp.lastMeshIndex % 2;
+        int previousIndex = (quadwarp.lastMeshIndex + 1) % 2;
+        quadwarp.referenceFrameNodesLocal[currentIndex].visible = true;
+        quadwarp.referenceFrameNodesLocal[previousIndex].visible = false;
+        quadwarp.referenceFrameWireframesLocal[currentIndex].visible = showWireframe;
+        quadwarp.referenceFrameWireframesLocal[previousIndex].visible = false;
         quadwarp.residualFrameWireframesLocal.visible = quadwarp.residualFrameNodeLocal.visible && showWireframe;
         quadwarp.depthNode.visible = showDepth;
 

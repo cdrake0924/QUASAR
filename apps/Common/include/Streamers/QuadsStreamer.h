@@ -19,7 +19,7 @@ public:
     ReferenceFrame referenceFrame;
     std::vector<QuadMesh> referenceFrameMeshes;
     std::vector<Node> referenceFrameNodes;
-    int currMeshIndex = 0, prevMeshIndex = 1;
+    int meshIndex = 0, lastMeshIndex = 1;
 
     // Residual frame
     FrameRenderTarget residualFrameRT;

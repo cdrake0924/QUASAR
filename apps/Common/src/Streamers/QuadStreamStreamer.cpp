@@ -222,6 +222,9 @@ void QuadStreamStreamer::generateFrame(bool showNormals, bool showDepth) {
         // We approximate their data size by multiplying by 103/sizeof(our quad data struct)
         stats.totalSizes.quadsSize += referenceFrames[view].getTotalQuadsSize() * (103.0 / (8 * sizeof(QuadMapDataPacked)));
         stats.totalSizes.depthOffsetsSize += referenceFrames[view].getTotalDepthOffsetsSize();
+        spdlog::debug("Reference frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
+            referenceFrames[view].getTotalNumQuads(), referenceFrames[view].getTotalQuadsSize() * (103.0 / (8 * sizeof(QuadMapDataPacked))) / BYTES_PER_MEGABYTE,
+            referenceFrames[view].getTotalNumDepthOffsets(), referenceFrames[view].getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
     }
 }
 
@@ -242,7 +245,7 @@ size_t QuadStreamStreamer::writeToFiles(const Path& outputPath) {
     };
     FileIO::writeToBinaryFile(outputPath / "metadata.bin", metadata.data(), metadata.size() * sizeof(float));
 
-    // Save color data
+    // Save color data and proxies
     size_t totalOutputSize = 0;
     for (int view = 0; view < maxViews; view++) {
         Path colorFileName = (outputPath / ("color" + std::to_string(view))).withExtension(".jpg");

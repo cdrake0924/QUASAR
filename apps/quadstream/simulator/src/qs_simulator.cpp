@@ -371,26 +371,12 @@ int main(int argc, char** argv) {
 
         if (showViewPreviews) {
             flags = ImGuiWindowFlags_AlwaysAutoResize;
-
-            const int texturePreviewSize = (windowSize.x * 0.8) / maxViews;
-            int rowSize = (maxViews + 1) / 2;
             for (int view = 0; view < maxViews; view++) {
                 int viewIdx = maxViews - view - 1;
                 if (showViews[viewIdx]) {
-                    int row = view / rowSize;
-                    int col = view % rowSize;
-
-                    ImGui::SetNextWindowPos(
-                        ImVec2(windowSize.x - (col + 1) * texturePreviewSize - 30, 40 + row * (texturePreviewSize + 20)),
-                        ImGuiCond_FirstUseEver
-                    );
-
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
-                    ImGui::Image(
-                        (void*)(intptr_t)(quadstream.referenceFrameRTs[viewIdx].colorTexture.ID),
-                        ImVec2(texturePreviewSize, texturePreviewSize),
-                        ImVec2(0, 1), ImVec2(1, 0)
-                    );
+                    ImGui::Image((void*)(intptr_t)(quadstream.referenceFrameRTs[viewIdx].colorTexture.ID),
+                                ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
                     ImGui::End();
                 }
             }
