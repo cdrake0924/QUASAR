@@ -4,7 +4,9 @@ using namespace quasar;
 
 QuadsStreamer::QuadsStreamer(
         QuadSet& quadSet,
-        DeferredRenderer& remoteRenderer, Scene& remoteScene,
+        DeferredRenderer& remoteRenderer,
+        Scene& remoteScene,
+        PerspectiveCamera& remoteCamera,
         const std::string& videoURL,
         const std::string& proxiesURL)
     : videoURL(videoURL)
@@ -12,6 +14,7 @@ QuadsStreamer::QuadsStreamer(
     , quadSet(quadSet)
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
+    , remoteCamera(remoteCamera)
     , frameGenerator(quadSet)
     , referenceFrameRT({
         .width = quadSet.getSize().x,
@@ -149,10 +152,7 @@ void QuadsStreamer::addMeshesToScene(Scene& localScene) {
     localScene.addChildNode(&depthNode);
 }
 
-void QuadsStreamer::generateFrame(
-    DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
-    bool createResidualFrame,
-    bool showNormals, bool showDepth)
+void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bool showDepth)
 {
     // Reset stats
     stats = { 0 };

@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     camera.setViewMatrix(remoteCamera.getViewMatrix());
 
     QuadSet quadSet(remoteWindowSize);
-    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene);
+    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, remoteCamera);
 
     std::vector<Node> referenceFrameNodesLocal;
     std::vector<Node> referenceFrameWireframesLocal;
@@ -542,7 +542,7 @@ int main(int argc, char** argv) {
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            quadwarp.generateFrame(remoteRenderer, remoteScene, remoteCamera, sendResidualFrame, showNormals, showDepth);
+            quadwarp.generateFrame(sendResidualFrame, showNormals, showDepth);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);

@@ -111,7 +111,11 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(remoteWindowSize);
     float remoteFOVWide = args::get(remoteFOVWideIn);
-    QUASARStreamer quasar(quadSet, maxLayersWideFOV, remoteRenderer, remoteScene, remoteCamera, remoteFOVWide);
+    float viewSphereDiameter = args::get(viewSphereDiameterIn);
+    QUASARStreamer quasar(
+        quadSet, maxLayersWideFOV,
+        remoteRendererDP, remoteRenderer, remoteScene, remoteCamera,
+        viewSphereDiameter, remoteFOVWide);
 
     quasar.addMeshesToScene(localScene);
 
@@ -148,8 +152,6 @@ int main(int argc, char** argv) {
     bool preventCopyingLocalPose = false;
     bool runAnimations = cameraPathFileIn;
     bool restrictMovementToViewBox = !cameraPathFileIn;
-    float viewSphereDiameter = args::get(viewSphereDiameterIn);
-    remoteRendererDP.setViewSphereDiameter(viewSphereDiameter);
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
@@ -367,7 +369,7 @@ int main(int argc, char** argv) {
                 preventCopyingLocalPose = true;
                 sendReferenceFrame = true;
                 runAnimations = false;
-                remoteRendererDP.setViewSphereDiameter(viewSphereDiameter);
+                quasar.setViewSphereDiameter(viewSphereDiameter);
             }
 
             ImGui::Checkbox("Restrict Movement to View Sphere", &restrictMovementToViewBox);
@@ -496,7 +498,7 @@ int main(int argc, char** argv) {
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
             if (ImGui::Button("Save Proxies")) {
-                quasar.writeToFiles(remoteCamera, outputPath);
+                quasar.writeToFiles(outputPath);
             }
 
             ImGui::End();
@@ -610,8 +612,7 @@ int main(int argc, char** argv) {
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            quasar.updateViewSphere(remoteCamera, viewSphereDiameter);
-            quasar.generateFrame(remoteRenderer, remoteRendererDP, remoteScene, remoteCamera, sendResidualFrame, showNormals, showDepth);
+            quasar.generateFrame(sendResidualFrame, showNormals, showDepth);
 
             std::string frameType = sendReferenceFrame ? "Reference Frame" : "Residual Frame";
             spdlog::info("======================================================");

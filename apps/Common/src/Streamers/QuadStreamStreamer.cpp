@@ -7,12 +7,14 @@ QuadStreamStreamer::QuadStreamStreamer(
         uint maxViews,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
-        const PerspectiveCamera& remoteCamera,
+        PerspectiveCamera& remoteCamera,
+        float viewBoxSize,
         float wideFOV)
     : quadSet(quadSet)
     , maxViews(maxViews)
     , remoteRenderer(remoteRenderer)
     , remoteScene(remoteScene)
+    , remoteCamera(remoteCamera)
     , frameGenerator(quadSet)
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
@@ -87,6 +89,8 @@ QuadStreamStreamer::QuadStreamStreamer(
         referenceFrameNodesRemote[view].visible = (view == 0); // Center view is always visible
         meshScene.addChildNode(&referenceFrameNodesRemote[view]);
     }
+
+    setViewBoxSize(viewBoxSize);
 }
 
 uint QuadStreamStreamer::getNumTriangles() const {
@@ -106,8 +110,13 @@ void QuadStreamStreamer::addMeshesToScene(Scene& localScene) {
     }
 }
 
-void QuadStreamStreamer::updateViewBox(const PerspectiveCamera& remoteCamera, float viewBoxSize) {
+void QuadStreamStreamer::setViewBoxSize(float viewBoxSize) {
     this->viewBoxSize = viewBoxSize;
+}
+
+void QuadStreamStreamer::generateFrame(bool showNormals, bool showDepth) {
+    // Reset stats
+    stats = { 0 };
 
     PerspectiveCamera& remoteCameraCenter = remoteCameras[0];
     remoteCameraCenter.setViewMatrix(remoteCamera.getViewMatrix());
@@ -116,30 +125,22 @@ void QuadStreamStreamer::updateViewBox(const PerspectiveCamera& remoteCamera, fl
     // Update other cameras in view box corners
     for (int view = 1; view < maxViews - 1; view++) {
         const glm::vec3& offset = offsets[view - 1];
-        const glm::vec3& right = remoteCamera.getRightVector();
-        const glm::vec3& up = remoteCamera.getUpVector();
-        const glm::vec3& forward = remoteCamera.getForwardVector();
+        const glm::vec3& right = remoteCameraCenter.getRightVector();
+        const glm::vec3& up = remoteCameraCenter.getUpVector();
+        const glm::vec3& forward = remoteCameraCenter.getForwardVector();
 
         glm::vec3 worldOffset =
             right   * +offset.x * viewBoxSize / 2.0f +
             up      * +offset.y * viewBoxSize / 2.0f +
             forward * -offset.z * viewBoxSize / 2.0f;
 
-        remoteCameras[view].setViewMatrix(remoteCamera.getViewMatrix());
-        remoteCameras[view].setPosition(remoteCamera.getPosition() + worldOffset);
+        remoteCameras[view].setViewMatrix(remoteCameraCenter.getViewMatrix());
+        remoteCameras[view].setPosition(remoteCameraCenter.getPosition() + worldOffset);
         remoteCameras[view].updateViewMatrix();
     }
 
     // Update wide fov camera
-    remoteCameras[maxViews-1].setViewMatrix(remoteCamera.getViewMatrix());
-}
-
-void QuadStreamStreamer::generateFrame(
-    DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
-    bool showNormals, bool showDepth)
-{
-    // Reset stats
-    stats = { 0 };
+    remoteCameras[maxViews-1].setViewMatrix(remoteCameraCenter.getViewMatrix());
 
     for (int view = 0; view < maxViews; view++) {
         auto& remoteCameraToUse = remoteCameras[view];

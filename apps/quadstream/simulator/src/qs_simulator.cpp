@@ -105,7 +105,11 @@ int main(int argc, char** argv) {
 
     QuadSet quadSet(remoteWindowSize);
     float remoteFOVWide = args::get(remoteFOVWideIn);
-    QuadStreamStreamer quadstream(quadSet, maxViews, remoteRenderer, remoteScene, remoteCamera, remoteFOVWide);
+    float viewBoxSize = args::get(viewBoxSizeIn);
+    QuadStreamStreamer quadstream(
+        quadSet, maxViews,
+        remoteRenderer, remoteScene, remoteCamera,
+        viewBoxSize, remoteFOVWide);
 
     quadstream.addMeshesToScene(localScene);
 
@@ -142,7 +146,6 @@ int main(int argc, char** argv) {
     bool preventCopyingLocalPose = false;
     bool runAnimations = cameraPathFileIn;
     bool restrictMovementToViewBox = !cameraPathFileIn;
-    float viewBoxSize = args::get(viewBoxSizeIn);
 
     bool sendRemoteFrame = true;
 
@@ -348,6 +351,7 @@ int main(int argc, char** argv) {
                 preventCopyingLocalPose = true;
                 sendRemoteFrame = true;
                 runAnimations = false;
+                quadstream.setViewBoxSize(viewBoxSize);
             }
 
             ImGui::Checkbox("Restrict Movement to View Box", &restrictMovementToViewBox);
@@ -569,8 +573,7 @@ int main(int argc, char** argv) {
                 // If we do not have a new pose, just send a new frame with the old pose
             }
 
-            quadstream.updateViewBox(remoteCamera, viewBoxSize);
-            quadstream.generateFrame(remoteRenderer, remoteScene, remoteCamera, showNormals, showDepth);
+            quadstream.generateFrame(showNormals, showDepth);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", quadstream.stats.totalRenderTime);

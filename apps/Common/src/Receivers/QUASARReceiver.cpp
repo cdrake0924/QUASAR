@@ -46,7 +46,11 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
         }
     }
 
-    threadPool = std::make_unique<BS::thread_pool<>>(2);
+    threadPool = std::make_unique<BS::thread_pool<>>(4);
+
+    if (!proxiesURL.empty()) {
+        spdlog::info("Created QUASARReceiver that recvs from URL: {}", proxiesURL);
+    }
 }
 
 QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, float remoteFOV, float remoteFOVWide, const std::string& videoURL, const std::string& proxiesURL)

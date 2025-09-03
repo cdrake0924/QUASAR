@@ -5,9 +5,11 @@ using namespace quasar;
 QUASARStreamer::QUASARStreamer(
         QuadSet& quadSet,
         uint maxLayers,
+        DepthPeelingRenderer& remoteRendererDP,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
-        const PerspectiveCamera& remoteCamera,
+        PerspectiveCamera& remoteCamera,
+        float viewSphereDiameter,
         float wideFOV,
         const std::string& videoURL,
         const std::string& proxiesURL)
@@ -16,7 +18,9 @@ QUASARStreamer::QUASARStreamer(
     , quadSet(quadSet)
     , maxLayers(maxLayers)
     , remoteRenderer(remoteRenderer)
+    , remoteRendererDP(remoteRendererDP)
     , remoteScene(remoteScene)
+    , remoteCamera(remoteCamera)
     , frameGenerator(quadSet)
     , referenceFrameRT({
         .width = quadSet.getSize().x,
@@ -195,6 +199,16 @@ QUASARStreamer::QUASARStreamer(
         sceneWideFov.addChildNode(&nodesHidLayer[i]);
     }
     sceneWideFov.addChildNode(&residualFrameNode);
+
+    setViewSphereDiameter(viewSphereDiameter);
+
+    if (!videoURL.empty() && !proxiesURL.empty()) {
+        spdlog::info("Created QUASARStreamer that sends to URL: {}", proxiesURL);
+    }
+}
+
+QUASARStreamer::~QUASARStreamer() {
+    atlasVideoStreamerRT.stop();
 }
 
 uint QUASARStreamer::getNumTriangles() const {
@@ -223,20 +237,17 @@ void QUASARStreamer::addMeshesToScene(Scene& localScene) {
     }
 }
 
-void QUASARStreamer::updateViewSphere(const PerspectiveCamera& remoteCamera, float viewSphereDiameter) {
+void QUASARStreamer::setViewSphereDiameter(float viewSphereDiameter) {
     this->viewSphereDiameter = viewSphereDiameter;
+    remoteRendererDP.setViewSphereDiameter(viewSphereDiameter);
+}
+
+void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, bool showDepth) {
+    // Reset stats
+    stats = { 0 };
 
     // Update wide FOV camera
     remoteCameraWideFOV.setViewMatrix(remoteCamera.getViewMatrix());
-}
-
-void QUASARStreamer::generateFrame(
-    DeferredRenderer& remoteRenderer, DepthPeelingRenderer& remoteRendererDP,
-    Scene& remoteScene, const PerspectiveCamera& remoteCamera,
-    bool createResidualFrame, bool showNormals, bool showDepth)
-{
-    // Reset stats
-    stats = { 0 };
 
     auto quadsGenerator = frameGenerator.getQuadsGenerator();
 
@@ -249,6 +260,7 @@ void QUASARStreamer::generateFrame(
     Render scene normally to create Reference Frame textures
     ============================
     */
+
     double startTime = timeutils::getTimeMicros();
     remoteRendererDP.drawObjects(remoteScene, remoteCamera);
     stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
@@ -473,7 +485,7 @@ void QUASARStreamer::generateFrame(
     }
 }
 
-size_t QUASARStreamer::writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath) {
+size_t QUASARStreamer::writeToFiles(const Path& outputPath) {
     // Save camera data
     Pose cameraPose;
     Path cameraFileName = (outputPath / "camera").withExtension(".bin");

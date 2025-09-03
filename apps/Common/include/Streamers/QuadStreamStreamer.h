@@ -50,7 +50,8 @@ public:
         uint maxViews,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
-        const PerspectiveCamera& remoteCamera,
+        PerspectiveCamera& remoteCamera,
+        float viewBoxSize,
         float wideFOV);
     ~QuadStreamStreamer() = default;
 
@@ -58,11 +59,9 @@ public:
     std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return frameGenerator.getQuadsGenerator(); }
 
     void addMeshesToScene(Scene& localScene);
+    void setViewBoxSize(float viewBoxSize);
 
-    void updateViewBox(const PerspectiveCamera& remoteCamera, float viewBoxSize);
-    void generateFrame(
-        DeferredRenderer& remoteRenderer, Scene& remoteScene, const PerspectiveCamera& remoteCamera,
-        bool showNormals = false, bool showDepth = false);
+    void generateFrame(bool showNormals = false, bool showDepth = false);
 
     size_t writeToFiles(const Path& outputPath);
 
@@ -96,6 +95,7 @@ private:
 
     DeferredRenderer& remoteRenderer;
     Scene& remoteScene;
+    PerspectiveCamera& remoteCamera;
     std::vector<PerspectiveCamera> remoteCameras;
 
     // Scenes with resulting meshes

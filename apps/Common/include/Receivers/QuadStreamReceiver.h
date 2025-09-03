@@ -39,7 +39,7 @@ public:
         camera.setProjectionMatrix(remoteCameraCenter.getProjectionMatrix());
     }
 
-    void updateViewBox(float viewBoxSize);
+    void setViewBoxSize(float viewBoxSize);
 
     void loadFromFiles(const Path& dataPath);
 

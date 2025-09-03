@@ -76,26 +76,26 @@ public:
     QUASARStreamer(
         QuadSet& quadSet,
         uint maxLayers,
+        DepthPeelingRenderer& remoteRendererDP,
         DeferredRenderer& remoteRenderer,
         Scene& remoteScene,
-        const PerspectiveCamera& remoteCamera,
+        PerspectiveCamera& remoteCamera,
+        float viewSphereDiameter,
         float wideFOV,
         const std::string& videoURL = "",
         const std::string& proxiesURL = "");
-    ~QUASARStreamer() = default;
+    ~QUASARStreamer();
 
     uint getNumTriangles() const;
     std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return frameGenerator.getQuadsGenerator(); }
 
     void addMeshesToScene(Scene& localScene);
+    void setViewSphereDiameter(float viewSphereDiameter);
 
-    void updateViewSphere(const PerspectiveCamera& remoteCamera, float viewSphereDiameter);
-    void generateFrame(
-        DeferredRenderer& remoteRenderer, DepthPeelingRenderer& remoteRendererDP,
-        Scene& remoteScene, const PerspectiveCamera& remoteCamera,
-        bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
+    void generateFrame(bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
+    // void sendProxies(pose_id_t poseID, bool createResidualFrame);
 
-    size_t writeToFiles(const PerspectiveCamera& remoteCamera, const Path& outputPath);
+    size_t writeToFiles(const Path& outputPath);
 
 private:
     const std::vector<glm::vec4> colors = {
@@ -114,9 +114,10 @@ private:
     QuadSet& quadSet;
     FrameGenerator frameGenerator;
 
+    DepthPeelingRenderer& remoteRendererDP;
     DeferredRenderer& remoteRenderer;
     Scene& remoteScene;
-
+    PerspectiveCamera& remoteCamera;
     PerspectiveCamera remoteCameraPrev;
     PerspectiveCamera remoteCameraWideFOV;
 

@@ -42,10 +42,10 @@ QuadStreamReceiver::QuadStreamReceiver(QuadSet& quadSet, uint maxViews, float re
     // Last camera has different FOV
     remoteCameras[maxViews-1].setFovyDegrees(remoteFOVWide);
 
-    updateViewBox(viewBoxSize);
+    setViewBoxSize(viewBoxSize);
 }
 
-void QuadStreamReceiver::updateViewBox(float viewBoxSize) {
+void QuadStreamReceiver::setViewBoxSize(float viewBoxSize) {
     this->viewBoxSize = viewBoxSize;
 
     PerspectiveCamera& remoteCameraCenter = remoteCameras[0];
@@ -97,7 +97,7 @@ void QuadStreamReceiver::loadFromFiles(const Path& dataPath) {
 
     PerspectiveCamera& remoteCameraWideFOV = remoteCameras[maxViews-1];
     remoteCameraWideFOV.setFovyDegrees(remoteFOVWide);
-    updateViewBox(viewBoxSize);
+    setViewBoxSize(viewBoxSize);
 
     for (int view = 0; view < maxViews; view++) {
         // Load texture

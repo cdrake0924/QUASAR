@@ -87,7 +87,10 @@ int main(int argc, char** argv) {
     glm::vec3 initialPosition = camera.getPosition();
 
     QuadSet quadSet(remoteWindowSize);
-    QuadsStreamer quadwarp(quadSet, remoteRenderer, remoteScene, videoURL, proxiesURL);
+    QuadsStreamer quadwarp(
+        quadSet,
+        remoteRenderer, remoteScene, camera,
+        videoURL, proxiesURL);
 
     // "Local" scene for visualization
     Scene localScene;
@@ -293,7 +296,7 @@ int main(int argc, char** argv) {
                 camera.setPosition(camera.getPosition() + initialPosition);
                 camera.updateViewMatrix();
 
-                quadwarp.generateFrame(remoteRenderer, remoteScene, camera, sendResidualFrame, showNormals, showDepth);
+                quadwarp.generateFrame(sendResidualFrame, showNormals, showDepth);
 
                 // Show previous mesh
                 quadwarp.referenceFrameNodesLocal[quadwarp.currMeshIndex].visible = true;
