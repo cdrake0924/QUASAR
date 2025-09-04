@@ -64,10 +64,10 @@ VideoStreamer::VideoStreamer(
     std::string encoderName;
 #if defined(HAS_CUDA)
     encoderName = "nvh264enc preset=4 rc-mode=cbr zerolatency=true "
-                  "gop-size=" + std::to_string(targetFrameRate);
+                  "gop-size=1"; // Send only I-frames for now
 #else
     encoderName = "x264enc speed-preset=superfast tune=zerolatency "
-                  "key-int-max=" + std::to_string(targetFrameRate);
+                  "key-int-max=1 bframes=0"; // Send only I-frames for now
 #endif
 
     int bitrateKbps = targetBitRate / 1000;
@@ -77,10 +77,12 @@ VideoStreamer::VideoStreamer(
         << "caps=video/x-raw,format=RGBA,width=" << videoWidth
         << ",height=" << videoHeight
         << ",framerate=" << targetFrameRate << "/1 ! "
-        << "queue ! videoconvert ! video/x-raw,format=" << format << " ! "
+        << "queue leaky=downstream max-size-buffers=1 max-size-time=0 max-size-bytes=0 ! "
+        << "videoconvert ! video/x-raw,format=" << format << " ! "
         << encoderName << " bitrate=" << bitrateKbps << " ! "
-        << "rtph264pay config-interval=1 pt=96 name=" << payloaderName << " ! "
-        << "udpsink host=" << host << " port=" << port;
+        << "rtph264pay mtu=1200 config-interval=1 pt=96 name=" << payloaderName << " ! "
+        << "udpsink host=" << host << " port=" << port
+        << " sync=false async=false";
     std::string pipelineStr = oss.str();
 
     GError* error = nullptr;
@@ -179,7 +181,7 @@ void VideoStreamer::sendFrame(pose_id_t poseID) {
 }
 
 void VideoStreamer::packPoseIDIntoVideoFrame(pose_id_t poseID) {
-    for (int i = 0; i < poseIDOffset; ++i) {
+    for (int i = 0; i < poseIDOffset; i++) {
         uint8_t value = (poseID & (1 << i)) ? 255 : 0;
         for (int j = 0; j < videoHeight; ++j) {
             int index = j * videoWidth * 4 + (videoWidth - 1 - i) * 4;

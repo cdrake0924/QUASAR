@@ -214,7 +214,7 @@ int main(int argc, char** argv) {
 
     bool sendRemoteFrame = true;
 
-    const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
+    const double serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
     int serverFPSIndex = !cameraPathFileIn ? 0 : 5; // default to 30 FPS
     double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];

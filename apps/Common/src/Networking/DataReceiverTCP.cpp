@@ -48,7 +48,6 @@ void DataReceiverTCP::recvData() {
 
     while (ready) {
         std::vector<char> data;
-        char buffer[MAX_RECV_SIZE];
 
         int received = 0;
         int expectedSize = 0;
@@ -57,17 +56,14 @@ void DataReceiverTCP::recvData() {
 
         // Read header first to determine the size of the incoming data packet
         while (ready && expectedSize == 0) {
-            received = socket->recv(buffer, sizeof(expectedSize), 0);
+            received = socket->recv(&expectedSize, sizeof(expectedSize), 0);
             if (received < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     continue; // retry if the socket is non-blocking and recv would block
                 }
                 break;
             }
-
-            if (received == sizeof(expectedSize)) {
-                std::memcpy(&expectedSize, buffer, sizeof(expectedSize));
-                data.reserve(expectedSize);
+            else if (received == sizeof(expectedSize)) {
                 break;
             }
         }
@@ -75,26 +71,25 @@ void DataReceiverTCP::recvData() {
         if (expectedSize == 0) {
             continue;
         }
+        data.resize(expectedSize);
 
         // Read the actual data based on the expected size
         int totalReceived = 0;
         while (ready && totalReceived < expectedSize) {
-            received = socket->recv(buffer, std::min(MAX_RECV_SIZE, expectedSize - totalReceived), 0);
+            received = socket->recv(data.data() + totalReceived, expectedSize - totalReceived, 0);
             if (received < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     continue; // retry if the socket is non-blocking and recv would block
                 }
                 break;
             }
-
-            data.insert(data.end(), buffer, buffer + received);
-            totalReceived += received;
-
-            if (received == 0) {
+            else if (received == 0) {
                 // Connection closed
                 ready = false;
                 break;
             }
+
+            totalReceived += received;
         }
 
         if (totalReceived == expectedSize && !data.empty()) {

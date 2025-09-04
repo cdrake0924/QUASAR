@@ -4,6 +4,7 @@
 #include <CameraPose.h>
 #include <DepthMesh.h>
 #include <Quads/FrameGenerator.h>
+#include <Receivers/QUASARReceiver.h>
 #include <Renderers/DepthPeelingRenderer.h>
 #include <Networking/DataStreamerTCP.h>
 #include <Streamers/VideoStreamer.h>
@@ -83,7 +84,8 @@ public:
         float viewSphereDiameter,
         float wideFOV,
         const std::string& videoURL = "",
-        const std::string& proxiesURL = "");
+        const std::string& proxiesURL = "",
+        uint targetBitRate = 20);
     ~QUASARStreamer();
 
     uint getNumTriangles() const;
@@ -93,9 +95,10 @@ public:
     void setViewSphereDiameter(float viewSphereDiameter);
 
     void generateFrame(bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
-    // void sendProxies(pose_id_t poseID, bool createResidualFrame);
+    void sendProxies(pose_id_t poseID, bool createResidualFrame);
 
     size_t writeToFiles(const Path& outputPath);
+    size_t writeToMemory(pose_id_t poseID, bool writeResidualFrame, std::vector<char>& outputData);
 
 private:
     const std::vector<glm::vec4> colors = {
@@ -128,6 +131,10 @@ private:
     FrameRenderTarget referenceFrameRT_noTone;
     FrameRenderTarget residualFrameRT_noTone;
     std::vector<FrameRenderTarget> frameRTsHidLayer_noTone;
+
+    std::vector<char> cameraData;
+    std::vector<std::vector<char>> geometryMetadatas;
+    std::vector<char> compressedData;
 
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;

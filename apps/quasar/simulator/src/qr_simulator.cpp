@@ -42,10 +42,10 @@ int main(int argc, char** argv) {
     args::ValueFlag<float> networkJitterIn(parser, "network-jitter", "Simulated network jitter in ms", {'J', "network-jitter"}, 10.0f);
     args::Flag posePredictionIn(parser, "pose-prediction", "Enable pose prediction", {'P', "pose-prediction"}, false);
     args::Flag poseSmoothingIn(parser, "pose-smoothing", "Enable pose smoothing", {'T', "pose-smoothing"}, false);
-    args::ValueFlag<float> viewSphereDiameterIn(parser, "view-sphere-diameter", "Size of view sphere in m", {'B', "view-size"}, 0.5f);
-    args::ValueFlag<int> maxLayersIn(parser, "layers", "Max layers", {'n', "max-layers"}, 4);
     args::ValueFlag<float> remoteFOVIn(parser, "remote-fov", "Remote camera FOV in degrees", {'F', "remote-fov"}, 60.0f);
     args::ValueFlag<float> remoteFOVWideIn(parser, "remote-fov-wide", "Remote camera FOV in degrees for wide fov", {'W', "remote-fov-wide"}, 120.0f);
+    args::ValueFlag<int> maxHiddenLayersIn(parser, "layers", "Max hidden layers", {'n', "max-hidden-layers"}, 3);
+    args::ValueFlag<float> viewSphereDiameterIn(parser, "view-sphere-diameter", "Size of view sphere in m", {'B', "view-size"}, 0.5f);
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -78,8 +78,8 @@ int main(int argc, char** argv) {
     Path cameraPathFile = args::get(cameraPathFileIn);
     Path outputPath = Path(args::get(outputPathIn)); outputPath.mkdirRecursive();
 
-    int maxLayers = args::get(maxLayersIn);
-    int maxLayersWideFOV = maxLayers + 1;
+    uint maxHidLayers = args::get(maxHiddenLayersIn);
+    uint maxLayers = maxHidLayers + 2;
 
     auto window = std::make_shared<GLFWWindow>(config);
     auto guiManager = std::make_shared<ImGuiManager>(window);
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
     ForwardRenderer renderer(config);
     config.width = remoteWindowSize.x;
     config.height = remoteWindowSize.y;
-    DepthPeelingRenderer remoteRendererDP(config, maxLayers, true);
+    DepthPeelingRenderer remoteRendererDP(config, maxLayers - 1, true); // DP layers doesn't include wide fov
     DeferredRenderer remoteRenderer(config);
 
     // "Remote" scene
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
     float remoteFOVWide = args::get(remoteFOVWideIn);
     float viewSphereDiameter = args::get(viewSphereDiameterIn);
     QUASARStreamer quasar(
-        quadSet, maxLayersWideFOV,
+        quadSet, maxLayers,
         remoteRendererDP, remoteRenderer, remoteScene, remoteCamera,
         viewSphereDiameter, remoteFOVWide);
 
@@ -151,13 +151,13 @@ int main(int argc, char** argv) {
     bool showWireframe = false;
     bool preventCopyingLocalPose = false;
     bool runAnimations = cameraPathFileIn;
-    bool restrictMovementToViewBox = !cameraPathFileIn;
+    bool restrictMovementToViewSphere = !cameraPathFileIn;
 
     bool sendReferenceFrame = true;
     bool sendResidualFrame = false;
     int refFrameInterval = 5;
 
-    const int serverFPSValues[] = {0, 1, 5, 10, 15, 30};
+    const double serverFPSValues[] = {0, 1, 5, 10, 15, 30};
     const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
     int serverFPSIndex = !cameraPathFileIn ? 0 : 5; // default to 30 FPS
     double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
@@ -173,8 +173,8 @@ int main(int argc, char** argv) {
         .poseSmoothing = poseSmoothing,
     });
 
-    bool* showLayers = new bool[maxLayersWideFOV];
-    for (int i = 0; i < maxLayersWideFOV; ++i) {
+    bool* showLayers = new bool[maxLayers];
+    for (int i = 0; i < maxLayers; i++) {
         showLayers[i] = true;
     }
 
@@ -372,12 +372,12 @@ int main(int argc, char** argv) {
                 quasar.setViewSphereDiameter(viewSphereDiameter);
             }
 
-            ImGui::Checkbox("Restrict Movement to View Sphere", &restrictMovementToViewBox);
+            ImGui::Checkbox("Restrict Movement to View Sphere", &restrictMovementToViewSphere);
 
             ImGui::Separator();
 
             const int columns = 3;
-            for (int layer = 0; layer < maxLayersWideFOV; layer++) {
+            for (int layer = 0; layer < maxLayers; layer++) {
                 ImGui::Checkbox(("Show Layer " + std::to_string(layer)).c_str(), &showLayers[layer]);
                 if ((layer + 1) % columns != 0) {
                     ImGui::SameLine();
@@ -405,7 +405,7 @@ int main(int argc, char** argv) {
                 Path mainPath = basePath.appendToName("." + time);
                 recorder.saveScreenshotToFile(mainPath, writeToHDR);
 
-                for (int layer = 0; layer < maxLayersWideFOV - 1; layer++) {
+                for (int layer = 0; layer < maxLayers - 1; layer++) {
                     Path viewPath = basePath.appendToName(".layer" + std::to_string(layer + 1) + "." + time);
                     if (writeToHDR) {
                         quasar.frameRTsHidLayer[layer].writeColorAsHDR(viewPath.withExtension(".hdr"));
@@ -496,8 +496,8 @@ int main(int argc, char** argv) {
 
         if (showLayerPreviews) {
             flags = ImGuiWindowFlags_AlwaysAutoResize;
-            for (int layer = 0; layer < maxLayersWideFOV; layer++) {
-                int viewIdx = maxLayersWideFOV - layer - 1;
+            for (int layer = 0; layer < maxLayers; layer++) {
+                int viewIdx = maxLayers - layer - 1;
                 if (showLayers[viewIdx]) {
                     ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
                     if (viewIdx == 0) {
@@ -633,7 +633,7 @@ int main(int argc, char** argv) {
         // Hide/show nodes based on user input
         int currentIndex  = quasar.lastMeshIndex % 2;
         int previousIndex = (quasar.lastMeshIndex + 1) % 2;
-        for (int layer = 0; layer < maxLayersWideFOV; layer++) {
+        for (int layer = 0; layer < maxLayers; layer++) {
             bool showLayer = showLayers[layer];
             if (layer == 0) {
                 // Show current mesh
@@ -651,7 +651,7 @@ int main(int argc, char** argv) {
         }
         quasar.residualFrameWireframesLocal.visible = quasar.residualFrameNode.visible && showWireframe;
 
-        if (restrictMovementToViewBox) {
+        if (restrictMovementToViewSphere) {
             glm::vec3 remotePosition = remoteCamera.getPosition();
             glm::vec3 position = camera.getPosition();
             glm::vec3 direction = position - remotePosition;

@@ -105,17 +105,18 @@ VideoTexture::VideoTexture(
     oss << "udpsrc name=" << udpSrcName
         << " address=" << host << " port=" << port << " "
         << "caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000\" ! "
-        << "rtpjitterbuffer latency=100 drop-on-latency=false ! "
+        << "rtpjitterbuffer latency=200 drop-on-latency=false ! "
         << "rtph264depay ! h264parse config-interval=-1 ! "
         << decoderName << " ! " << "videoconvert ! video/x-raw,format=RGB ! "
-        << "appsink name=" << appSinkName << " sync=false max-buffers=1 drop=true";
+        << "appsink name=" << appSinkName
+        << " sync=false max-buffers=5 drop=false";
     std::string pipelineStr = oss.str();
 
     GError* error = nullptr;
     pipeline = gst_parse_launch(pipelineStr.c_str(), &error);
     if (!pipeline || error) {
         spdlog::error("Failed to create GStreamer pipeline: {}", error ? error->message : "unknown");
-        g_error_free(error);
+        if (error) g_error_free(error);
         return;
     }
 
@@ -138,6 +139,8 @@ VideoTexture::VideoTexture(
             return GST_PAD_PROBE_OK;
         },
         &this->totalBytesRecv, nullptr);
+    gst_object_unref(srcPad);
+    gst_object_unref(udpSrcElement);
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
@@ -153,6 +156,9 @@ void VideoTexture::stop() {
     shouldTerminate = true;
     videoReady = false;
 
+    if (pipeline)
+        gst_element_set_state(pipeline, GST_STATE_NULL);
+
     if (videoReceiverThread.joinable())
         videoReceiverThread.join();
 
@@ -160,6 +166,9 @@ void VideoTexture::stop() {
         gst_object_unref(appsink);
     if (pipeline)
         gst_object_unref(pipeline);
+
+    appsink = nullptr;
+    pipeline = nullptr;
 }
 
 pose_id_t VideoTexture::getLatestPoseID() {
@@ -212,13 +221,24 @@ void VideoTexture::receiveFrame() {
 
         // Read the pose ID from the frame
         pose_id_t poseID = unpackPoseIDFromFrame(map.data, videoWidth, videoHeight);
-        std::vector<char> frameData(map.data, map.data + map.size);
 
         {
             std::unique_lock<std::mutex> lock(m);
-            frames.push_back({poseID, std::move(frameData)});
-            if (frames.size() > maxQueueSize)
+            if (frames.size() >= maxQueueSize) {
+                FrameData frame = std::move(frames.front());
                 frames.pop_front();
+                frame.poseID = poseID;
+                frame.buffer.resize(map.size);
+                std::memcpy(frame.buffer.data(), map.data, map.size);
+                frames.push_back(std::move(frame));
+            }
+            else {
+                FrameData frame;
+                frame.poseID = poseID;
+                frame.buffer.resize(map.size);
+                std::memcpy(frame.buffer.data(), map.data, map.size);
+                frames.push_back(std::move(frame));
+            }
         }
 
         gst_buffer_unmap(buffer, &map);
@@ -267,20 +287,31 @@ pose_id_t VideoTexture::draw(pose_id_t poseID) {
         return -1;
     }
 
-    FrameData& frameData = frames.back();
+    if (poseID != -1 && poseID == prevPoseID) {
+        return prevPoseID;
+    }
+
+    FrameData* frameData = nullptr;
     if (poseID != -1) {
         for (auto& f : frames) {
             if (f.poseID == poseID) {
-                frameData = f;
+                frameData = &f;
                 break;
             }
         }
     }
+    else {
+        frameData = &frames.back();
+    }
+
+    if (frameData == nullptr) {
+        return prevPoseID;
+    }
 
     glPixelStorei(GL_UNPACK_ROW_LENGTH, videoWidth);
-    loadFromData(frameData.buffer.data(), false);
+    loadFromData(frameData->buffer.data(), false);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-    prevPoseID = frameData.poseID;
-    return frameData.poseID;
+    prevPoseID = frameData->poseID;
+    return frameData->poseID;
 }

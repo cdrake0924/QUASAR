@@ -16,7 +16,7 @@ class QuadsReceiver : public DataReceiverTCP {
 public:
     struct Header {
         pose_id_t poseID;
-        FrameType frameType;
+        QuadFrame::FrameType frameType;
         uint32_t cameraSize;
         uint32_t geometrySize;
     };
@@ -45,10 +45,10 @@ public:
     PerspectiveCamera& getRemoteCameraPrev() { return remoteCameraPrev; }
     void copyPoseToCamera(PerspectiveCamera& camera) { frameInUse->cameraPose.copyPoseToCamera(camera); }
 
-    FrameType loadFromFiles(const Path& dataPath);
-    FrameType loadFromMemory(const std::vector<char>& data);
+    QuadFrame::FrameType loadFromFiles(const Path& dataPath);
+    QuadFrame::FrameType loadFromMemory(const std::vector<char>& inputData);
 
-    FrameType recvData();
+    QuadFrame::FrameType recvData();
 
 private:
     QuadSet& quadSet;
@@ -60,17 +60,18 @@ private:
 
     struct Frame {
         pose_id_t poseID;
-        FrameType frameType;
+        QuadFrame::FrameType frameType;
 
         Pose cameraPose;
 
         std::vector<char> uncompressedQuads, uncompressedOffsets;
         std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
-        Frame(const glm::vec2& gBufferSize) : frameType(FrameType::NONE)
+        Frame(const glm::vec2& gBufferSize, size_t maxProxiesPerMesh = MAX_PROXIES_PER_MESH)
+            : frameType(QuadFrame::FrameType::NONE)
         {
-            const size_t quadsBytes = sizeof(uint) + MAX_QUADS_PER_MESH * sizeof(QuadMapDataPacked);
-            const size_t offsetsBytes = static_cast<size_t>(gBufferSize.x) * static_cast<size_t>(gBufferSize.y) * 4u * sizeof(uint16_t);
+            const size_t quadsBytes = sizeof(uint) + maxProxiesPerMesh * sizeof(QuadMapDataPacked);
+            const size_t offsetsBytes = static_cast<size_t>(gBufferSize.x * gBufferSize.y) * 4 * sizeof(uint16_t);
 
             uncompressedQuads.resize(quadsBytes);
             uncompressedOffsets.resize(offsetsBytes);
@@ -80,33 +81,40 @@ private:
         }
         ~Frame() = default;
 
-        void decompressReferenceFrame(std::unique_ptr<BS::thread_pool<>>& threadPool, ReferenceFrame& referenceFrame) {
+        size_t decompressReferenceFrame(std::unique_ptr<BS::thread_pool<>>& threadPool, ReferenceFrame& referenceFrame) {
             // Decompress proxies (asynchronous)
-            auto offsetsFuture = threadPool->submit_task([&]() {
+            std::vector<std::future<size_t>> futures;
+            futures.emplace_back(threadPool->submit_task([&]() {
                 return referenceFrame.decompressDepthOffsets(uncompressedOffsets);
-            });
-            auto quadsFuture = threadPool->submit_task([&]() {
+            }));
+            futures.emplace_back(threadPool->submit_task([&]() {
                 return referenceFrame.decompressQuads(uncompressedQuads);
-            });
-            quadsFuture.get(); offsetsFuture.get();
+            }));
+
+            size_t outputSize = 0;
+            for (auto& f : futures) outputSize += f.get();
+            return outputSize;
         }
 
-        void decompressResidualFrame(std::unique_ptr<BS::thread_pool<>>& threadPool, ResidualFrame& residualFrame) {
+        size_t decompressResidualFrame(std::unique_ptr<BS::thread_pool<>>& threadPool, ResidualFrame& residualFrame) {
             // Decompress proxies (asynchronous)
-            auto offsetsUpdatedFuture = threadPool->submit_task([&]() {
+            std::vector<std::future<size_t>> futures;
+            futures.emplace_back(threadPool->submit_task([&]() {
                 return residualFrame.decompressUpdatedDepthOffsets(uncompressedOffsets);
-            });
-            auto offsetsRevealedFuture = threadPool->submit_task([&]() {
+            }));
+            futures.emplace_back(threadPool->submit_task([&]() {
                 return residualFrame.decompressRevealedDepthOffsets(uncompressedOffsetsRevealed);
-            });
-            auto quadsUpdatedFuture = threadPool->submit_task([&]() {
+            }));
+            futures.emplace_back(threadPool->submit_task([&]() {
                 return residualFrame.decompressUpdatedQuads(uncompressedQuads);
-            });
-            auto quadsRevealedFuture = threadPool->submit_task([&]() {
+            }));
+            futures.emplace_back(threadPool->submit_task([&]() {
                 return residualFrame.decompressRevealedQuads(uncompressedQuadsRevealed);
-            });
-            quadsUpdatedFuture.get(); offsetsUpdatedFuture.get();
-            quadsRevealedFuture.get(); offsetsRevealedFuture.get();
+            }));
+
+            size_t outputSize = 0;
+            for (auto& f : futures) outputSize += f.get();
+            return outputSize;
         }
     };
 
@@ -124,7 +132,7 @@ private:
     std::vector<char> geometryData;
 
     void onDataReceived(const std::vector<char>& data) override;
-    FrameType loadFromFrame(std::shared_ptr<Frame> frame);
+    QuadFrame::FrameType loadFromFrame(std::shared_ptr<Frame> frame);
 };
 
 } // namespace quasar
