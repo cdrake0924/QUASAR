@@ -171,12 +171,6 @@ void VideoTexture::stop() {
     pipeline = nullptr;
 }
 
-pose_id_t VideoTexture::getLatestPoseID() {
-    std::lock_guard<std::mutex> lock(m);
-    if (frames.empty()) return -1;
-    return frames.back().poseID;
-}
-
 void VideoTexture::resize(uint width, uint height) {
     Texture::resize(width, height);
 }
@@ -279,6 +273,27 @@ pose_id_t VideoTexture::unpackPoseIDFromFrame(const uint8_t* data, int width, in
     }
 
     return poseID;
+}
+
+pose_id_t VideoTexture::getLatestPoseID() {
+    std::lock_guard<std::mutex> lock(m);
+    if (frames.empty()) return -1;
+    return frames.back().poseID;
+}
+
+bool VideoTexture::containsFrames() {
+    std::lock_guard<std::mutex> lock(m);
+    return !frames.empty();
+}
+
+bool VideoTexture::containsFrameWithPoseID(pose_id_t poseID) {
+    std::lock_guard<std::mutex> lock(m);
+    for (const auto& f : frames) {
+        if (f.poseID == poseID) {
+            return true;
+        }
+    }
+    return false;
 }
 
 pose_id_t VideoTexture::draw(pose_id_t poseID) {

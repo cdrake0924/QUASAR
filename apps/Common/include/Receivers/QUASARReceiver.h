@@ -77,10 +77,8 @@ private:
     QuadMesh residualFrameMesh;
 
     struct BufferPool {
-        std::vector<std::vector<char>> uncompressedQuads;
-        std::vector<std::vector<char>> uncompressedOffsets;
-        std::vector<char> uncompressedQuadsRevealed;
-        std::vector<char> uncompressedOffsetsRevealed;
+        std::vector<std::vector<char>> uncompressedQuads, uncompressedOffsets;
+        std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
         BufferPool(const glm::vec2& gBufferSize, int maxLayers, size_t maxProxiesPerMesh = MAX_PROXIES_PER_MESH) {
             uncompressedQuads.resize(maxLayers);
@@ -90,21 +88,19 @@ private:
             const size_t offsetsBytes = static_cast<size_t>(gBufferSize.x * gBufferSize.y) * 4 * sizeof(uint16_t);
 
             for (int layer = 0; layer < maxLayers; ++layer) {
-                size_t adjustedQuadsBytes =
-                    (layer == 0 || layer == maxLayers - 1) ? quadsBytes :
-                        (layer == 1) ? quadsBytes / 4 : quadsBytes / 8;
-
+                size_t adjustedQuadsBytes = (layer == 0) ? quadsBytes :
+                                            (layer == maxLayers - 1) ? quadsBytes / 2 : quadsBytes / (layer * 4);
                 uncompressedQuads[layer].resize(adjustedQuadsBytes);
                 uncompressedOffsets[layer].resize(offsetsBytes);
             }
 
-            uncompressedQuadsRevealed.resize(quadsBytes);
+            uncompressedQuadsRevealed.resize(quadsBytes / 4);
             uncompressedOffsetsRevealed.resize(offsetsBytes);
         }
     };
 
     struct Frame {
-        pose_id_t poseID;
+        pose_id_t poseID = -1;
         QuadFrame::FrameType frameType;
         Pose cameraPose;
         BufferPool& buffers;
@@ -133,16 +129,7 @@ private:
                                                     std::vector<ReferenceFrame>& referenceFrames,
                                                     ResidualFrame& residualFrame) {
             std::vector<std::future<size_t>> futures;
-            futures.reserve((referenceFrames.size() - 1) * 2 + 4);
-
-            for (int layer = 1; layer < referenceFrames.size(); layer++) {
-                futures.emplace_back(threadPool->submit_task([&, layer]() {
-                    return referenceFrames[layer].decompressDepthOffsets(buffers.uncompressedOffsets[layer]);
-                }));
-                futures.emplace_back(threadPool->submit_task([&, layer]() {
-                    return referenceFrames[layer].decompressQuads(buffers.uncompressedQuads[layer]);
-                }));
-            }
+            futures.reserve(4 + 2 * (referenceFrames.size() - 1));
 
             futures.emplace_back(threadPool->submit_task([&]() {
                 return residualFrame.decompressUpdatedDepthOffsets(buffers.uncompressedOffsets[0]);
@@ -156,6 +143,15 @@ private:
             futures.emplace_back(threadPool->submit_task([&]() {
                 return residualFrame.decompressRevealedQuads(buffers.uncompressedQuadsRevealed);
             }));
+
+            for (int layer = 1; layer < referenceFrames.size(); layer++) {
+                futures.emplace_back(threadPool->submit_task([&, layer]() {
+                    return referenceFrames[layer].decompressDepthOffsets(buffers.uncompressedOffsets[layer]);
+                }));
+                futures.emplace_back(threadPool->submit_task([&, layer]() {
+                    return referenceFrames[layer].decompressQuads(buffers.uncompressedQuads[layer]);
+                }));
+            }
 
             size_t outputSize = 0;
             for (auto& f : futures) outputSize += f.get();
@@ -171,6 +167,8 @@ private:
     std::shared_ptr<Frame> framePending;
     std::shared_ptr<Frame> frameFree;
 
+    bool waitUntilReferenceFrame = false;
+
     std::vector<ReferenceFrame> referenceFrames;
     ResidualFrame residualFrame;
 
@@ -183,7 +181,7 @@ private:
     }
 
     void onDataReceived(const std::vector<char>& data) override;
-    QuadFrame::FrameType loadFromFrame(std::shared_ptr<Frame> frame);
+    QuadFrame::FrameType reconstructFrame(std::shared_ptr<Frame> frame);
 };
 
 } // namespace quasar

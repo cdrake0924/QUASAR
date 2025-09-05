@@ -51,7 +51,7 @@ private:
 
     std::vector<QuadBuffers> quadMaps;
 
-    ComputeShader genQuadMapShader;
+    ComputeShader createQuadMapShader;
     ComputeShader simplifyQuadMapShader;
     ComputeShader gatherQuadsShader;
 

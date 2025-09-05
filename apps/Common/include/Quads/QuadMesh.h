@@ -12,7 +12,7 @@
 
 namespace quasar {
 
-#define MAX_PROXIES_PER_MESH 600000u
+#define MAX_PROXIES_PER_MESH 640000u
 
 #define VERTICES_IN_A_QUAD 4
 #define INDICES_IN_A_QUAD 6
@@ -31,9 +31,13 @@ public:
         double timeToCreateMeshMs = 0.0;
     } stats;
 
+    uint maxProxies;
+
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxProxies = MAX_PROXIES_PER_MESH);
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, const glm::vec4& textureExtent, uint maxProxies = MAX_PROXIES_PER_MESH);
     ~QuadMesh() = default;
+
+    void setTextureExtent(const glm::vec4& extent) { textureExtent = extent; }
 
     void appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isFullFrame = true);
     void createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera);
@@ -43,7 +47,6 @@ public:
 private:
     glm::vec4 textureExtent;
 
-    uint maxProxies;
     uint currNumProxies = 0;
 
     QuadBuffers currentQuadBuffers;

@@ -38,8 +38,11 @@ public:
 
     void setMaxQueueSize(size_t maxQueueSize);
 
-    void resize(uint width, uint height);
+    bool containsFrames();
+    bool containsFrameWithPoseID(pose_id_t poseID);
     pose_id_t draw(pose_id_t poseID = -1);
+
+    void resize(uint width, uint height);
 
 #ifdef __ANDROID__
     // Registers Android JNI with GStreamer

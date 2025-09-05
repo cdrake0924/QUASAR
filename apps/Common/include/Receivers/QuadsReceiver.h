@@ -124,6 +124,8 @@ private:
     std::shared_ptr<Frame> framePending;
     std::shared_ptr<Frame> frameFree;
 
+    bool waitUntilReferenceFrame = false;
+
     ReferenceFrame referenceFrame;
     ResidualFrame residualFrame;
 
@@ -132,7 +134,7 @@ private:
     std::vector<char> geometryData;
 
     void onDataReceived(const std::vector<char>& data) override;
-    QuadFrame::FrameType loadFromFrame(std::shared_ptr<Frame> frame);
+    QuadFrame::FrameType reconstructFrame(std::shared_ptr<Frame> frame);
 };
 
 } // namespace quasar

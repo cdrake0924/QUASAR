@@ -26,7 +26,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
         .magFilter = GL_NEAREST,
     }, videoURL)
     // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, atlasVideoTexture, glm::vec4(0.5f, 2.0f / 3.0f, 1.0f, 1.0f), MAX_PROXIES_PER_MESH / 4)
+    , residualFrameMesh(quadSet, atlasVideoTexture, MAX_PROXIES_PER_MESH / 4)
     , bufferPool(quadSet.getSize(), maxLayers)
     , DataReceiverTCP(proxiesURL)
 {
@@ -37,14 +37,11 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
     // Untile texture atlas
-    glm::vec4 textureExtent(0.0f);
+    glm::vec4 textureExtent(0.0f, 0.0f, 0.5f, 1.0f / 3.0f);
     for (int layer = 0; layer < maxLayers; layer++) {
         // First and last layer need a lot of quads, each subsequent one has less
-        uint maxProxies =
-            (layer == 0 || layer == maxLayers - 1) ? MAX_PROXIES_PER_MESH :
-                (layer == 1) ? MAX_PROXIES_PER_MESH / 4 : MAX_PROXIES_PER_MESH / 8;
-        textureExtent.z = textureExtent.x + 0.5f;
-        textureExtent.w = textureExtent.y + 1.0f / 3.0f;
+        uint maxProxies = (layer == 0) ? MAX_PROXIES_PER_MESH :
+                          (layer == maxLayers - 1) ? MAX_PROXIES_PER_MESH / 2 : MAX_PROXIES_PER_MESH / (layer * 4);
         meshes.emplace_back(quadSet, atlasVideoTexture, textureExtent, maxProxies);
 
         textureExtent.x += 0.5f;
@@ -52,10 +49,16 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
             textureExtent.x = 0.0f;
             textureExtent.y += 1.0f / 3.0f;
         }
+        textureExtent.z = textureExtent.x + 0.5f;
+        textureExtent.w = textureExtent.y + 1.0f / 3.0f;
     }
+    residualFrameMesh.setTextureExtent(textureExtent);
 
     frameInUse = std::make_shared<Frame>(bufferPool);
     framePending = std::make_shared<Frame>(bufferPool);
+
+    frameFree = framePending;
+    cv.notify_one();
 
     threadPool = std::make_unique<BS::thread_pool<>>(4);
 
@@ -82,8 +85,14 @@ void QUASARReceiver::onDataReceived(const std::vector<char>& data) {
 }
 
 QuadFrame::FrameType QUASARReceiver::recvData() {
+    QuadFrame::FrameType frameType = QuadFrame::FrameType::NONE;
+
     if (proxiesURL.empty()) {
-        return QuadFrame::FrameType::NONE;
+        return frameType;
+    }
+
+    if (!atlasVideoTexture.containsFrames()) {
+        return frameType;
     }
 
     // Wait for a frame that has been written to
@@ -91,12 +100,11 @@ QuadFrame::FrameType QUASARReceiver::recvData() {
     {
         std::unique_lock<std::mutex> lock(m);
         if (!framePending) {
-            return QuadFrame::FrameType::NONE;
+            return frameType;
         }
 
-        pose_id_t videoPoseID = atlasVideoTexture.getLatestPoseID();
-        if (videoPoseID < framePending->poseID) { // video is behind, wait until video catches up
-            return QuadFrame::FrameType::NONE;
+        if (atlasVideoTexture.getLatestPoseID() < framePending->poseID) { // Video is behind, wait until video catches up
+            return frameType;
         }
 
         frame = framePending;
@@ -104,19 +112,31 @@ QuadFrame::FrameType QUASARReceiver::recvData() {
         frameInUse = frame;
     }
 
-    // If video is ahead, draw will search for a previous frame
-    atlasVideoTexture.bind();
-    atlasVideoTexture.draw(frame->poseID);
+    // If video is ahead, search for a previous frame
+    if (!atlasVideoTexture.containsFrameWithPoseID(frame->poseID)) {
+        // This means we dropped a video frame. We have to wait for the next reference frame to resync
+        waitUntilReferenceFrame = true;
+    }
+    else if (!waitUntilReferenceFrame || (waitUntilReferenceFrame && frame->frameType == QuadFrame::FrameType::REFERENCE)) {
+        // Update texture
+        atlasVideoTexture.bind();
+        atlasVideoTexture.draw(frame->poseID);
+
+        // Reconstruct meshes from frame
+        frameType = reconstructFrame(frame);
+
+        // Video and proxies are synced now, no need to wait for reference frame anymore
+        waitUntilReferenceFrame = false;
+    }
 
     // Reset frame
-    QuadFrame::FrameType type = loadFromFrame(frame);
     {
         std::lock_guard<std::mutex> lock(m);
         frameFree = frame;
     }
     cv.notify_one();
 
-    return type;
+    return frameType;
 }
 
 QuadFrame::FrameType QUASARReceiver::loadFromFiles(const Path& dataPath) {
@@ -161,7 +181,7 @@ QuadFrame::FrameType QUASARReceiver::loadFromFiles(const Path& dataPath) {
     stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update reference GPU buffers
-    loadFromFrame(frameInUse);
+    reconstructFrame(frameInUse);
 
     startTime = timeutils::getTimeMicros();
 
@@ -181,7 +201,7 @@ QuadFrame::FrameType QUASARReceiver::loadFromFiles(const Path& dataPath) {
     stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update residual GPU buffers
-    loadFromFrame(frameInUse);
+    reconstructFrame(frameInUse);
 
     return frameInUse->frameType;
 }
@@ -238,44 +258,39 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
 
     // Load all frame data in parallel
     const char* layerPtr = ptr;
-    uint32_t layerSize = 0;
+    uint32_t layerSize;
 
-    std::vector<std::future<void>> futures;
+    std::vector<std::future<size_t>> futures;
     if (header.frameType == QuadFrame::FrameType::REFERENCE) {
-        futures.emplace_back(threadPool->submit_task([&, layerPtr]() {
-            uint32_t size;
-            std::memcpy(&size, layerPtr, sizeof(uint32_t));
-            const char* dataPtr = layerPtr + sizeof(uint32_t);
-            referenceFrames[0].loadFromMemory(dataPtr, size);
+        std::memcpy(&layerSize, layerPtr, sizeof(uint32_t));
+        const char* dataPtr = layerPtr + sizeof(uint32_t);
+
+        futures.emplace_back(threadPool->submit_task([&, dataPtr, layerSize]() {
+            return referenceFrames[0].loadFromMemory(dataPtr, layerSize);
         }));
 
-        layerPtr += sizeof(uint32_t);
-        std::memcpy(&layerSize, ptr, sizeof(uint32_t));
-        ptr += sizeof(uint32_t) + layerSize;
+        layerPtr += sizeof(uint32_t) + layerSize;
     }
     else {
-        futures.emplace_back(threadPool->submit_task([&, layerPtr]() {
-            uint32_t size;
-            std::memcpy(&size, layerPtr, sizeof(uint32_t));
-            const char* dataPtr = layerPtr + sizeof(uint32_t);
-            residualFrame.loadFromMemory(dataPtr, size);
+        std::memcpy(&layerSize, layerPtr, sizeof(uint32_t));
+        const char* dataPtr = layerPtr + sizeof(uint32_t);
+
+        futures.emplace_back(threadPool->submit_task([&, dataPtr, layerSize]() {
+            return residualFrame.loadFromMemory(dataPtr, layerSize);
         }));
 
-        layerPtr += sizeof(uint32_t);
-        std::memcpy(&layerSize, ptr, sizeof(uint32_t));
-        ptr += sizeof(uint32_t) + layerSize;
+        layerPtr += sizeof(uint32_t) + layerSize;
     }
 
     for (int layer = 1; layer < maxLayers; layer++) {
-        uint32_t size;
-        std::memcpy(&size, ptr, sizeof(uint32_t));
-        const char* dataPtr = ptr + sizeof(uint32_t);
+        std::memcpy(&layerSize, layerPtr, sizeof(uint32_t));
+        const char* dataPtr = layerPtr + sizeof(uint32_t);
 
-        futures.emplace_back(threadPool->submit_task([&, layer, dataPtr, size]() {
-            referenceFrames[layer].loadFromMemory(dataPtr, size);
+        futures.emplace_back(threadPool->submit_task([&, layer, dataPtr, layerSize]() {
+            return referenceFrames[layer].loadFromMemory(dataPtr, layerSize);
         }));
 
-        ptr += sizeof(uint32_t) + size;
+        layerPtr += sizeof(uint32_t) + layerSize;
     }
 
     for (auto& f : futures) f.get();
@@ -302,7 +317,7 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
     return frame->frameType;
 }
 
-QuadFrame::FrameType QUASARReceiver::loadFromFrame(std::shared_ptr<Frame> frame) {
+QuadFrame::FrameType QUASARReceiver::reconstructFrame(std::shared_ptr<Frame> frame) {
     if (frame->frameType == QuadFrame::FrameType::NONE) {
         return QuadFrame::FrameType::NONE;
     }

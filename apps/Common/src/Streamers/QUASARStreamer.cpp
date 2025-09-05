@@ -175,9 +175,7 @@ QUASARStreamer::QUASARStreamer(
 
     for (int layer = 0; layer < numHidLayers; layer++) {
         // First and last layer need a lot of quads, each subsequent one has less
-        uint maxProxies =
-            (layer == 0 || layer == maxLayers - 1) ? MAX_PROXIES_PER_MESH :
-                (layer == 1) ? MAX_PROXIES_PER_MESH / 4 : MAX_PROXIES_PER_MESH / 8;
+        uint maxProxies = (layer == 0 || layer == numHidLayers - 1) ? MAX_PROXIES_PER_MESH : MAX_PROXIES_PER_MESH / layer;
         meshesHidLayer.emplace_back(quadSet, frameRTsHidLayer_noTone[layer].colorTexture, maxProxies);
 
         nodesHidLayer.emplace_back(&meshesHidLayer[layer]);
@@ -424,7 +422,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
 
                 stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
             }
-            else if (!createResidualFrame) {
+            else {
                 // Only update the previous camera pose if we are not generating a Residual Frame
                 remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
                 remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -432,6 +430,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
                 meshIndex++;
             }
         }
+
         residualFrameNode.visible = createResidualFrame;
 
         // For debugging: Generate point cloud from depth map

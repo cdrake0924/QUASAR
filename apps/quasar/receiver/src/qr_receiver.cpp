@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
         static bool showFPS = true;
         static bool showUI = true;
         static bool showFrameCaptureWindow = false;
-        static bool showFramePreviewWindow = false;
+        static bool showVideoPreviewWindow = false;
         static bool writeToHDR = false;
         static char fileNameBase[256] = "screenshot";
 
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("FPS", 0, &showFPS);
             ImGui::MenuItem("UI", 0, &showUI);
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
-            ImGui::MenuItem("Frame Preview", 0, &showFramePreviewWindow);
+            ImGui::MenuItem("Video Preview", 0, &showVideoPreviewWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -285,7 +285,7 @@ int main(int argc, char** argv) {
             ImGui::End();
         }
 
-        if (showFramePreviewWindow) {
+        if (showVideoPreviewWindow) {
             flags = 0;
             ImGui::Begin("Texture Atlas Video", 0, flags);
             ImGui::Image((void*)(intptr_t)(quasarReceiver.atlasVideoTexture),
@@ -356,7 +356,7 @@ int main(int argc, char** argv) {
             refNodes[i].visible = showLayers[i];
             refNodeWireframes[i].visible = showWireframe && showLayers[i];
         }
-        resNodeWireframe.visible = refNodes[0].visible && showWireframe;
+        resNodeWireframe.visible = resNode.visible && showWireframe;
 
         if (restrictMovementToViewSphere) {
             glm::vec3 remotePosition = quasarReceiver.getRemoteCamera().getPosition();

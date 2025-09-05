@@ -34,6 +34,9 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& videoURL, cons
     frameInUse = std::make_shared<Frame>(quadSet.getSize());
     framePending = std::make_shared<Frame>(quadSet.getSize());
 
+    frameFree = framePending;
+    cv.notify_one();
+
     threadPool = std::make_unique<BS::thread_pool<>>(4);
 
     if (!proxiesURL.empty()) {
@@ -53,8 +56,14 @@ void QuadsReceiver::onDataReceived(const std::vector<char>& data) {
 }
 
 QuadFrame::FrameType QuadsReceiver::recvData() {
+    QuadFrame::FrameType frameType = QuadFrame::FrameType::NONE;
+
     if (proxiesURL.empty()) {
-        return QuadFrame::FrameType::NONE;
+        return frameType;
+    }
+
+    if (!atlasVideoTexture.containsFrames()) {
+        return frameType;
     }
 
     // Wait for a frame that has been written to
@@ -62,12 +71,11 @@ QuadFrame::FrameType QuadsReceiver::recvData() {
     {
         std::unique_lock<std::mutex> lock(m);
         if (!framePending) {
-            return QuadFrame::FrameType::NONE;
+            return frameType;
         }
 
-        pose_id_t videoPoseID = atlasVideoTexture.getLatestPoseID();
-        if (videoPoseID < framePending->poseID) { // video is behind, wait until video catches up
-            return QuadFrame::FrameType::NONE;
+        if (atlasVideoTexture.getLatestPoseID() < framePending->poseID) { // Video is behind, wait until video catches up
+            return frameType;
         }
 
         frame = framePending;
@@ -75,19 +83,31 @@ QuadFrame::FrameType QuadsReceiver::recvData() {
         frameInUse = frame;
     }
 
-    // If video is ahead, draw will search for a previous frame
-    atlasVideoTexture.bind();
-    atlasVideoTexture.draw(frame->poseID);
+    // If video is ahead, search for a previous frame
+    if (!atlasVideoTexture.containsFrameWithPoseID(frame->poseID)) {
+        // This means we dropped a video frame. We have to wait for the next reference frame to resync
+        waitUntilReferenceFrame = true;
+    }
+    else if (!waitUntilReferenceFrame || (waitUntilReferenceFrame && frame->frameType == QuadFrame::FrameType::REFERENCE)) {
+        // Update texture
+        atlasVideoTexture.bind();
+        atlasVideoTexture.draw(frame->poseID);
+
+        // Reconstruct meshes from frame
+        frameType = reconstructFrame(frame);
+
+        // Video and proxies are synced now, no need to wait for reference frame anymore
+        waitUntilReferenceFrame = false;
+    }
 
     // Reset frame
-    QuadFrame::FrameType type = loadFromFrame(frame);
     {
         std::lock_guard<std::mutex> lock(m);
         frameFree = frame;
     }
     cv.notify_one();
 
-    return type;
+    return frameType;
 }
 
 QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
@@ -114,7 +134,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update reference GPU buffers
-    loadFromFrame(frameInUse);
+    reconstructFrame(frameInUse);
 
     startTime = timeutils::getTimeMicros();
 
@@ -133,7 +153,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update residual GPU buffers
-    loadFromFrame(frameInUse);
+    reconstructFrame(frameInUse);
 
     return frameInUse->frameType;
 }
@@ -185,26 +205,25 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
     std::memcpy(geometryData.data(), ptr, header.geometrySize);
     ptr += header.geometrySize;
 
-    stats.timeToLoadMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-
     if (header.frameType == QuadFrame::FrameType::REFERENCE) {
         startTime = timeutils::getTimeMicros();
         referenceFrame.loadFromMemory(geometryData.data(), header.geometrySize);
-        stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-
-        startTime = timeutils::getTimeMicros();
-        frame->decompressReferenceFrame(threadPool, referenceFrame);
-        stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     }
     else {
         startTime = timeutils::getTimeMicros();
         residualFrame.loadFromMemory(geometryData.data(), header.geometrySize);
-        stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-
-        startTime = timeutils::getTimeMicros();
-        frame->decompressResidualFrame(threadPool, residualFrame);
-        stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     }
+    stats.timeToLoadMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+
+    // Decompress (asynchronous)
+    startTime = timeutils::getTimeMicros();
+    if (header.frameType == QuadFrame::FrameType::REFERENCE) {
+        frame->decompressReferenceFrame(threadPool, referenceFrame);
+    }
+    else {
+        frame->decompressResidualFrame(threadPool, residualFrame);
+    }
+    stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Signal that frame is ready
     {
@@ -216,7 +235,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
     return frame->frameType;
 }
 
-QuadFrame::FrameType QuadsReceiver::loadFromFrame(std::shared_ptr<Frame> frame) {
+QuadFrame::FrameType QuadsReceiver::reconstructFrame(std::shared_ptr<Frame> frame) {
     if (frame->frameType == QuadFrame::FrameType::NONE) {
         return QuadFrame::FrameType::NONE;
     }
