@@ -30,6 +30,7 @@ We also provide an OpenXR-based implementation for Meta Quest VR headsets, which
 ## Credits for Third Party Libraries
 
 - **[args.hxx](https://github.com/Taywee/args)**
+- **[assimp](https://github.com/assimp/assimp)**
 - **[BS_thread_pool](https://github.com/bshoshany/thread-pool)**
 - **[FFmpeg](https://ffmpeg.org/)**
 - **[glfw](https://github.com/glfw/glfw)**
@@ -37,8 +38,6 @@ We also provide an OpenXR-based implementation for Meta Quest VR headsets, which
 - **[GStreamer](https://gstreamer.freedesktop.org/)**
 - **[imgui](https://github.com/ocornut/imgui)**
 - **[jsmn](https://github.com/zserge/jsmn)**
-- **[assimp](https://github.com/assimp/assimp)**
-- **[lz4_stream](https://github.com/laudrup/lz4_stream)**
 - **[lz4](https://github.com/lz4/lz4)**
 - **[spdlog](https://github.com/gabime/spdlog)**
 - **[stb](https://github.com/nothings/stb)**

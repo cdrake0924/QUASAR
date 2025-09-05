@@ -438,7 +438,8 @@ cd apps/atw/streamer
 cd apps/atw/receiver
 ./atw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345</code></pre>
 
-    <p>Note: Replace <code>127.0.0.1</code> with the IP address of the machine running the streamer if you are running the receiver on a different machine.</p>
+    <p>Replace <code>127.0.0.1</code> with the IP address of the machine running the streamer if you are running the receiver on a different machine.</p>
+    <p>With all the streamers, you can set the video bitrate with <code>--target-bitrate &lt;bitrate in Mbps&gt;</code>.</p>
 
     <h3 id="meshwarp">MeshWarp (MW)</h3>
     <p>The MeshWarp app warps a previously rendered frame by using a depth map to create a texture-mapped mesh.</p>
@@ -456,8 +457,6 @@ cd apps/meshwarp/streamer
     <pre><code># in build directory
 cd apps/meshwarp/receiver
 ./mw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --depth-url 127.0.0.1:65432</code></pre>
-
-    <p>Note: Replace <code>127.0.0.1</code> with the IP address of the machine running the streamer if you are running the receiver on a different machine.</p>
 
     <h3 id="depth-codec">Depth Codec</h3>
     <p>The Depth Codec app visualizes the differences of ground truth depth and a compressed depth map using a custom depth codec consisting of an 8x8 block BC4-like codec with ZSTD compression. This is the same depth codec we use in MeshWarp.</p>
@@ -482,10 +481,10 @@ cd apps/quadwarp/streamer
     <pre><code># in build directory
 cd apps/quadwarp/receiver
 ./quads_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --proxies-url 127.0.0.1:65432</code></pre>
-    <p>You can load frames saved to disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
+    <p>You can load frames stored on disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
 
     <h3 id="quadstream">QuadStream</h3>
-    <p>The QuadStream app fits a series of quads from multiple G-Buffers from various camera views inside a headbox. The code is a best effort implementation of <a href="https://jozef.hladky.de/projects/QS">QuadStream</a>.</p>
+    <p>The QuadStream app fits a series of quads from multiple G-Buffers from various camera views at corners of a headbox. This is a best-effort implementation of <a href="https://jozef.hladky.de/projects/QS">QuadStream</a>.</p>
     <p>To run the <strong>simulator</strong>:</p>
     <pre><code># in build directory
 cd apps/quadstream/simulator
@@ -495,9 +494,10 @@ cd apps/quadstream/simulator
     <pre><code># in build directory
 cd apps/quadstream/receiver
 ./qs_receiver --size 1920x1080</code></pre>
+    <p>Our implementation of QuadStream does not include a streamer at the moment.</p>
 
     <h3 id="quasar">QUASAR</h3>
-    <p>The QUASAR app fits a series of quads from multiple G-Buffers from various depth peeling layers with fragment discarding determined by a modified version of <a href="https://cg.skku.edu/pub/2023-kim-siggraph-pvhv">Effective Depth Peeling (EDP)</a>. This only lets <i>potentially visible</i> fragments pass.</p>
+    <p>The QUASAR app fits a series of quads from multiple G-Buffers from various depth peeling layers with fragment discarding determined by a modified version of <a href="https://cg.skku.edu/pub/2023-kim-siggraph-pvhv">Effective Depth Peeling (EDP)</a>, which only lets <i>potentially visible</i> fragments pass.</p>
     <p>To run the <strong>simulator</strong>:</p>
     <pre><code># in build directory
 cd apps/quasar/simulator
@@ -513,7 +513,7 @@ cd apps/quasar/streamer
     <pre><code># in build directory
 cd apps/quasar/receiver
 ./qr_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --proxies-url 127.0.0.1:65432</code></pre>
-    <p>You can load frames saved to disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
+    <p>You can load frames stored on disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
 
     <h2 id="evaluation">Evaluation Scripts</h2>
     <p>Make sure you have the scenes downloaded and placed in <code>assets/models/Scenes/</code>!</p>
