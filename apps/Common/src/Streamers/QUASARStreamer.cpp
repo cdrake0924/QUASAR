@@ -88,7 +88,7 @@ QUASARStreamer::QUASARStreamer(
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
-    }, videoURL, 10, targetBitRate)
+    }, videoURL, 5, targetBitRate)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
     , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture, MAX_PROXIES_PER_MESH / 4)

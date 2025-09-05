@@ -36,22 +36,19 @@ public:
     VideoStreamer(
         const RenderTargetCreateParams& params,
         const std::string& videoURL,
-        int targetFrameRate = 30,
-        int targetBitRateMbps = 10);
+        int maxFrameRate = 30,
+        int targetBitRateMbps = 12);
     ~VideoStreamer();
 
     void stop();
 
-    float getFrameRate();
-
-    void setTargetFrameRate(int targetFrameRate);
-    void setTargetBitRate(uint targetBitRate);
+    float getFrameRate() { return 1.0f / timeutils::millisToSeconds(stats.totalTimetoSendMs); }
 
     void sendFrame(pose_id_t poseID);
 
 private:
-    int targetFrameRate;
-    int targetBitRate;
+    int maxFrameRate;
+    int targetBitRateKbps;
 
 #if defined(HAS_CUDA)
     std::string format = "NV12";

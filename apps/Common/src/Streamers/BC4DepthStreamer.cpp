@@ -171,12 +171,12 @@ void BC4DepthStreamer::sendData() {
             continue;
         }
 
-        time_t starttimeToTransferMs = timeutils::getTimeMicros();
+        time_t startTimeToTransferMs = timeutils::getTimeMicros();
 
         std::memcpy(data.data(), &cudaBufferStruct.poseID, sizeof(pose_id_t));
         writeToMemory(cudaBufferStruct.poseID, cudaBufferStruct.buffer);
 
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - starttimeToTransferMs);
+        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTimeToTransferMs);
 
         size_t compressedSize = applyCodec();
 

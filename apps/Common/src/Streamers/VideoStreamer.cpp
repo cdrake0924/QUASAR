@@ -9,13 +9,13 @@ using namespace quasar;
 VideoStreamer::VideoStreamer(
         const RenderTargetCreateParams& params,
         const std::string& videoURL,
-        int targetFrameRate,
+        int maxFrameRate,
         int targetBitRateMbps)
     : videoURL(videoURL)
     , videoWidth(params.width + poseIDOffset)
     , videoHeight(params.height)
-    , targetFrameRate(targetFrameRate)
-    , targetBitRate(targetBitRateMbps * BYTES_PER_MEGABYTE)
+    , maxFrameRate(maxFrameRate)
+    , targetBitRateKbps(targetBitRateMbps * 1000)
     , RenderTarget(params)
 #if defined(HAS_CUDA)
     , cudaGLImage(colorTexture)
@@ -62,24 +62,22 @@ VideoStreamer::VideoStreamer(
     auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
     std::string encoderName;
+    const int gopFrames = std::max(1, maxFrameRate); // 1 second GOP at worst case FPS
 #if defined(HAS_CUDA)
     encoderName = "nvh264enc preset=4 rc-mode=cbr zerolatency=true "
-                  "gop-size=1"; // Send only I-frames for now
+                  "bframes=0 gop-size=" + std::to_string(gopFrames);
 #else
-    encoderName = "x264enc speed-preset=superfast tune=zerolatency "
-                  "key-int-max=1 bframes=0"; // Send only I-frames for now
+    encoderName = "x264enc speed-preset=veryfast tune=zerolatency byte-stream=true"
+                  "bframes=0 key-int-max=" + std::to_string(gopFrames);
 #endif
-
-    int bitrateKbps = targetBitRate / 1000;
 
     std::ostringstream oss;
     oss << "appsrc name=" << appSrcName << " is-live=true format=time "
         << "caps=video/x-raw,format=RGBA,width=" << videoWidth
-        << ",height=" << videoHeight
-        << ",framerate=" << targetFrameRate << "/1 ! "
+        << ",height=" << videoHeight << " ! "
         << "queue leaky=downstream max-size-buffers=1 max-size-time=0 max-size-bytes=0 ! "
         << "videoconvert ! video/x-raw,format=" << format << " ! "
-        << encoderName << " bitrate=" << bitrateKbps << " ! "
+        << encoderName << " bitrate=" << targetBitRateKbps << " ! "
         << "rtph264pay mtu=1200 config-interval=1 pt=96 name=" << payloaderName << " ! "
         << "udpsink host=" << host << " port=" << port
         << " sync=false async=false";
@@ -148,18 +146,6 @@ void VideoStreamer::stop() {
     delete renderTargetCopy;
 }
 
-float VideoStreamer::getFrameRate() {
-    return 1.0f / timeutils::millisToSeconds(stats.totalTimetoSendMs);
-}
-
-void VideoStreamer::setTargetFrameRate(int targetFrameRate) {
-    this->targetFrameRate = targetFrameRate;
-}
-
-void VideoStreamer::setTargetBitRate(uint targetBitRate) {
-    this->targetBitRate = targetBitRate;
-}
-
 void VideoStreamer::sendFrame(pose_id_t poseID) {
 #if defined(HAS_CUDA)
     bind();
@@ -200,7 +186,7 @@ void VideoStreamer::encodeAndSendFrames() {
     time_t lastBitrateCalcTime = prevTime;
 
     while (!shouldTerminate) {
-        double frameIntervalSec = 1.0 / targetFrameRate;
+        double frameIntervalSec = 1.0 / maxFrameRate;
         time_t frameStart = timeutils::getTimeMicros();
 
 #if defined(HAS_CUDA)
@@ -213,7 +199,7 @@ void VideoStreamer::encodeAndSendFrames() {
         pose_id_t poseIDToSend = cudaStruct.poseID;
         cudaArray_t cudaBuffer = cudaStruct.buffer;
 
-        time_t starttimeToTransferMs = timeutils::getTimeMicros();
+        time_t startTimeToTransferMs = timeutils::getTimeMicros();
 
         CHECK_CUDA_ERROR(cudaMemcpy2DFromArray(rgbaVideoFrameData.data(),
                                                videoWidth * 4,
@@ -229,7 +215,7 @@ void VideoStreamer::encodeAndSendFrames() {
         }
 
         pose_id_t poseIDToSend = cpuStruct.poseID;
-        time_t starttimeToTransferMs = timeutils::getTimeMicros();
+        time_t startTimeToTransferMs = timeutils::getTimeMicros();
 
         for (int row = 0; row < height; ++row) {
             std::memcpy(&rgbaVideoFrameData[row * videoWidth * 4],
@@ -239,7 +225,7 @@ void VideoStreamer::encodeAndSendFrames() {
 #endif
 
         packPoseIDIntoVideoFrame(poseIDToSend);
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - starttimeToTransferMs);
+        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTimeToTransferMs);
 
         time_t startEncode = timeutils::getTimeMicros();
 
@@ -248,13 +234,6 @@ void VideoStreamer::encodeAndSendFrames() {
         gst_buffer_map(buffer, &map, GST_MAP_WRITE);
         std::memcpy(map.data, rgbaVideoFrameData.data(), rgbaVideoFrameData.size());
         gst_buffer_unmap(buffer, &map);
-
-        GstClockTime pts = gst_util_uint64_scale(framesSent, GST_SECOND, targetFrameRate);
-        GstClockTime duration = gst_util_uint64_scale(1, GST_SECOND, targetFrameRate);
-
-        GST_BUFFER_PTS(buffer) = pts;
-        GST_BUFFER_DTS(buffer) = pts;
-        GST_BUFFER_DURATION(buffer) = duration;
 
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), buffer);
         if (ret != GST_FLOW_OK) {
