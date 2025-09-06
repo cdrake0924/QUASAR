@@ -253,14 +253,12 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
     ptr += header.cameraSize;
 
     // Read geometry data
-    geometryData.resize(header.geometrySize);
-    std::memcpy(geometryData.data(), ptr, header.geometrySize);
-
-    // Load all frame data in parallel
     const char* layerPtr = ptr;
     uint32_t layerSize;
 
+    // Load all frame data in parallel
     std::vector<std::future<size_t>> futures;
+    // Visible layer
     if (header.frameType == QuadFrame::FrameType::REFERENCE) {
         std::memcpy(&layerSize, layerPtr, sizeof(uint32_t));
         const char* dataPtr = layerPtr + sizeof(uint32_t);
@@ -281,7 +279,7 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
 
         layerPtr += sizeof(uint32_t) + layerSize;
     }
-
+    // Hidden layers and wide FOV
     for (int layer = 1; layer < maxLayers; layer++) {
         std::memcpy(&layerSize, layerPtr, sizeof(uint32_t));
         const char* dataPtr = layerPtr + sizeof(uint32_t);
@@ -328,6 +326,7 @@ QuadFrame::FrameType QUASARReceiver::reconstructFrame(std::shared_ptr<Frame> fra
 
     const glm::vec2& gBufferSize = quadSet.getSize();
     double startTime = timeutils::getTimeMicros();
+    // Reconstruct visible layer
     if (frame->frameType == QuadFrame::FrameType::REFERENCE) {
         // Transfer proxies to GPU for reconstruction
         auto sizes = quadSet.loadFromMemory(bufferPool.uncompressedQuads[0], bufferPool.uncompressedOffsets[0]);

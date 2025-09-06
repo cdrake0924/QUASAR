@@ -174,8 +174,6 @@ private:
 
     std::unique_ptr<BS::thread_pool<>> threadPool;
 
-    std::vector<char> geometryData;
-
     inline const PerspectiveCamera& getCameraToUse(int layer) const {
         return (layer == maxLayers - 1) ? remoteCameraWideFOV : remoteCamera;
     }

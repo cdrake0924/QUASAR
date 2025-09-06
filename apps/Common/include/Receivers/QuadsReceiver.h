@@ -131,8 +131,6 @@ private:
 
     std::unique_ptr<BS::thread_pool<>> threadPool;
 
-    std::vector<char> geometryData;
-
     void onDataReceived(const std::vector<char>& data) override;
     QuadFrame::FrameType reconstructFrame(std::shared_ptr<Frame> frame);
 };

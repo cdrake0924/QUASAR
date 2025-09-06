@@ -201,18 +201,15 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
     ptr += header.cameraSize;
 
     // Read geometry data
-    geometryData.resize(header.geometrySize);
-    std::memcpy(geometryData.data(), ptr, header.geometrySize);
-    ptr += header.geometrySize;
-
     if (header.frameType == QuadFrame::FrameType::REFERENCE) {
         startTime = timeutils::getTimeMicros();
-        referenceFrame.loadFromMemory(geometryData.data(), header.geometrySize);
+        referenceFrame.loadFromMemory(ptr, header.geometrySize);
     }
     else {
         startTime = timeutils::getTimeMicros();
-        residualFrame.loadFromMemory(geometryData.data(), header.geometrySize);
+        residualFrame.loadFromMemory(ptr, header.geometrySize);
     }
+    ptr += header.geometrySize;
     stats.timeToLoadMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Decompress (asynchronous)
