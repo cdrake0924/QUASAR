@@ -90,8 +90,7 @@ QUASARStreamer::QUASARStreamer(
         .magFilter = GL_NEAREST,
     }, videoURL, 5, targetBitRate)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
-    // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture, MAX_PROXIES_PER_MESH / 4)
+    , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture)
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
     , DataStreamerTCP(proxiesURL)
@@ -174,9 +173,7 @@ QUASARStreamer::QUASARStreamer(
     depthNode.primitiveType = GL_POINTS;
 
     for (int layer = 0; layer < numHidLayers; layer++) {
-        // First and last layer need a lot of quads, each subsequent one has less
-        uint maxProxies = (layer == 0 || layer == numHidLayers - 1) ? MAX_PROXIES_PER_MESH : MAX_PROXIES_PER_MESH / layer;
-        meshesHidLayer.emplace_back(quadSet, frameRTsHidLayer_noTone[layer].colorTexture, maxProxies);
+        meshesHidLayer.emplace_back(quadSet, frameRTsHidLayer_noTone[layer].colorTexture);
 
         nodesHidLayer.emplace_back(&meshesHidLayer[layer]);
         nodesHidLayer[layer].frustumCulled = false;

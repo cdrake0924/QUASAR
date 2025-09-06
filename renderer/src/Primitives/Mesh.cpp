@@ -32,12 +32,12 @@ Mesh::Mesh(const MeshDataCreateParams& params)
         .dataSize = sizeof(uint),
         .usage = params.usage,
     })
-    , indirectDraw(params.indirectDraw)
     , indirectBuffer({
         .target = GL_DRAW_INDIRECT_BUFFER,
         .dataSize = sizeof(DrawElementsIndirectCommand),
         .usage = params.usage,
     })
+    , indirectDraw(params.indirectDraw)
     , vertexSize(params.vertexSize)
     , attributes(params.attributes)
 {
@@ -272,7 +272,7 @@ RenderStats Mesh::draw(GLenum primitiveType) {
             glDrawElementsIndirect(primitiveType, GL_UNSIGNED_INT, 0);
             indexBuffer.unbind();
         }
-        else {
+        else if (vertexBuffer.getSize() > 0) {
             vertexBuffer.bind();
             glDrawArraysIndirect(primitiveType, 0);
             vertexBuffer.unbind();
@@ -284,7 +284,7 @@ RenderStats Mesh::draw(GLenum primitiveType) {
             glDrawElements(primitiveType, indexBuffer.getSize(), GL_UNSIGNED_INT, 0);
             indexBuffer.unbind();
         }
-        else {
+        else if (vertexBuffer.getSize() > 0) {
             vertexBuffer.bind();
             glDrawArrays(primitiveType, 0, vertexBuffer.getSize());
             vertexBuffer.unbind();
@@ -295,7 +295,7 @@ RenderStats Mesh::draw(GLenum primitiveType) {
     if (indexBuffer.getSize() > 0) {
         stats.trianglesDrawn = static_cast<uint>(indexBuffer.getSize() / 3);
     }
-    else {
+    else if (vertexBuffer.getSize() > 0) {
         stats.trianglesDrawn = static_cast<uint>(vertexBuffer.getSize() / 3);
     }
     stats.drawCalls = 1;

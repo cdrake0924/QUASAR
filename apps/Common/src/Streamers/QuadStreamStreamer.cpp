@@ -67,9 +67,7 @@ QuadStreamStreamer::QuadStreamStreamer(
         referenceFrameRTs.emplace_back(rtParams);
         referenceFrameRTs_noTone.emplace_back(rtParams);
 
-        // We can use less vertices and indicies for the additional views since they will be sparser
-        uint maxProxies = (view == 0 || view == maxViews - 1) ? MAX_PROXIES_PER_MESH : MAX_PROXIES_PER_MESH / 6;
-        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRTs_noTone[view].colorTexture, maxProxies);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRTs_noTone[view].colorTexture);
         referenceFrameNodesLocal.emplace_back(&referenceFrameMeshes[view]);
         referenceFrameNodesLocal[view].frustumCulled = false;
 

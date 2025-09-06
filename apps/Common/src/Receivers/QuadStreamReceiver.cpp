@@ -24,10 +24,7 @@ QuadStreamReceiver::QuadStreamReceiver(QuadSet& quadSet, uint maxViews)
         remoteCameras.emplace_back(quadSet.getSize());
 
         colorTextures.emplace_back(texParams);
-
-        // We can use less vertices and indicies for the additional views since they will be sparser
-        uint maxProxies = (view == 0 || view == maxViews - 1) ? MAX_PROXIES_PER_MESH : MAX_PROXIES_PER_MESH / 6;
-        meshes.emplace_back(quadSet, colorTextures[view], maxProxies);
+        meshes.emplace_back(quadSet, colorTextures[view]);
     }
 
     threadPool = std::make_unique<BS::thread_pool<>>(2);

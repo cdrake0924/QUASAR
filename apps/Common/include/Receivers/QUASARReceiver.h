@@ -80,21 +80,21 @@ private:
         std::vector<std::vector<char>> uncompressedQuads, uncompressedOffsets;
         std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
-        BufferPool(const glm::vec2& gBufferSize, int maxLayers, size_t maxProxiesPerMesh = MAX_PROXIES_PER_MESH) {
+        BufferPool(const glm::vec2& gBufferSize, int maxLayers) {
             uncompressedQuads.resize(maxLayers);
             uncompressedOffsets.resize(maxLayers);
 
-            const size_t quadsBytes   = sizeof(uint) + maxProxiesPerMesh * sizeof(QuadMapDataPacked);
+            const size_t quadsBytes   = sizeof(uint) + MAX_PROXIES_PER_MESH * sizeof(QuadMapDataPacked);
             const size_t offsetsBytes = static_cast<size_t>(gBufferSize.x * gBufferSize.y) * 4 * sizeof(uint16_t);
 
-            for (int layer = 0; layer < maxLayers; ++layer) {
-                size_t adjustedQuadsBytes = (layer == 0) ? quadsBytes :
-                                            (layer == maxLayers - 1) ? quadsBytes / 2 : quadsBytes / (layer * 4);
+            for (int layer = 0; layer < maxLayers; layer++) {
+                // Hidden layers usually have less quads
+                size_t adjustedQuadsBytes = (layer == 0 || layer == maxLayers - 1) ? quadsBytes : quadsBytes / 4;
                 uncompressedQuads[layer].resize(adjustedQuadsBytes);
                 uncompressedOffsets[layer].resize(offsetsBytes);
             }
 
-            uncompressedQuadsRevealed.resize(quadsBytes / 4);
+            uncompressedQuadsRevealed.resize(quadsBytes / 4); // Residual frame usually has less quads
             uncompressedOffsetsRevealed.resize(offsetsBytes);
         }
     };

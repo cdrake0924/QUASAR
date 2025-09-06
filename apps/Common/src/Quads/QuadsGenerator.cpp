@@ -3,9 +3,9 @@
 
 #include <shaders_common.h>
 
-#define THREADS_PER_LOCALGROUP 2 // 2x2 = 4 threads per pixel
+#define MAX_PROXY_SIZE (2 << 10)
 
-#define MAX_PROXY_SIZE 2048
+#define THREADS_PER_LOCALGROUP 2 // 2x2 = 4 threads per pixel
 
 using namespace quasar;
 

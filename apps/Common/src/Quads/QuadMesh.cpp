@@ -48,8 +48,8 @@ QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, const glm::vec
         }
     })
     , Mesh({
-        .maxVertices = maxProxies * NUM_SUB_QUADS * VERTICES_IN_A_QUAD,
-        .maxIndices = maxProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD,
+        .maxVertices = 0,
+        .maxIndices = 0,
         .vertexSize = sizeof(QuadVertex),
         .attributes = QuadVertex::getVertexInputAttributes(),
         .material = new QuadMaterial({ .baseColorTexture = &colorTexture }),
@@ -121,6 +121,12 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
 
 void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera) {
     double startTime = timeutils::getTimeMicros();
+
+    vertexBuffer.bind();
+    vertexBuffer.smartResize(currNumProxies * NUM_SUB_QUADS * VERTICES_IN_A_QUAD, false);
+
+    indexBuffer.bind();
+    indexBuffer.smartResize(currNumProxies * NUM_SUB_QUADS * INDICES_IN_A_QUAD, false);
 
     createQuadMeshShader.bind();
     {

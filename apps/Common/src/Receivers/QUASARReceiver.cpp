@@ -25,8 +25,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL)
-    // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, atlasVideoTexture, MAX_PROXIES_PER_MESH / 4)
+    , residualFrameMesh(quadSet, atlasVideoTexture)
     , bufferPool(quadSet.getSize(), maxLayers)
     , DataReceiverTCP(proxiesURL)
 {
@@ -39,10 +38,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
     // Untile texture atlas
     glm::vec4 textureExtent(0.0f, 0.0f, 0.5f, 1.0f / 3.0f);
     for (int layer = 0; layer < maxLayers; layer++) {
-        // First and last layer need a lot of quads, each subsequent one has less
-        uint maxProxies = (layer == 0) ? MAX_PROXIES_PER_MESH :
-                          (layer == maxLayers - 1) ? MAX_PROXIES_PER_MESH / 2 : MAX_PROXIES_PER_MESH / (layer * 4);
-        meshes.emplace_back(quadSet, atlasVideoTexture, textureExtent, maxProxies);
+        meshes.emplace_back(quadSet, atlasVideoTexture, textureExtent);
 
         textureExtent.x += 0.5f;
         if (textureExtent.x >= 1.0f) {
@@ -382,7 +378,7 @@ QuadFrame::FrameType QUASARReceiver::reconstructFrame(std::shared_ptr<Frame> fra
     }
 
     // Reconstruct hidden layers and wide FOV
-    for (int layer = 1; layer < maxLayers; ++layer) {
+    for (int layer = 1; layer < maxLayers; layer++) {
         auto sizes = quadSet.loadFromMemory(bufferPool.uncompressedQuads[layer], bufferPool.uncompressedOffsets[layer]);
         referenceFrames[layer].numQuads = sizes.numQuads;
         referenceFrames[layer].numDepthOffsets = sizes.numDepthOffsets;

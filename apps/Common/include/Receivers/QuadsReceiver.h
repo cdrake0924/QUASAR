@@ -67,16 +67,16 @@ private:
         std::vector<char> uncompressedQuads, uncompressedOffsets;
         std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
-        Frame(const glm::vec2& gBufferSize, size_t maxProxiesPerMesh = MAX_PROXIES_PER_MESH)
+        Frame(const glm::vec2& gBufferSize)
             : frameType(QuadFrame::FrameType::NONE)
         {
-            const size_t quadsBytes = sizeof(uint) + maxProxiesPerMesh * sizeof(QuadMapDataPacked);
+            const size_t quadsBytes = sizeof(uint) + MAX_PROXIES_PER_MESH * sizeof(QuadMapDataPacked);
             const size_t offsetsBytes = static_cast<size_t>(gBufferSize.x * gBufferSize.y) * 4 * sizeof(uint16_t);
 
             uncompressedQuads.resize(quadsBytes);
             uncompressedOffsets.resize(offsetsBytes);
 
-            uncompressedQuadsRevealed.resize(quadsBytes / 4);
+            uncompressedQuadsRevealed.resize(quadsBytes / 4); // Residual frame usually has less quads
             uncompressedOffsetsRevealed.resize(offsetsBytes);
         }
         ~Frame() = default;

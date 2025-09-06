@@ -11,6 +11,7 @@ Buffer::Buffer(const BufferCreateParams& params)
     : target(params.target)
     , usage(params.usage)
     , numElems(params.numElems)
+    , maxElems(params.maxElems)
     , dataSize(params.dataSize)
 {
     glGenBuffers(1, &ID);
@@ -23,6 +24,7 @@ Buffer::Buffer(const Buffer& other)
     : target(other.target)
     , usage(other.usage)
     , numElems(other.numElems)
+    , maxElems(other.maxElems)
     , dataSize(other.dataSize)
 {
     glGenBuffers(1, &ID);
@@ -41,6 +43,7 @@ Buffer::Buffer(Buffer&& other) noexcept
     : target(other.target)
     , usage(other.usage)
     , numElems(other.numElems)
+    , maxElems(other.maxElems)
     , dataSize(other.dataSize)
 {
     ID = other.ID;
@@ -115,8 +118,10 @@ size_t Buffer::getSize() const {
     return numElems;
 }
 
-void Buffer::resize(uint newNumElems, bool copy) {
-    if (numElems == newNumElems) return;
+void Buffer::resize(size_t newNumElems, bool copy) {
+    if (newNumElems == numElems) {
+        return;
+    }
 
     std::vector<char> data;
     if (copy) {
@@ -127,24 +132,31 @@ void Buffer::resize(uint newNumElems, bool copy) {
     glBufferData(target, newNumElems * dataSize, nullptr, usage);
 
     if (copy) {
-        uint elemsToCopy = std::min(numElems, newNumElems);
+        size_t elemsToCopy = std::min(numElems, newNumElems);
         glBufferSubData(target, 0, elemsToCopy * dataSize, data.data());
     }
 
     numElems = newNumElems;
 }
 
-void Buffer::smartResize(uint newNumElems, bool copy) {
+void Buffer::smartResize(size_t newNumElems, bool copy) {
+    if (newNumElems == numElems) {
+        return;
+    }
+
     if (newNumElems > numElems) {
-        resize(numElems * 2, copy);
+        size_t targetNumElems = std::max(numElems + numElems / 2, newNumElems); // grow by 1.5x
+        targetNumElems = std::min(targetNumElems, maxElems == 0 ? targetNumElems : maxElems);
+        resize(targetNumElems, copy);
     }
     else if (newNumElems <= numElems / 4) {
-        resize(numElems / 4, copy);
+        size_t targetNumElems = std::max(numElems / 2, newNumElems);
+        resize(targetNumElems, copy);
     }
 }
 
 #ifdef GL_CORE
-void Buffer::getSubData(uint offset, uint numElems, void* data) const {
+void Buffer::getSubData(size_t offset, size_t numElems, void* data) const {
     glGetBufferSubData(target, offset * dataSize, numElems * dataSize, data);
 }
 #endif
@@ -176,7 +188,7 @@ std::vector<T> Buffer::getData() const {
     return data;
 }
 
-void Buffer::setData(uint numElems, const void* data) {
+void Buffer::setData(size_t numElems, const void* data) {
     resize(numElems);
     glBufferData(target, numElems * dataSize, data, usage);
 }
@@ -186,17 +198,16 @@ void Buffer::setData(const std::vector<char>& data) {
 }
 
 #ifdef GL_CORE
-void Buffer::setSubData(uint offset, uint numElems, const void* data) {
+void Buffer::setSubData(size_t offset, size_t numElems, const void* data) {
     glBufferSubData(target, offset * dataSize, numElems * dataSize, data);
 }
 
-void Buffer::setSubData(uint offset, const std::vector<char>& data) {
+void Buffer::setSubData(size_t offset, const std::vector<char>& data) {
     setSubData(offset, data.size() / dataSize, data.data());
 }
 #endif
 
 void* Buffer::mapToCPU(GLbitfield access) const {
-    bind();
     void* ptr = glMapBufferRange(target, 0, numElems * dataSize, access);
     if (!ptr) {
         spdlog::error("Failed to map buffer to CPU.");
@@ -205,7 +216,6 @@ void* Buffer::mapToCPU(GLbitfield access) const {
 }
 
 void Buffer::unmapFromCPU() const {
-    bind();
     if (!glUnmapBuffer(target)) {
         spdlog::error("Buffer data became corrupted while mapped.");
     }

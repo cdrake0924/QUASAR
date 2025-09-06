@@ -3,7 +3,7 @@
 #include <Utils/TimeUtils.h>
 #include <PoseSendRecvSimulator.h>
 
-namespace quasar {
+using namespace quasar;
 
 PoseSendRecvSimulator::PoseSendRecvSimulator(PoseSendRecvSimulatorCreateParams params)
     : networkLatencyS(timeutils::millisToSeconds(params.networkLatencyMs))
@@ -262,5 +262,3 @@ bool PoseSendRecvSimulator::getPosePredicted(
 
     return true;
 }
-
-} // namespace quasar

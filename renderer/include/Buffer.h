@@ -13,6 +13,7 @@ struct BufferCreateParams {
     GLenum target;
     size_t dataSize;
     size_t numElems = 0;
+    size_t maxElems = 0;
     GLenum usage = GL_STATIC_DRAW;
     const void* data = nullptr;
 };
@@ -35,23 +36,23 @@ public:
 
     size_t getSize() const;
 
-    void resize(uint newNumElems, bool copy = false);
-    void smartResize(uint newNumElems, bool copy = false);
+    void resize(size_t newNumElems, bool copy = false);
+    void smartResize(size_t newNumElems, bool copy = false);
 
 #ifdef GL_CORE
-    void getSubData(uint offset, uint numElems, void* data) const;
+    void getSubData(size_t offset, size_t numElems, void* data) const;
 #endif
 
     void getData(void* data) const;
     template<typename T>
     std::vector<T> getData() const;
 
-    void setData(uint numElems, const void* data);
+    void setData(size_t numElems, const void* data);
     void setData(const std::vector<char>& data);
 
 #ifdef GL_CORE
-    void setSubData(uint offset, uint numElems, const void* data);
-    void setSubData(uint offset, const std::vector<char>& data);
+    void setSubData(size_t offset, size_t numElems, const void* data);
+    void setSubData(size_t offset, const std::vector<char>& data);
 #endif
 
     void* mapToCPU(GLbitfield access = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT) const;
@@ -60,8 +61,9 @@ public:
 private:
     GLenum target = GL_ARRAY_BUFFER;
     GLenum usage = GL_STATIC_DRAW;
-    uint numElems = 0;
-    size_t dataSize = 0;
+    size_t numElems;
+    size_t dataSize;
+    size_t maxElems;
 };
 
 } // namespace quasar
