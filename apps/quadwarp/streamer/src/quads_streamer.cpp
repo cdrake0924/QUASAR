@@ -119,12 +119,11 @@ int main(int argc, char** argv) {
     double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
 
     RenderStats renderStats;
+    pose_id_t prevPoseID;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = true;
         static bool showFramePreviewWindow = false;
-
-        static bool showSkyBox = true;
 
         ImGui::NewFrame();
 
@@ -200,19 +199,15 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            if (ImGui::CollapsingHeader("Background Settings")) {
-                if (ImGui::Checkbox("Show Sky Box", &showSkyBox)) {
-                    localScene.envCubeMap = showSkyBox ? scene.envCubeMap : nullptr;
-                }
+            ImGui::Text("Client Pose ID: %d", prevPoseID);
 
-                if (ImGui::Button("Change Background Color", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                    ImGui::OpenPopup("Background Color Popup");
-                }
-                if (ImGui::BeginPopup("Background Color Popup")) {
-                    ImGui::ColorPicker3("Background Color", (float*)&localScene.backgroundColor);
-                    ImGui::EndPopup();
-                }
-            }
+            ImGui::Separator();
+
+            auto& videoStreamerRT = quadwarp.atlasVideoStreamerRT;
+            ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: %.1f FPS (%.3f ms/frame)", videoStreamerRT.getFrameRate(), 1000.0f / videoStreamerRT.getFrameRate());
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy frame: %.3f ms", videoStreamerRT.stats.timeToTransferMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to encode frame: %.3f ms", videoStreamerRT.stats.timeToEncodeMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to send frame: %.3f ms", videoStreamerRT.stats.timeToSendMs);
 
             ImGui::Separator();
 
@@ -281,7 +276,6 @@ int main(int argc, char** argv) {
     double totalDT = 0.0;
     double lastRenderTime = -INFINITY;
     int frameCounter = 0;
-    pose_id_t poseID = -1, prevPoseID = -1;
     app.onRender([&](double now, double dt) {
         // Handle keyboard input
         auto keys = window->getKeys();
@@ -300,7 +294,7 @@ int main(int argc, char** argv) {
             totalDT = 0.0;
             lastRenderTime = now;
 
-            poseID = poseReceiver.receivePose();
+            pose_id_t poseID = poseReceiver.receivePose();
             if (poseID != -1 && poseID != prevPoseID) {
                 // Offset camera
                 camera.setPosition(camera.getPosition() + initialPosition);
@@ -328,11 +322,11 @@ int main(int argc, char** argv) {
                                                       quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
                 spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
 
+                prevPoseID = poseID;
                 quadwarp.sendProxies(poseID, sendResidualFrame);
 
                 sendReferenceFrame = false;
                 sendResidualFrame = false;
-                prevPoseID = poseID;
             }
         }
 

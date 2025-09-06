@@ -98,21 +98,6 @@ VideoStreamer::VideoStreamer(
                  "do-timestamp", TRUE,
                  nullptr);
 
-    GstElement* payloader = gst_bin_get_by_name(GST_BIN(pipeline), payloaderName.c_str());
-    GstPad* srcPad = gst_element_get_static_pad(payloader, "src");
-    gst_pad_add_probe(srcPad, GST_PAD_PROBE_TYPE_BUFFER,
-        [](GstPad*, GstPadProbeInfo* info, gpointer userData) -> GstPadProbeReturn {
-            auto* totalBytesSent = static_cast<std::atomic<uint64_t>*>(userData);
-            if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
-                GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-                if (buffer) {
-                    totalBytesSent->fetch_add(gst_buffer_get_size(buffer));
-                }
-            }
-            return GST_PAD_PROBE_OK;
-        },
-        &this->totalBytesSent, nullptr);
-
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     videoStreamerThread = std::thread(&VideoStreamer::encodeAndSendFrames, this);
@@ -183,7 +168,6 @@ void VideoStreamer::encodeAndSendFrames() {
     videoReady = true;
 
     time_t prevTime = timeutils::getTimeMicros();
-    time_t lastBitrateCalcTime = prevTime;
 
     while (!shouldTerminate) {
         double frameIntervalSec = 1.0 / maxFrameRate;
@@ -244,14 +228,6 @@ void VideoStreamer::encodeAndSendFrames() {
         time_t frameEnd = timeutils::getTimeMicros();
 
         stats.timeToEncodeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startEncode);
-
-        time_t now = timeutils::getTimeMicros();
-        time_t deltaSec = timeutils::microsToSeconds(now - lastBitrateCalcTime);
-        if (deltaSec > 0.1) {
-            stats.bitrateMbps = ((totalBytesSent * 8.0) / BYTES_PER_MEGABYTE) / deltaSec;
-            totalBytesSent = 0;
-            lastBitrateCalcTime = now;
-        }
 
         stats.timeToSendMs = timeutils::microsToMillis(frameEnd - frameStart);
 

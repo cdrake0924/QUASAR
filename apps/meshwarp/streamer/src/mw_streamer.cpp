@@ -15,10 +15,9 @@
 using namespace quasar;
 
 enum class PauseState {
-    PLAY,
+    NONE,
     PAUSE_COLOR,
     PAUSE_DEPTH,
-    PAUSE_BOTH
 };
 
 int main(int argc, char** argv) {
@@ -119,8 +118,16 @@ int main(int argc, char** argv) {
     ToneMapper toneMapper;
     ShowDepthEffect showDepthEffect(camera);
 
-    PauseState pauseState = PauseState::PLAY;
+    bool sendFrame = true;
+
+    const double serverFPSValues[] = {0, 1, 5, 10, 15, 30};
+    const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
+    int serverFPSIndex = 5; // default to 30 FPS
+    double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+
     RenderStats renderStats;
+    pose_id_t prevPoseID;
+    PauseState pauseState = PauseState::NONE;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = true;
@@ -190,21 +197,30 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: RGB (%.1f fps), BC4 D (%.1f fps)", videoStreamerColorRT.getFrameRate(), bc4DepthStreamerRT.getFrameRate());
+            ImGui::Text("Client Pose ID: %d", prevPoseID);
 
             ImGui::Separator();
 
+            ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: RGB (%.1f fps), BC4 D (%.1f fps)", videoStreamerColorRT.getFrameRate(), bc4DepthStreamerRT.getFrameRate());
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy frame: RGB (%.3f ms), BC4 D (%.3f ms)", videoStreamerColorRT.stats.timeToTransferMs, bc4DepthStreamerRT.stats.timeToTransferMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to encode frame: RGB (%.3f ms), BC4 D (%.3f ms)", videoStreamerColorRT.stats.timeToEncodeMs, bc4DepthStreamerRT.stats.timeToCompressMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to send frame: RGB (%.3f ms), BC4 D (%.3f ms)", videoStreamerColorRT.stats.timeToSendMs, bc4DepthStreamerRT.stats.timeToSendMs);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Bitrate: RGB (%.3f Mbps), BC4 D (%.3f Mbps)", videoStreamerColorRT.stats.bitrateMbps, bc4DepthStreamerRT.stats.bitrateMbps);
 
             ImGui::Separator();
 
-            ImGui::RadioButton("Play All", (int*)&pauseState, 0);
+            if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
+                rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+            }
+
+            if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                sendFrame = true;
+            }
+
+            ImGui::Separator();
+
+            ImGui::RadioButton("Play", (int*)&pauseState, 0);
             ImGui::RadioButton("Pause Color", (int*)&pauseState, 1);
             ImGui::RadioButton("Pause Depth", (int*)&pauseState, 2);
-            ImGui::RadioButton("Pause Both", (int*)&pauseState, 3);
 
             ImGui::End();
         }
@@ -217,40 +233,50 @@ int main(int argc, char** argv) {
         camera.updateProjectionMatrix();
     });
 
+    double totalDT = 0.0;
+    double lastRenderTime = -INFINITY;
     app.onRender([&](double now, double dt) {
         // Handle keyboard input
         auto keys = window->getKeys();
         if (keys.ESC_PRESSED) {
             window->close();
         }
+        totalDT += dt;
 
-        if (pauseState == PauseState::PAUSE_BOTH) {
-            return;
+        if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
+            sendFrame = true;
         }
+        if (sendFrame) {
+            // Update all animations
+            scene.updateAnimations(dt);
+            totalDT = 0.0;
+            lastRenderTime = now;
 
-        // Update all animations
-        scene.updateAnimations(dt);
+            // Receive pose
+            pose_id_t poseID = poseReceiver.receivePose();
+            if (poseID != -1 && poseID != prevPoseID) {
+                // Offset camera
+                camera.setPosition(camera.getPosition() + initialPosition);
+                camera.updateViewMatrix();
 
-        // Receive pose
-        pose_id_t poseID = poseReceiver.receivePose();
-        if (poseID != -1) {
-            // Offset camera
-            camera.setPosition(camera.getPosition() + initialPosition);
-            camera.updateViewMatrix();
+                // Render all objects in scene
+                renderStats = renderer.drawObjects(scene, camera);
 
-            // Render all objects in scene
-            renderStats = renderer.drawObjects(scene, camera);
+                // Restore camera position
+                camera.setPosition(camera.getPosition() - initialPosition);
+                camera.updateViewMatrix();
 
-            // Restore camera position
-            camera.setPosition(camera.getPosition() - initialPosition);
-            camera.updateViewMatrix();
+                // Copy color and depth to video frames
+                toneMapper.drawToRenderTarget(renderer, videoStreamerColorRT);
+                showDepthEffect.drawToRenderTarget(renderer, bc4DepthStreamerRT);
 
-            // Copy color and depth to video frames
-            toneMapper.drawToRenderTarget(renderer, videoStreamerColorRT);
-            showDepthEffect.drawToRenderTarget(renderer, bc4DepthStreamerRT);
+                // Send video and depth frames
+                prevPoseID = poseID;
+                if (pauseState != PauseState::PAUSE_COLOR) videoStreamerColorRT.sendFrame(poseID);
+                if (pauseState != PauseState::PAUSE_DEPTH) bc4DepthStreamerRT.sendFrame(poseID);
+            }
 
-            if (pauseState != PauseState::PAUSE_COLOR) videoStreamerColorRT.sendFrame(poseID);
-            if (pauseState != PauseState::PAUSE_DEPTH) bc4DepthStreamerRT.sendFrame(poseID);
+            sendFrame = false;
         }
 
         // Render to screen

@@ -103,9 +103,12 @@ private:
         pose_id_t poseID = -1;
         QuadFrame::FrameType frameType;
         Pose cameraPose;
-        BufferPool& buffers;
+        BufferPool& bufferPool;
 
-        Frame(BufferPool& buffers) : frameType(QuadFrame::FrameType::NONE), buffers(buffers) {}
+        Frame(BufferPool& bufferPool)
+            : frameType(QuadFrame::FrameType::NONE)
+            , bufferPool(bufferPool)
+        {}
         ~Frame() = default;
 
         size_t decompressReferenceFrames(std::unique_ptr<BS::thread_pool<>>& threadPool,
@@ -113,10 +116,10 @@ private:
             std::vector<std::future<size_t>> futures;
             for (int layer = 0; layer < referenceFrames.size(); layer++) {
                 futures.emplace_back(threadPool->submit_task([&, layer]() {
-                    return referenceFrames[layer].decompressDepthOffsets(buffers.uncompressedOffsets[layer]);
+                    return referenceFrames[layer].decompressDepthOffsets(bufferPool.uncompressedOffsets[layer]);
                 }));
                 futures.emplace_back(threadPool->submit_task([&, layer]() {
-                    return referenceFrames[layer].decompressQuads(buffers.uncompressedQuads[layer]);
+                    return referenceFrames[layer].decompressQuads(bufferPool.uncompressedQuads[layer]);
                 }));
             }
 
@@ -132,24 +135,24 @@ private:
             futures.reserve(4 + 2 * (referenceFrames.size() - 1));
 
             futures.emplace_back(threadPool->submit_task([&]() {
-                return residualFrame.decompressUpdatedDepthOffsets(buffers.uncompressedOffsets[0]);
+                return residualFrame.decompressUpdatedDepthOffsets(bufferPool.uncompressedOffsets[0]);
             }));
             futures.emplace_back(threadPool->submit_task([&]() {
-                return residualFrame.decompressRevealedDepthOffsets(buffers.uncompressedOffsetsRevealed);
+                return residualFrame.decompressRevealedDepthOffsets(bufferPool.uncompressedOffsetsRevealed);
             }));
             futures.emplace_back(threadPool->submit_task([&]() {
-                return residualFrame.decompressUpdatedQuads(buffers.uncompressedQuads[0]);
+                return residualFrame.decompressUpdatedQuads(bufferPool.uncompressedQuads[0]);
             }));
             futures.emplace_back(threadPool->submit_task([&]() {
-                return residualFrame.decompressRevealedQuads(buffers.uncompressedQuadsRevealed);
+                return residualFrame.decompressRevealedQuads(bufferPool.uncompressedQuadsRevealed);
             }));
 
             for (int layer = 1; layer < referenceFrames.size(); layer++) {
                 futures.emplace_back(threadPool->submit_task([&, layer]() {
-                    return referenceFrames[layer].decompressDepthOffsets(buffers.uncompressedOffsets[layer]);
+                    return referenceFrames[layer].decompressDepthOffsets(bufferPool.uncompressedOffsets[layer]);
                 }));
                 futures.emplace_back(threadPool->submit_task([&, layer]() {
-                    return referenceFrames[layer].decompressQuads(buffers.uncompressedQuads[layer]);
+                    return referenceFrames[layer].decompressQuads(bufferPool.uncompressedQuads[layer]);
                 }));
             }
 

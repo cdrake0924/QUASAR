@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
 
     glm::vec3 initialPosition = camera->getPosition();
 
-    VideoStreamer videoStreamerRT = VideoStreamer({
+    VideoStreamer videoStreamerRT({
         .width = windowSize.x,
         .height = windowSize.y,
         .internalFormat = GL_SRGB8,
@@ -102,9 +102,15 @@ int main(int argc, char** argv) {
     // Post processing
     ToneMapper toneMapper;
 
-    bool paused = false;
+    bool sendFrame = true;
+
+    const double serverFPSValues[] = {0, 1, 5, 10, 15, 30};
+    const char* serverFPSLabels[] = {"0 FPS", "1 FPS", "5 FPS", "10 FPS", "15 FPS", "30 FPS"};
+    int serverFPSIndex = 5; // default to 30 FPS
+    double rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+
     RenderStats renderStats;
-    pose_id_t currentFramePoseID;
+    pose_id_t prevPoseID;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = true;
@@ -171,22 +177,24 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: %.1f FPS (%.3f ms/frame)", videoStreamerRT.getFrameRate(), 1000.0f / videoStreamerRT.getFrameRate());
+            ImGui::Text("Client Pose ID: %d", prevPoseID);
 
             ImGui::Separator();
 
+            ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: %.1f FPS (%.3f ms/frame)", videoStreamerRT.getFrameRate(), 1000.0f / videoStreamerRT.getFrameRate());
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy frame: %.3f ms", videoStreamerRT.stats.timeToTransferMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to encode frame: %.3f ms", videoStreamerRT.stats.timeToEncodeMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to send frame: %.3f ms", videoStreamerRT.stats.timeToSendMs);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Bitrate: %.3f Mbps", videoStreamerRT.stats.bitrateMbps);
 
             ImGui::Separator();
 
-            ImGui::Text("Remote Pose ID: %d", currentFramePoseID);
+            if (ImGui::Combo("Server Framerate", &serverFPSIndex, serverFPSLabels, IM_ARRAYSIZE(serverFPSLabels))) {
+                rerenderIntervalMs = serverFPSIndex == 0 ? 0.0 : MILLISECONDS_IN_SECOND / serverFPSValues[serverFPSIndex];
+            }
 
-            ImGui::Separator();
-
-            ImGui::Checkbox("Pause", &paused);
+            if (ImGui::Button("Send Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                sendFrame = true;
+            }
 
             ImGui::End();
         }
@@ -208,59 +216,67 @@ int main(int argc, char** argv) {
         }
     });
 
+    double totalDT = 0.0;
+    double lastRenderTime = -INFINITY;
     app.onRender([&](double now, double dt) {
         // Handle keyboard input
         auto keys = window->getKeys();
         if (keys.ESC_PRESSED) {
             window->close();
         }
+        totalDT += dt;
 
-        if (paused) {
-            return;
+        if (rerenderIntervalMs > 0.0 && (now - lastRenderTime) >= timeutils::millisToSeconds(rerenderIntervalMs - 1.0)) {
+            sendFrame = true;
         }
+        if (sendFrame) {
+            // Update all animations
+            scene.updateAnimations(dt);
+            totalDT = 0.0;
+            lastRenderTime = now;
 
-        // Update all animations
-        scene.updateAnimations(dt);
+            // Receive pose
+            pose_id_t poseID = poseReceiver.receivePose();
+            if (poseID != -1 && poseID != prevPoseID) {
+                // Offset camera
+                if (camera->isVR()) {
+                    auto* vrCamera = static_cast<VRCamera*>(camera.get());
+                    vrCamera->left.setPosition(vrCamera->left.getPosition() + initialPosition);
+                    vrCamera->right.setPosition(vrCamera->right.getPosition() + initialPosition);
+                    vrCamera->left.updateViewMatrix();
+                    vrCamera->right.updateViewMatrix();
+                }
+                else {
+                    auto* perspectiveCamera = static_cast<PerspectiveCamera*>(camera.get());
+                    perspectiveCamera->setPosition(perspectiveCamera->getPosition() + initialPosition);
+                    perspectiveCamera->updateViewMatrix();
+                }
 
-        // Receive pose
-        pose_id_t poseID = poseReceiver.receivePose();
-        if (poseID != -1) {
-            // Offset camera
-            if (camera->isVR()) {
-                auto* vrCamera = static_cast<VRCamera*>(camera.get());
-                vrCamera->left.setPosition(vrCamera->left.getPosition() + initialPosition);
-                vrCamera->right.setPosition(vrCamera->right.getPosition() + initialPosition);
-                vrCamera->left.updateViewMatrix();
-                vrCamera->right.updateViewMatrix();
+                renderer.drawObjects(scene, *camera);
+
+                // Restore camera position
+                if (camera->isVR()) {
+                    auto* vrCamera = static_cast<VRCamera*>(camera.get());
+                    vrCamera->left.setPosition(vrCamera->left.getPosition() - initialPosition);
+                    vrCamera->right.setPosition(vrCamera->right.getPosition() - initialPosition);
+                    vrCamera->left.updateViewMatrix();
+                    vrCamera->right.updateViewMatrix();
+                }
+                else {
+                    auto* perspectiveCamera = static_cast<PerspectiveCamera*>(camera.get());
+                    perspectiveCamera->setPosition(perspectiveCamera->getPosition() - initialPosition);
+                    perspectiveCamera->updateViewMatrix();
+                }
+
+                // Copy rendered result to video render target
+                toneMapper.drawToRenderTarget(renderer, videoStreamerRT);
+
+                // Send video frame
+                prevPoseID = poseID;
+                videoStreamerRT.sendFrame(poseID);
+
+                sendFrame = false;
             }
-            else {
-                auto* perspectiveCamera = static_cast<PerspectiveCamera*>(camera.get());
-                perspectiveCamera->setPosition(perspectiveCamera->getPosition() + initialPosition);
-                perspectiveCamera->updateViewMatrix();
-            }
-
-            renderer.drawObjects(scene, *camera);
-
-            // Restore camera position
-            if (camera->isVR()) {
-                auto* vrCamera = static_cast<VRCamera*>(camera.get());
-                vrCamera->left.setPosition(vrCamera->left.getPosition() - initialPosition);
-                vrCamera->right.setPosition(vrCamera->right.getPosition() - initialPosition);
-                vrCamera->left.updateViewMatrix();
-                vrCamera->right.updateViewMatrix();
-            }
-            else {
-                auto* perspectiveCamera = static_cast<PerspectiveCamera*>(camera.get());
-                perspectiveCamera->setPosition(perspectiveCamera->getPosition() - initialPosition);
-                perspectiveCamera->updateViewMatrix();
-            }
-
-            // Copy rendered result to video render target
-            toneMapper.drawToRenderTarget(renderer, videoStreamerRT);
-
-            // Send video frame
-            currentFramePoseID = poseID;
-            videoStreamerRT.sendFrame(poseID);
         }
 
         if (config.showWindow) {

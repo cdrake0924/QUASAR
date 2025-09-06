@@ -54,15 +54,15 @@ public:
 
     size_t compressAndStoreQuads(const std::vector<char>& uncompressedQuads) {
         return refQuadsCodec.compress(
-            uncompressedQuads.data(),
-            quads,
-            uncompressedQuads.size());
+                uncompressedQuads.data(),
+                quads,
+                uncompressedQuads.size());
     }
     size_t compressAndStoreDepthOffsets(const std::vector<char>& uncompressedOffsets) {
         return refOffsetsCodec.compress(
-            uncompressedOffsets.data(),
-            depthOffsets,
-            uncompressedOffsets.size());
+                uncompressedOffsets.data(),
+                depthOffsets,
+                uncompressedOffsets.size());
     }
 
     size_t decompressQuads(std::vector<char>& outputQuads) {
@@ -216,27 +216,27 @@ public:
 
     size_t compressAndStoreUpdatedQuads(const std::vector<char>& uncompressedQuads) {
         return resQuadsUpdatedCodec.compress(
-            uncompressedQuads.data(),
-            quadsUpdated,
-            uncompressedQuads.size());
+                uncompressedQuads.data(),
+                quadsUpdated,
+                uncompressedQuads.size());
     }
     size_t compressAndStoreRevealedQuads(const std::vector<char>& uncompressedQuads) {
         return resQuadsRevealedCodec.compress(
-            uncompressedQuads.data(),
-            quadsRevealed,
-            uncompressedQuads.size());
+                uncompressedQuads.data(),
+                quadsRevealed,
+                uncompressedQuads.size());
     }
     size_t compressAndStoreUpdatedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
         return resOffsetsUpdatedCodec.compress(
-            uncompressedOffsets.data(),
-            depthOffsetsUpdated,
-            uncompressedOffsets.size());
+                uncompressedOffsets.data(),
+                depthOffsetsUpdated,
+                uncompressedOffsets.size());
     }
     size_t compressAndStoreRevealedDepthOffsets(const std::vector<char>& uncompressedOffsets) {
         return resOffsetsRevealedCodec.compress(
-            uncompressedOffsets.data(),
-            depthOffsetsRevealed,
-            uncompressedOffsets.size());
+                uncompressedOffsets.data(),
+                depthOffsetsRevealed,
+                uncompressedOffsets.size());
     }
 
     size_t decompressUpdatedQuads(std::vector<char>& outputQuads) {

@@ -135,6 +135,7 @@ int main(int argc, char** argv) {
     }
 
     RenderStats renderStats;
+    pose_id_t prevPoseID;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = true;
@@ -218,6 +219,18 @@ int main(int argc, char** argv) {
             ImGui::Text("Video URL: %s", videoURL.c_str());
             ImGui::Text("Proxies URL: %s", proxiesURL.c_str());
             ImGui::Text("Pose URL: %s", poseURL.c_str());
+
+            ImGui::Separator();
+
+            ImGui::Text("Client Pose ID: %d", prevPoseID);
+
+            ImGui::Separator();
+
+            auto& videoStreamerRT = quasar.atlasVideoStreamerRT;
+            ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: %.1f FPS (%.3f ms/frame)", videoStreamerRT.getFrameRate(), 1000.0f / videoStreamerRT.getFrameRate());
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy frame: %.3f ms", videoStreamerRT.stats.timeToTransferMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to encode frame: %.3f ms", videoStreamerRT.stats.timeToEncodeMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to send frame: %.3f ms", videoStreamerRT.stats.timeToSendMs);
 
             ImGui::Separator();
 
@@ -343,7 +356,6 @@ int main(int argc, char** argv) {
     double totalDT = 0.0;
     double lastRenderTime = -INFINITY;
     int frameCounter = 0;
-    pose_id_t poseID = -1, prevPoseID = -1;
     app.onRender([&](double now, double dt) {
         // Handle keyboard input
         auto keys = window->getKeys();
@@ -362,7 +374,7 @@ int main(int argc, char** argv) {
             totalDT = 0.0;
             lastRenderTime = now;
 
-            poseID = poseReceiver.receivePose();
+            pose_id_t poseID = poseReceiver.receivePose();
             if (poseID != -1 && poseID != prevPoseID) {
                 // Offset camera
                 camera.setPosition(camera.getPosition() + initialPosition);
@@ -391,11 +403,11 @@ int main(int argc, char** argv) {
                                                     quasar.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
                 spdlog::info("Num Proxies: {}Proxies", quasar.stats.totalSizes.numQuads);
 
+                prevPoseID = poseID;
                 quasar.sendProxies(poseID, sendResidualFrame);
 
                 sendReferenceFrame = false;
                 sendResidualFrame = false;
-                prevPoseID = poseID;
             }
         }
 

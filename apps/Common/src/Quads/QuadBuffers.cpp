@@ -11,18 +11,21 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
         .target = GL_SHADER_STORAGE_BUFFER,
         .dataSize = sizeof(uint32_t),
         .numElems = maxProxies,
+        .maxElems = maxProxies,
         .usage = GL_DYNAMIC_COPY,
     })
     , depthsBuffer({
         .target = GL_SHADER_STORAGE_BUFFER,
         .dataSize = sizeof(float),
         .numElems = maxProxies,
+        .maxElems = maxProxies,
         .usage = GL_DYNAMIC_COPY,
     })
     , metadatasBuffer({
         .target = GL_SHADER_STORAGE_BUFFER,
         .dataSize = sizeof(uint32_t),
         .numElems = maxProxies,
+        .maxElems = maxProxies,
         .usage = GL_DYNAMIC_COPY,
     })
 #if defined(HAS_CUDA)
@@ -35,6 +38,7 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
 
 void QuadBuffers::resize(size_t newNumProxies) {
     numProxies = newNumProxies;
+    spdlog::debug("Resized QuadBuffers to {} proxies", newNumProxies);
 }
 
 #ifdef GL_CORE
