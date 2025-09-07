@@ -428,18 +428,18 @@ cd apps/depth_peeling
 cd apps/atw/simulator
 ./atw_simulator --size 1920x1080 --scene ../assets/scenes/robot_lab.json</code></pre>
 
-    <p>To run the <strong>streamer</strong> (actually streams over a network):</p>
+    <p>To run the <strong>streamer</strong> (can actually stream over a network):</p>
     <pre><code># in build directory
 cd apps/atw/streamer
-./atw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url 127.0.0.1:12345</code></pre>
+./atw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url &lt;receiver's IP&gt;:12345</code></pre>
+    <p>With all the streamers, you can set the video bitrate with <code>--target-bitrate &lt;bitrate in Mbps&gt;</code>.</p>
 
     <p>In a new terminal, to run the <strong>receiver</strong> (streaming client):</p>
     <pre><code># in build directory
 cd apps/atw/receiver
-./atw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345</code></pre>
+./atw_receiver --size 1920x1080 --pose-url &lt;streamer's IP&gt;:54321 --video-url 0.0.0.0:12345</code></pre>
 
-    <p>Replace <code>127.0.0.1</code> with the IP address of the machine running the streamer if you are running the receiver on a different machine.</p>
-    <p>With all the streamers, you can set the video bitrate with <code>--target-bitrate &lt;bitrate in Mbps&gt;</code>.</p>
+    <p>If you want to stream over a network, change <code>&lt;streamer's IP&gt;</code> to the IP address of the machine running the streamer and <code>&lt;receiver's IP&gt;</code> to the IP address of the machine running the receiver. If streaming locally, set both to <code>127.0.0.1</code>.</p>
 
     <h3 id="meshwarp">MeshWarp (MW)</h3>
     <p>The MeshWarp app warps a previously rendered frame by using a depth map to create a texture-mapped mesh.</p>
@@ -451,12 +451,12 @@ cd apps/meshwarp/simulator
     <p>To run the <strong>streamer</strong>:</p>
     <pre><code># in build directory
 cd apps/meshwarp/streamer
-./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url 127.0.0.1:12345 --depth-url 127.0.0.1:65432</code></pre>
+./mw_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url &lt;receiver's IP&gt;:12345 --depth-url &lt;streamer's IP&gt;:65432</code></pre>
 
     <p>In a new terminal, to run the <strong>receiver</strong>:</p>
     <pre><code># in build directory
 cd apps/meshwarp/receiver
-./mw_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --depth-url 127.0.0.1:65432</code></pre>
+./mw_receiver --size 1920x1080 --pose-url &lt;streamer's IP&gt;:54321 --video-url 0.0.0.0:12345 --depth-url &lt;streamer's IP&gt;:65432</code></pre>
 
     <h3 id="depth-codec">Depth Codec</h3>
     <p>The Depth Codec app visualizes the differences of ground truth depth and a compressed depth map using a custom depth codec consisting of an 8x8 block BC4-like codec with ZSTD compression. This is the same depth codec we use in MeshWarp.</p>
@@ -475,12 +475,12 @@ cd apps/quadwarp/simulator
     <p>To run the <strong>streamer</strong>:</p>
     <pre><code># in build directory
 cd apps/quadwarp/streamer
-./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url 127.0.0.1:12345 --proxies-url 127.0.0.1:65432</code></pre>
+./quads_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url &lt;receiver's IP&gt;:12345 --proxies-url &lt;streamer's IP&gt;:65432</code></pre>
 
     <p>In a new terminal, to run the <strong>receiver</strong>:</p>
     <pre><code># in build directory
 cd apps/quadwarp/receiver
-./quads_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --proxies-url 127.0.0.1:65432</code></pre>
+./quads_receiver --size 1920x1080 --pose-url &lt;streamer's IP&gt;:54321 --video-url 0.0.0.0:12345 --proxies-url &lt;streamer's IP&gt;:65432</code></pre>
     <p>You can load frames stored on disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
 
     <h3 id="quadstream">QuadStream</h3>
@@ -507,12 +507,12 @@ cd apps/quasar/simulator
     <p>To run the <strong>streamer</strong>:</p>
     <pre><code># in build directory
 cd apps/quasar/streamer
-./qr_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url 127.0.0.1:12345 --proxies-url 127.0.0.1:65432</code></pre>
+./qr_streamer --size 1920x1080 --scene ../assets/scenes/robot_lab.json --pose-url 0.0.0.0:54321 --video-url &lt;receiver's IP&gt;:12345 --proxies-url &lt;streamer's IP&gt;:65432</code></pre>
 
     <p>In a new terminal, to run the <strong>receiver</strong>:</p>
     <pre><code># in build directory
 cd apps/quasar/receiver
-./qr_receiver --size 1920x1080 --pose-url 127.0.0.1:54321 --video-url 0.0.0.0:12345 --proxies-url 127.0.0.1:65432</code></pre>
+./qr_receiver --size 1920x1080 --pose-url &lt;streamer's IP&gt;:54321 --video-url 0.0.0.0:12345 --proxies-url &lt;streamer's IP&gt;:65432</code></pre>
     <p>You can load frames stored on disk by adding <code>--load-from-disk</code> (this will disable receiving data from network).</p>
 
     <h2 id="evaluation">Evaluation Scripts</h2>
