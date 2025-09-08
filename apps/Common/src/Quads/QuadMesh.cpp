@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <Quads/QuadMesh.h>
 #include <Utils/TimeUtils.h>
 #include <shaders_common.h>
