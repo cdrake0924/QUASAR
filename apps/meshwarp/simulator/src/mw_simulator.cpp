@@ -535,9 +535,9 @@ int main(int argc, char** argv) {
             lasttotalRenderTime = now;
 
             double startTime = window->getTime();
-            double totalRenderTime = 0.0;
+            double totalRenderTimeMs = 0.0;
             double totalGenMeshTime = 0.0;
-            double totalCompressTime = 0.0;
+            double totalCompressTimeMs = 0.0;
 
             // "Send" pose to the server. this will wait until latency+/-jitter ms have passed
             poseSendRecvSimulator.sendPose(camera, now);
@@ -558,11 +558,11 @@ int main(int argc, char** argv) {
             toneMapper.drawToRenderTarget(remoteRenderer, renderTarget);
             showDepthEffect.drawToRenderTarget(remoteRenderer, bc4DepthStreamerRT);
 
-            totalRenderTime = timeutils::secondsToMillis(window->getTime() - startTime);
+            totalRenderTimeMs = timeutils::secondsToMillis(window->getTime() - startTime);
 
             // Compress depth map to BC4 format with ZSTD
             compressedSize = bc4DepthStreamerRT.compress(true);
-            totalCompressTime = bc4DepthStreamerRT.stats.timeToCompressMs;
+            totalCompressTimeMs = bc4DepthStreamerRT.stats.compressTimeMs;
 
             startTime = window->getTime();
             meshFromBC4Shader.bind();
@@ -593,9 +593,9 @@ int main(int argc, char** argv) {
             totalGenMeshTime += timeutils::secondsToMillis(window->getTime() - startTime);
 
             spdlog::info("======================================================");
-            spdlog::info("Rendering Time: {:.3f}ms", totalRenderTime);
+            spdlog::info("Rendering Time: {:.3f}ms", totalRenderTimeMs);
             spdlog::info("Create Mesh Time: {:.3f}ms", totalGenMeshTime);
-            spdlog::info("Compress Time: {:.3f}ms", totalCompressTime);
+            spdlog::info("Compress Time: {:.3f}ms", totalCompressTimeMs);
             spdlog::info("Frame Size: {:.3f}MB", static_cast<float>(compressedSize) / BYTES_PER_MEGABYTE);
 
             preventCopyingLocalPose = false;

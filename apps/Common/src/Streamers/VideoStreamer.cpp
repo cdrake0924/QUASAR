@@ -183,7 +183,7 @@ void VideoStreamer::encodeAndSendFrames() {
         pose_id_t poseIDToSend = cudaStruct.poseID;
         cudaArray_t cudaBuffer = cudaStruct.buffer;
 
-        time_t startTimeToTransferMs = timeutils::getTimeMicros();
+        time_t startTransferTimeMs = timeutils::getTimeMicros();
 
         CHECK_CUDA_ERROR(cudaMemcpy2DFromArray(rgbaVideoFrameData.data(),
                                                videoWidth * 4,
@@ -199,7 +199,7 @@ void VideoStreamer::encodeAndSendFrames() {
         }
 
         pose_id_t poseIDToSend = cpuStruct.poseID;
-        time_t startTimeToTransferMs = timeutils::getTimeMicros();
+        time_t startTransferTimeMs = timeutils::getTimeMicros();
 
         for (int row = 0; row < height; ++row) {
             std::memcpy(&rgbaVideoFrameData[row * videoWidth * 4],
@@ -209,7 +209,7 @@ void VideoStreamer::encodeAndSendFrames() {
 #endif
 
         packPoseIDIntoVideoFrame(poseIDToSend);
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTimeToTransferMs);
+        stats.transferTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTimeMs);
 
         time_t startEncode = timeutils::getTimeMicros();
 
@@ -227,9 +227,9 @@ void VideoStreamer::encodeAndSendFrames() {
 
         time_t frameEnd = timeutils::getTimeMicros();
 
-        stats.timeToEncodeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startEncode);
+        stats.encodeTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startEncode);
 
-        stats.timeToSendMs = timeutils::microsToMillis(frameEnd - frameStart);
+        stats.sendTimeMs = timeutils::microsToMillis(frameEnd - frameStart);
 
         double elapsedTimeSec = timeutils::microsToSeconds(frameEnd - frameStart);
         if (elapsedTimeSec < frameIntervalSec) {
@@ -237,7 +237,7 @@ void VideoStreamer::encodeAndSendFrames() {
                 (int)(timeutils::secondsToMicros(frameIntervalSec - elapsedTimeSec))));
         }
 
-        stats.totalTimetoSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
+        stats.totalSendTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         prevTime = timeutils::getTimeMicros();
     }
 }

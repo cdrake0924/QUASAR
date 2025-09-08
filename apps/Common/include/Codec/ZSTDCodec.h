@@ -42,7 +42,7 @@ public:
             compressedData.data(), maxCompressedBytes,
             uncompressedData, numBytesUncompressed);
 
-        stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.compressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         return res;
     }
@@ -54,7 +54,7 @@ public:
             decompressedData.data(), decompressedData.size(),
             compressedData.data(), compressedData.size());
 
-        stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.decompressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         return res;
     }

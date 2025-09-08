@@ -26,9 +26,8 @@ public:
     };
 
     struct Stats {
-        double timeToAppendQuadsMs = 0.0;
-        double timeToGatherQuadsMs = 0.0;
-        double timeToCreateMeshMs = 0.0;
+        double appendQuadsTimeMs = 0.0;
+        double createMeshTimeMs = 0.0;
     } stats;
 
     uint maxProxies;

@@ -125,7 +125,7 @@ void QuadsGenerator::generateInitialQuadMap(
                               (gBufferSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
     createQuadMapShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-    stats.timeToGenerateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.generateQuadsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadsGenerator::simplifyQuadMaps(const PerspectiveCamera& remoteCamera, const glm::vec2& gBufferSize) {
@@ -197,7 +197,7 @@ void QuadsGenerator::simplifyQuadMaps(const PerspectiveCamera& remoteCamera, con
     }
     simplifyQuadMapShader.memoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-    stats.timeToSimplifyQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.simplifyQuadsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
@@ -242,7 +242,7 @@ void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
     }
     gatherQuadsShader.memoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
-    stats.timeToGatherQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.gatherQuadsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadsGenerator::createProxies(

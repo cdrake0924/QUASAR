@@ -26,16 +26,16 @@ void FrameGenerator::createReferenceFrame(
     */
     double startTime = timeutils::getTimeMicros();
     quadsGenerator->createProxiesFromRT(referenceFrameRT, remoteCamera);
-    stats.timeToGenerateQuadsMs = quadsGenerator->stats.timeToGenerateQuadsMs;
-    stats.timeToSimplifyQuadsMs = quadsGenerator->stats.timeToSimplifyQuadsMs;
-    stats.timeToGatherQuadsMs = quadsGenerator->stats.timeToGatherQuadsMs;
-    stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.generateQuadsTimeMs = quadsGenerator->stats.generateQuadsTimeMs;
+    stats.simplifyQuadsTimeMs = quadsGenerator->stats.simplifyQuadsTimeMs;
+    stats.gatherQuadsTimeMs = quadsGenerator->stats.gatherQuadsTimeMs;
+    stats.createQuadsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer updated proxies to CPU for compression
     auto sizes = quadSet.writeToMemory(uncompressedQuads, uncompressedOffsets);
     referenceFrame.numQuads = sizes.numQuads;
     referenceFrame.numDepthOffsets = sizes.numDepthOffsets;
-    stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
+    stats.transferTimeMs = quadSet.stats.transferTimeMs;
 
     // Compress proxies (nonblocking)
     auto offsetsFuture = threadPool->submit_task([&]() {
@@ -49,10 +49,9 @@ void FrameGenerator::createReferenceFrame(
     startTime = timeutils::getTimeMicros();
     referenceMesh.appendQuads(quadSet, gBufferSize);
     referenceMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
-    stats.timeToAppendQuadsMs = referenceMesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs = referenceMesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs = referenceMesh.stats.timeToCreateMeshMs;
-    stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.appendQuadsTimeMs = referenceMesh.stats.appendQuadsTimeMs;
+    stats.createVertIndTimeMs = referenceMesh.stats.createMeshTimeMs;
+    stats.createMeshTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
     ============================
@@ -61,7 +60,7 @@ void FrameGenerator::createReferenceFrame(
     */
     referenceFrame.quads.resize(quadsFuture.get());
     referenceFrame.depthOffsets.resize(offsetsFuture.get());
-    stats.timeToCompressMs = referenceFrame.getTimeToCompress();
+    stats.compressTimeMs = referenceFrame.getCompressTime();
 }
 
 void FrameGenerator::updateResidualRenderTargets(
@@ -70,7 +69,7 @@ void FrameGenerator::updateResidualRenderTargets(
     Scene& currMeshScene, Scene& prevMeshScene,
     const PerspectiveCamera& currRemoteCamera, const PerspectiveCamera& remoteCameraPrev)
 {
-    stats.timeToUpdateRTsMs = 0.0;
+    stats.updateRTsTimeMs = 0.0;
 
     /*
     ============================
@@ -115,7 +114,7 @@ void FrameGenerator::updateResidualRenderTargets(
     remoteRenderer.pipeline.stencilState.restoreStencilState();
     remoteRenderer.copyToFrameRT(residualFrameRT);
 
-    stats.timeToUpdateRTsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.updateRTsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void FrameGenerator::createResidualFrame(
@@ -124,9 +123,9 @@ void FrameGenerator::createResidualFrame(
     QuadMesh& referenceMesh, QuadMesh& residualMesh,
     ResidualFrame& residualFrame)
 {
-    double timeToUpdateRTsMs = stats.timeToUpdateRTsMs;
+    double updateRTsTimeMs = stats.updateRTsTimeMs;
     stats = { 0 };
-    stats.timeToUpdateRTsMs = timeToUpdateRTsMs;
+    stats.updateRTsTimeMs = updateRTsTimeMs;
 
     const glm::vec2 gBufferSize = glm::vec2(residualFrameRT.width, residualFrameRT.height);
 
@@ -137,13 +136,13 @@ void FrameGenerator::createResidualFrame(
     */
     double startTime = timeutils::getTimeMicros();
     quadsGenerator->createProxiesFromRT(residualFrameMaskRT, remoteCameraPrev);
-    stats.timeToCreateQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.createQuadsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer updated proxies to CPU for compression
     auto sizesUpdated = quadSet.writeToMemory(uncompressedQuads, uncompressedOffsets);
     residualFrame.numQuadsUpdated = sizesUpdated.numQuads;
     residualFrame.numDepthOffsetsUpdated = sizesUpdated.numDepthOffsets;
-    stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
+    stats.transferTimeMs = quadSet.stats.transferTimeMs;
 
     // Compress updated proxies (asynchronous)
     auto offsetsUpdatedFuture = threadPool->submit_task([&]() {
@@ -157,10 +156,9 @@ void FrameGenerator::createResidualFrame(
     startTime = timeutils::getTimeMicros();
     referenceMesh.appendQuads(quadSet, gBufferSize, false /* not a reference frame */);
     referenceMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCameraPrev);
-    stats.timeToAppendQuadsMs = referenceMesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs = referenceMesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs = referenceMesh.stats.timeToCreateMeshMs;
-    stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.appendQuadsTimeMs = referenceMesh.stats.appendQuadsTimeMs;
+    stats.createVertIndTimeMs = referenceMesh.stats.createMeshTimeMs;
+    stats.createMeshTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
     ============================
@@ -169,13 +167,13 @@ void FrameGenerator::createResidualFrame(
     */
     startTime = timeutils::getTimeMicros();
     quadsGenerator->createProxiesFromRT(residualFrameRT, currRemoteCamera);
-    stats.timeToCreateQuadsMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.createQuadsTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Transfer revealed proxies to CPU for compression
     auto sizesRevealed = quadSet.writeToMemory(uncompressedQuadsRevealed, uncompressedOffsetsRevealed);
     residualFrame.numQuadsRevealed = sizesRevealed.numQuads;
     residualFrame.numDepthOffsetsRevealed = sizesRevealed.numDepthOffsets;
-    stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
+    stats.transferTimeMs += quadSet.stats.transferTimeMs;
 
     // Compress revealed proxies (asynchronous)
     auto quadsRevealedFuture = threadPool->submit_task([&]() {
@@ -189,10 +187,9 @@ void FrameGenerator::createResidualFrame(
     startTime = timeutils::getTimeMicros();
     residualMesh.appendQuads(quadSet, gBufferSize);
     residualMesh.createMeshFromProxies(quadSet, gBufferSize, currRemoteCamera);
-    stats.timeToAppendQuadsMs += residualMesh.stats.timeToAppendQuadsMs;
-    stats.timeToFillQuadIndicesMs += residualMesh.stats.timeToGatherQuadsMs;
-    stats.timeToCreateVertIndMs += residualMesh.stats.timeToCreateMeshMs;
-    stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.appendQuadsTimeMs += residualMesh.stats.appendQuadsTimeMs;
+    stats.createVertIndTimeMs += residualMesh.stats.createMeshTimeMs;
+    stats.createMeshTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
     ============================
@@ -203,5 +200,5 @@ void FrameGenerator::createResidualFrame(
     residualFrame.quadsRevealed.resize(quadsRevealedFuture.get());
     residualFrame.depthOffsetsUpdated.resize(offsetsUpdatedFuture.get());
     residualFrame.depthOffsetsRevealed.resize(offsetsRevealedFuture.get());
-    stats.timeToCompressMs = residualFrame.getTimeToCompress();
+    stats.compressTimeMs = residualFrame.getCompressTime();
 }

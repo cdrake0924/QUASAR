@@ -15,17 +15,16 @@ namespace quasar {
 class FrameGenerator {
 public:
     struct Stats {
-        double timeToCreateQuadsMs = 0.0;
-        double timeToCreateMeshMs = 0.0;
-        double timeToGenerateQuadsMs = 0.0;
-        double timeToSimplifyQuadsMs = 0.0;
-        double timeToGatherQuadsMs = 0.0;
-        double timeToAppendQuadsMs = 0.0;
-        double timeToFillQuadIndicesMs = 0.0;
-        double timeToCreateVertIndMs = 0.0;
-        double timeToUpdateRTsMs = 0.0;
-        double timeToTransferMs = 0.0;
-        double timeToCompressMs = 0.0;
+        double createQuadsTimeMs = 0.0;
+        double createMeshTimeMs = 0.0;
+        double generateQuadsTimeMs = 0.0;
+        double simplifyQuadsTimeMs = 0.0;
+        double gatherQuadsTimeMs = 0.0;
+        double appendQuadsTimeMs = 0.0;
+        double createVertIndTimeMs = 0.0;
+        double updateRTsTimeMs = 0.0;
+        double transferTimeMs = 0.0;
+        double compressTimeMs = 0.0;
     } stats;
 
     FrameGenerator(QuadSet& quadSet);

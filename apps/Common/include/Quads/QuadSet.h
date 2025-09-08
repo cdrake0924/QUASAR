@@ -38,7 +38,7 @@ public:
     };
 
     struct Stats {
-        double timeToTransferMs = 0.0;
+        double transferTimeMs = 0.0;
     } stats;
 
     QuadBuffers quadBuffers;
@@ -71,7 +71,7 @@ public:
         double startTime = timeutils::getTimeMicros();
         quadBuffers.writeToMemory(outputQuads);
         depthOffsets.writeToMemory(outputDepthOffsets);
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.transferTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 #else
         spdlog::error("QuadSet::writeToMemory is only supported in OpenGL Core");
 #endif
@@ -88,7 +88,7 @@ public:
         double startTime = timeutils::getTimeMicros();
         auto quadsSize = quadBuffers.loadFromMemory(inputQuads);
         depthOffsets.loadFromMemory(inputDepthOffsets);
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.transferTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         return {
             quadBuffers.numProxies,

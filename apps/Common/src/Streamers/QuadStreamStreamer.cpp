@@ -175,7 +175,7 @@ void QuadStreamStreamer::generateFrame(bool showNormals, bool showDepth) {
             remoteRenderer.pipeline.stencilState.restoreStencilState();
         }
         remoteRenderer.copyToFrameRT(renderTargetToUse);
-        stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.totalRenderTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         /*
         ============================
@@ -196,22 +196,21 @@ void QuadStreamStreamer::generateFrame(bool showNormals, bool showDepth) {
             showNormalsEffect.drawToRenderTarget(remoteRenderer, renderTargetToUse_noTone);
         }
 
-        stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
-        stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
-        stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-        stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
+        stats.totalGenQuadMapTimeMs += frameGenerator.stats.generateQuadsTimeMs;
+        stats.totalSimplifyTimeMs += frameGenerator.stats.simplifyQuadsTimeMs;
+        stats.totalGatherQuadsTime += frameGenerator.stats.gatherQuadsTimeMs;
+        stats.totalCreateProxiesTimeMs += frameGenerator.stats.createQuadsTimeMs;
 
-        stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
-        stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToFillQuadIndicesMs;
-        stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
-        stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
+        stats.totalAppendQuadsTimeMs += frameGenerator.stats.appendQuadsTimeMs;
+        stats.totalCreateVertIndTimeMs += frameGenerator.stats.createVertIndTimeMs;
+        stats.totalCreateMeshTimeMs += frameGenerator.stats.createMeshTimeMs;
 
-        stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
+        stats.totalCompressTimeMs += frameGenerator.stats.compressTimeMs;
 
         // For debugging: Generate point cloud from depth map
         if (showDepth) {
             depthMeshToUse.update(remoteCameraToUse, renderTargetToUse);
-            stats.totalGenDepthTime += depthMeshToUse.stats.genDepthTime;
+            stats.totalGenDepthTimeMs += depthMeshToUse.stats.genDepthTime;
         }
 
         stats.totalSizes.numQuads += referenceFrames[view].getTotalNumQuads();

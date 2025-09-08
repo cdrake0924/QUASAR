@@ -21,8 +21,8 @@ public:
     std::string videoURL = "0.0.0.0:12345";
 
     struct Stats {
-        double timeToReceiveMs = 0.0;
-        double totalTimetoRecvMs = 0.0;
+        double receiveTimeMs = 0.0;
+        double totalRecvTimeMs = 0.0;
         double bitrateMbps = 0.0;
     } stats;
 

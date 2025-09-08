@@ -115,7 +115,7 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
     // Set new current proxy count
     currNumProxies = newNumProxies;
 
-    stats.timeToGatherQuadsMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.appendQuadsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
 
 void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera) {
@@ -162,5 +162,5 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
     createQuadMeshShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT |
                                        GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
 
-    stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.createMeshTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }

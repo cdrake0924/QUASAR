@@ -180,7 +180,7 @@ void VideoTexture::setMaxQueueSize(size_t maxQueueSize) {
 }
 
 float VideoTexture::getFrameRate() {
-    return 1.0f / timeutils::millisToSeconds(stats.totalTimetoRecvMs);
+    return 1.0f / timeutils::millisToSeconds(stats.totalRecvTimeMs);
 }
 
 void VideoTexture::receiveFrame() {
@@ -241,7 +241,7 @@ void VideoTexture::receiveFrame() {
 
         time_t frameEnd = timeutils::getTimeMicros();
 
-        stats.timeToReceiveMs = timeutils::microsToMillis(frameEnd - frameStart);
+        stats.receiveTimeMs = timeutils::microsToMillis(frameEnd - frameStart);
 
         // Bitrate calculation from pad probe
         time_t now = timeutils::getTimeMicros();
@@ -252,7 +252,7 @@ void VideoTexture::receiveFrame() {
             lastBitrateCalcTime = now;
         }
 
-        stats.totalTimetoRecvMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
+        stats.totalRecvTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
         prevTime = timeutils::getTimeMicros();
     }
 }

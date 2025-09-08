@@ -23,8 +23,8 @@ public:
     Buffer bc4CompressedBuffer;
 
     struct ReceiverStats {
-        double timeToReceiveMs = 0.0;
-        double timeToDecompressMs = 0.0;
+        double receiveTimeMs = 0.0;
+        double decompressTimeMs = 0.0;
         double bitrateMbps = 0.0;
         double compressionRatio = 0.0;
     };
@@ -38,7 +38,7 @@ public:
     }
 
     float getFrameRate() {
-        return 1.0f / timeutils::millisToSeconds(stats.timeToReceiveMs);
+        return 1.0f / timeutils::millisToSeconds(stats.receiveTimeMs);
     }
 
     pose_id_t draw(pose_id_t poseID = -1);

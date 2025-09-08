@@ -104,7 +104,7 @@ void QuadStreamReceiver::loadFromFiles(const Path& dataPath) {
         // Load quads and depth offsets from files
         double startTime = timeutils::getTimeMicros();
         frames[view].loadFromFiles(dataPath, view);
-        stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.loadTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // Decompress (asynchronous)
         startTime = timeutils::getTimeMicros();
@@ -115,18 +115,18 @@ void QuadStreamReceiver::loadFromFiles(const Path& dataPath) {
             return frames[view].decompressQuads(uncompressedQuads);
         });
         quadsFuture.get(); offsetsFuture.get();
-        stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // Copy data to GPU
         auto sizes = quadSet.loadFromMemory(uncompressedQuads, uncompressedOffsets);
-        stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
+        stats.transferTimeMs += quadSet.stats.transferTimeMs;
 
         // Update mesh
         const glm::vec2& gBufferSize = glm::vec2(colorTextures[view].width, colorTextures[view].height);
         startTime = timeutils::getTimeMicros();
         meshes[view].appendQuads(quadSet, gBufferSize);
         meshes[view].createMeshFromProxies(quadSet, gBufferSize, remoteCameras[view]);
-        stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.createMeshTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         auto meshBufferSizes = meshes[view].getBufferSizes();
         stats.totalTriangles += meshBufferSizes.numIndices / 3;

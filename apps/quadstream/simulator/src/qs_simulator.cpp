@@ -562,17 +562,16 @@ int main(int argc, char** argv) {
             quadstream.generateFrame(showNormals, showDepth);
 
             spdlog::info("======================================================");
-            spdlog::info("Rendering Time: {:.3f}ms", quadstream.stats.totalRenderTime);
-            spdlog::info("Create Proxies Time: {:.3f}ms", quadstream.stats.totalCreateProxiesTime);
-            spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadstream.stats.totalGenQuadMapTime);
-            spdlog::info("  Simplify Time: {:.3f}ms", quadstream.stats.totalSimplifyTime);
+            spdlog::info("Rendering Time: {:.3f}ms", quadstream.stats.totalRenderTimeMs);
+            spdlog::info("Create Proxies Time: {:.3f}ms", quadstream.stats.totalCreateProxiesTimeMs);
+            spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadstream.stats.totalGenQuadMapTimeMs);
+            spdlog::info("  Simplify Time: {:.3f}ms", quadstream.stats.totalSimplifyTimeMs);
             spdlog::info("  Gather Quads Time: {:.3f}ms", quadstream.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time: {:.3f}ms", quadstream.stats.totaltimeToCreateMeshMs);
-            spdlog::info("  Append Quads Time: {:.3f}ms", quadstream.stats.totalAppendQuadsTime);
-            spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadstream.stats.totalFillQuadsIndiciesTime);
-            spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadstream.stats.totalCreateVertIndTime);
-            spdlog::info("Compress Time: {:.3f}ms", quadstream.stats.totalCompressTime);
-            if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadstream.stats.totalGenDepthTime);
+            spdlog::info("Create Mesh Time: {:.3f}ms", quadstream.stats.totalCreateMeshTimeMs);
+            spdlog::info("  Append Quads Time: {:.3f}ms", quadstream.stats.totalAppendQuadsTimeMs);
+            spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadstream.stats.totalCreateVertIndTimeMs);
+            spdlog::info("Compress Time: {:.3f}ms", quadstream.stats.totalCompressTimeMs);
+            if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadstream.stats.totalGenDepthTimeMs);
             spdlog::info("Frame Size: {:.3f}MB", (quadstream.stats.totalSizes.quadsSize +
                                                   quadstream.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
             spdlog::info("Num Proxies: {}Proxies", quadstream.stats.totalSizes.numQuads);

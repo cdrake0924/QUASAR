@@ -119,7 +119,7 @@ size_t BC4DepthStreamer::applyCodec() {
     size_t compressedSize = codec.compress(data.data(), compressedData, data.size());
     compressedData.resize(compressedSize);
 
-    stats.timeToCompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.compressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     stats.compressionRatio = static_cast<float>(data.size()) / compressedSize;
 
     return compressedSize;
@@ -152,7 +152,7 @@ void BC4DepthStreamer::sendFrame(pose_id_t poseID) {
     bc4CompressedBuffer.getData(data.data() + sizeof(pose_id_t));
     bc4CompressedBuffer.unbind();
 
-    stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.transferTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     applyCodec();
 
@@ -171,12 +171,12 @@ void BC4DepthStreamer::sendData() {
             continue;
         }
 
-        time_t startTimeToTransferMs = timeutils::getTimeMicros();
+        time_t startTransferTimeMs = timeutils::getTimeMicros();
 
         std::memcpy(data.data(), &cudaBufferStruct.poseID, sizeof(pose_id_t));
         writeToMemory(cudaBufferStruct.poseID, cudaBufferStruct.buffer);
 
-        stats.timeToTransferMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTimeToTransferMs);
+        stats.transferTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTimeMs);
 
         size_t compressedSize = applyCodec();
 
@@ -191,8 +191,8 @@ void BC4DepthStreamer::sendData() {
 
         send(compressedData);
 
-        stats.timeToSendMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
-        stats.bitrateMbps = ((compressedSize * 8.0) / timeutils::millisToSeconds(stats.timeToSendMs)) / BYTES_PER_MEGABYTE;
+        stats.sendTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
+        stats.bitrateMbps = ((compressedSize * 8.0) / timeutils::millisToSeconds(stats.sendTimeMs)) / BYTES_PER_MEGABYTE;
 
         prevTime = timeutils::getTimeMicros();
     }

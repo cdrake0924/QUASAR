@@ -10,8 +10,8 @@ namespace quasar {
 class Codec {
 public:
     struct Stats {
-        double timeToCompressMs = 0.0;
-        double timeToDecompressMs = 0.0;
+        double compressTimeMs = 0.0;
+        double decompressTimeMs = 0.0;
     } stats;
 
     Codec() = default;

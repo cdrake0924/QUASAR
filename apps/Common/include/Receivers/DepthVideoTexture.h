@@ -14,7 +14,7 @@ namespace quasar {
 class DepthVideoTexture : public Texture, public DataReceiverTCP {
 public:
     struct Stats {
-        double timeToReceiveMs = 0.0;
+        double receiveTimeMs = 0.0;
         double bitrateMbps = 0.0;
     } stats;
 
@@ -25,7 +25,7 @@ public:
     }
 
     float getFrameRate() {
-        return 1.0f / timeutils::millisToSeconds(stats.timeToReceiveMs);
+        return 1.0f / timeutils::millisToSeconds(stats.receiveTimeMs);
     }
 
     pose_id_t draw(pose_id_t poseID = -1);

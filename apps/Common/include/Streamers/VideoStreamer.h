@@ -26,10 +26,10 @@ public:
     uint64_t framesSent = 0;
 
     struct Stats {
-        double timeToEncodeMs = 0.0;
-        double timeToTransferMs = 0.0;
-        double timeToSendMs = 0.0;
-        double totalTimetoSendMs = 0.0;
+        double encodeTimeMs = 0.0;
+        double transferTimeMs = 0.0;
+        double sendTimeMs = 0.0;
+        double totalSendTimeMs = 0.0;
     } stats;
 
     VideoStreamer(
@@ -41,7 +41,7 @@ public:
 
     void stop();
 
-    float getFrameRate() { return 1.0f / timeutils::millisToSeconds(stats.totalTimetoSendMs); }
+    float getFrameRate() { return 1.0f / timeutils::millisToSeconds(stats.totalSendTimeMs); }
 
     void sendFrame(pose_id_t poseID);
 

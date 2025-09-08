@@ -126,12 +126,12 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
 
     // Read reference frame
     referenceFrame.loadFromFiles(dataPath);
-    stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.loadTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     startTime = timeutils::getTimeMicros();
     frameInUse->frameType = QuadFrame::FrameType::REFERENCE;
     frameInUse->decompressReferenceFrame(threadPool, referenceFrame);
-    stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update reference GPU buffers
     reconstructFrame(frameInUse);
@@ -145,12 +145,12 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
 
     // Read residual frame
     residualFrame.loadFromFiles(dataPath);
-    stats.timeToLoadMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.loadTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     startTime = timeutils::getTimeMicros();
     frameInUse->frameType = QuadFrame::FrameType::RESIDUAL;
     frameInUse->decompressResidualFrame(threadPool, residualFrame);
-    stats.timeToDecompressMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update residual GPU buffers
     reconstructFrame(frameInUse);
@@ -210,7 +210,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
         residualFrame.loadFromMemory(ptr, header.geometrySize);
     }
     ptr += header.geometrySize;
-    stats.timeToLoadMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.loadTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Decompress (asynchronous)
     startTime = timeutils::getTimeMicros();
@@ -220,7 +220,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
     else {
         frame->decompressResidualFrame(threadPool, residualFrame);
     }
-    stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.decompressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Signal that frame is ready
     {
@@ -247,13 +247,13 @@ QuadFrame::FrameType QuadsReceiver::reconstructFrame(std::shared_ptr<Frame> fram
         auto sizes = quadSet.loadFromMemory(frame->uncompressedQuads, frame->uncompressedOffsets);
         referenceFrame.numQuads = sizes.numQuads;
         referenceFrame.numDepthOffsets = sizes.numDepthOffsets;
-        stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
+        stats.transferTimeMs = quadSet.stats.transferTimeMs;
 
         // Using GPU buffers, reconstruct mesh using proxies
         startTime = timeutils::getTimeMicros();
         referenceFrameMesh.appendQuads(quadSet, gBufferSize);
         referenceFrameMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
-        stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.createMeshTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         auto refMeshBufferSizes = referenceFrameMesh.getBufferSizes();
         stats.totalTriangles = refMeshBufferSizes.numIndices / 3;
@@ -267,13 +267,13 @@ QuadFrame::FrameType QuadsReceiver::reconstructFrame(std::shared_ptr<Frame> fram
         auto sizesUpdated = quadSet.loadFromMemory(frame->uncompressedQuads, frame->uncompressedOffsets);
         residualFrame.numQuadsUpdated = sizesUpdated.numQuads;
         residualFrame.numDepthOffsetsUpdated = sizesUpdated.numDepthOffsets;
-        stats.timeToTransferMs = quadSet.stats.timeToTransferMs;
+        stats.transferTimeMs = quadSet.stats.transferTimeMs;
 
         // Using GPU buffers, update reference frame mesh using proxies
         startTime = timeutils::getTimeMicros();
         referenceFrameMesh.appendQuads(quadSet, gBufferSize, false /* not a reference frame */);
         referenceFrameMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCameraPrev);
-        stats.timeToCreateMeshMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.createMeshTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         // This will also wait for the GPU to finish
         auto refMeshBufferSizes = referenceFrameMesh.getBufferSizes();
@@ -283,13 +283,13 @@ QuadFrame::FrameType QuadsReceiver::reconstructFrame(std::shared_ptr<Frame> fram
         auto sizesRevealed = quadSet.loadFromMemory(frame->uncompressedQuadsRevealed, frame->uncompressedOffsetsRevealed);
         residualFrame.numQuadsRevealed = sizesRevealed.numQuads;
         residualFrame.numDepthOffsetsRevealed = sizesRevealed.numDepthOffsets;
-        stats.timeToTransferMs += quadSet.stats.timeToTransferMs;
+        stats.transferTimeMs += quadSet.stats.transferTimeMs;
 
         // Using GPU buffers, reconstruct revealed mesh using proxies
         startTime = timeutils::getTimeMicros();
         residualFrameMesh.appendQuads(quadSet, gBufferSize);
         residualFrameMesh.createMeshFromProxies(quadSet, gBufferSize, remoteCamera);
-        stats.timeToCreateMeshMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.createMeshTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         auto resMeshBufferSizes = residualFrameMesh.getBufferSizes();
         stats.totalTriangles += resMeshBufferSizes.numIndices / 3;

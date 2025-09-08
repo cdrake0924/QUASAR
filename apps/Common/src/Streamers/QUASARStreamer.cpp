@@ -265,7 +265,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
 
     double startTime = timeutils::getTimeMicros();
     remoteRendererDP.drawObjects(remoteScene, remoteCamera);
-    stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.totalRenderTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     for (int layer = 0; layer < maxLayers; layer++) {
         int hiddenLayerIndex = layer - 1;
@@ -305,7 +305,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
             remoteRenderer.pipeline.stencilState.restoreStencilState();
             remoteRenderer.copyToFrameRT(frameToUse);
         }
-        stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.totalRenderTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         /*
         ============================
@@ -351,18 +351,17 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
 
         quadsGenerator->params = oldParams;
 
-        stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
-        stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
-        stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-        stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
+        stats.totalGenQuadMapTimeMs += frameGenerator.stats.generateQuadsTimeMs;
+        stats.totalSimplifyTimeMs += frameGenerator.stats.simplifyQuadsTimeMs;
+        stats.totalGatherQuadsTime += frameGenerator.stats.gatherQuadsTimeMs;
+        stats.totalCreateProxiesTimeMs += frameGenerator.stats.createQuadsTimeMs;
 
-        stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
-        stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToFillQuadIndicesMs;
-        stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
-        stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
+        stats.totalAppendQuadsTimeMs += frameGenerator.stats.appendQuadsTimeMs;
+        stats.totalCreateVertIndTimeMs += frameGenerator.stats.createVertIndTimeMs;
+        stats.totalCreateMeshTimeMs += frameGenerator.stats.createMeshTimeMs;
 
         if (!createResidualFrame || layer != 0) {
-            stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
+            stats.totalCompressTimeMs += frameGenerator.stats.compressTimeMs;
         }
 
         /*
@@ -405,19 +404,18 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
                     showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameRT_noTone);
                 }
 
-                stats.totalRenderTime += frameGenerator.stats.timeToUpdateRTsMs;
+                stats.totalRenderTimeMs += frameGenerator.stats.updateRTsTimeMs;
 
-                stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
-                stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
-                stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-                stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
+                stats.totalGenQuadMapTimeMs += frameGenerator.stats.generateQuadsTimeMs;
+                stats.totalSimplifyTimeMs += frameGenerator.stats.simplifyQuadsTimeMs;
+                stats.totalGatherQuadsTime += frameGenerator.stats.gatherQuadsTimeMs;
+                stats.totalCreateProxiesTimeMs += frameGenerator.stats.createQuadsTimeMs;
 
-                stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
-                stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToGatherQuadsMs;
-                stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
-                stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
+                stats.totalAppendQuadsTimeMs += frameGenerator.stats.appendQuadsTimeMs;
+                stats.totalCreateVertIndTimeMs += frameGenerator.stats.createVertIndTimeMs;
+                stats.totalCreateMeshTimeMs += frameGenerator.stats.createMeshTimeMs;
 
-                stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
+                stats.totalCompressTimeMs += frameGenerator.stats.compressTimeMs;
             }
             else {
                 // Only update the previous camera pose if we are not generating a Residual Frame
@@ -433,7 +431,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
         // For debugging: Generate point cloud from depth map
         if (showDepth) {
             meshToUseDepth.update(remoteCameraToUse, frameToUse);
-            stats.totalGenDepthTime += meshToUseDepth.stats.genDepthTime;
+            stats.totalGenDepthTimeMs += meshToUseDepth.stats.genDepthTime;
         }
 
         if (!(createResidualFrame && layer == 0)) {
@@ -451,8 +449,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
             stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
             stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
             spdlog::debug("Residual frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
-                          residualFrame.getTotalNumQuads(),
-                          residualFrame.getTotalQuadsSize() / BYTES_PER_MEGABYTE,
+                          residualFrame.getTotalNumQuads(), residualFrame.getTotalQuadsSize() / BYTES_PER_MEGABYTE,
                           residualFrame.getTotalNumDepthOffsets(), residualFrame.getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
         }
     }

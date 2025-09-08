@@ -175,7 +175,7 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
     double startTime = timeutils::getTimeMicros();
     remoteRenderer.drawObjects(remoteScene, remoteCameraToUse);
     remoteRenderer.copyToFrameRT(referenceFrameRT);
-    stats.totalRenderTime += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.totalRenderTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     /*
     ============================
@@ -198,17 +198,16 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
         showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameRT_noTone);
     }
 
-    stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
-    stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
-    stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-    stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
+    stats.totalGenQuadMapTimeMs += frameGenerator.stats.generateQuadsTimeMs;
+    stats.totalSimplifyTimeMs += frameGenerator.stats.simplifyQuadsTimeMs;
+    stats.totalGatherQuadsTime += frameGenerator.stats.gatherQuadsTimeMs;
+    stats.totalCreateProxiesTimeMs += frameGenerator.stats.createQuadsTimeMs;
 
-    stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
-    stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToFillQuadIndicesMs;
-    stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
-    stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
+    stats.totalAppendQuadsTimeMs += frameGenerator.stats.appendQuadsTimeMs;
+    stats.totalCreateVertIndTimeMs += frameGenerator.stats.createVertIndTimeMs;
+    stats.totalCreateMeshTimeMs += frameGenerator.stats.createMeshTimeMs;
 
-    stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
+    stats.totalCompressTimeMs += frameGenerator.stats.compressTimeMs;
 
     if (createResidualFrame) {
         /*
@@ -244,19 +243,18 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
             showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameRT_noTone);
         }
 
-        stats.totalRenderTime += frameGenerator.stats.timeToUpdateRTsMs;
+        stats.totalRenderTimeMs += frameGenerator.stats.updateRTsTimeMs;
 
-        stats.totalGenQuadMapTime += frameGenerator.stats.timeToGenerateQuadsMs;
-        stats.totalSimplifyTime += frameGenerator.stats.timeToSimplifyQuadsMs;
-        stats.totalGatherQuadsTime += frameGenerator.stats.timeToGatherQuadsMs;
-        stats.totalCreateProxiesTime += frameGenerator.stats.timeToCreateQuadsMs;
+        stats.totalGenQuadMapTimeMs += frameGenerator.stats.generateQuadsTimeMs;
+        stats.totalSimplifyTimeMs += frameGenerator.stats.simplifyQuadsTimeMs;
+        stats.totalGatherQuadsTime += frameGenerator.stats.gatherQuadsTimeMs;
+        stats.totalCreateProxiesTimeMs += frameGenerator.stats.createQuadsTimeMs;
 
-        stats.totalAppendQuadsTime += frameGenerator.stats.timeToAppendQuadsMs;
-        stats.totalFillQuadsIndiciesTime += frameGenerator.stats.timeToGatherQuadsMs;
-        stats.totalCreateVertIndTime += frameGenerator.stats.timeToCreateVertIndMs;
-        stats.totaltimeToCreateMeshMs += frameGenerator.stats.timeToCreateMeshMs;
+        stats.totalAppendQuadsTimeMs += frameGenerator.stats.appendQuadsTimeMs;
+        stats.totalCreateVertIndTimeMs += frameGenerator.stats.createVertIndTimeMs;
+        stats.totalCreateMeshTimeMs += frameGenerator.stats.createMeshTimeMs;
 
-        stats.totalCompressTime += frameGenerator.stats.timeToCompressMs;
+        stats.totalCompressTimeMs += frameGenerator.stats.compressTimeMs;
     }
     else {
         // Only update the previous camera pose if we are not generating a Residual Frame
@@ -281,7 +279,7 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
     // For debugging: Generate point cloud from depth map
     if (showDepth) {
         depthMesh.update(remoteCamera, referenceFrameRT);
-        stats.totalGenDepthTime += depthMesh.stats.genDepthTime;
+        stats.totalGenDepthTimeMs += depthMesh.stats.genDepthTime;
     }
 
     if (!createResidualFrame) {

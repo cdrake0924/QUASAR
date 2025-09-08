@@ -24,8 +24,8 @@ public:
     int imageSize;
 
     struct Stats {
-        double timeToTransferMs = 0.0;
-        double timeToSendMs = 0.0;
+        double transferTimeMs = 0.0;
+        double sendTimeMs = 0.0;
         double bitrateMbps = 0.0;
     } stats;
 
@@ -35,7 +35,7 @@ public:
     void stop();
 
     float getFrameRate() {
-        return 1.0f / timeutils::millisToSeconds(stats.timeToSendMs);
+        return 1.0f / timeutils::millisToSeconds(stats.sendTimeMs);
     }
 
     void setTargetFrameRate(int targetFrameRate) {

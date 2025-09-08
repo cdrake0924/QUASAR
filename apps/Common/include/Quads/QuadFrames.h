@@ -72,11 +72,11 @@ public:
         return refOffsetsCodec.decompress(depthOffsets, outputOffsets);
     }
 
-    double getTimeToCompress() const {
-        return std::max(refQuadsCodec.stats.timeToCompressMs, refOffsetsCodec.stats.timeToCompressMs);
+    double getCompressTime() const {
+        return std::max(refQuadsCodec.stats.compressTimeMs, refOffsetsCodec.stats.compressTimeMs);
     }
-    double getTimeToDecompress() const {
-        return std::max(refQuadsCodec.stats.timeToDecompressMs, refOffsetsCodec.stats.timeToDecompressMs);
+    double getDecompressTime() const {
+        return std::max(refQuadsCodec.stats.decompressTimeMs, refOffsetsCodec.stats.decompressTimeMs);
     }
 
     size_t writeToFiles(const Path& outputPath, int index = -1) {
@@ -252,16 +252,16 @@ public:
         return resOffsetsRevealedCodec.decompress(depthOffsetsRevealed, outputOffsets);
     }
 
-    double getTimeToCompress() const {
+    double getCompressTime() const {
         return std::max(
-            std::max(resQuadsUpdatedCodec.stats.timeToCompressMs, resOffsetsUpdatedCodec.stats.timeToCompressMs),
-            std::max(resQuadsRevealedCodec.stats.timeToCompressMs, resOffsetsRevealedCodec.stats.timeToCompressMs)
+            std::max(resQuadsUpdatedCodec.stats.compressTimeMs, resOffsetsUpdatedCodec.stats.compressTimeMs),
+            std::max(resQuadsRevealedCodec.stats.compressTimeMs, resOffsetsRevealedCodec.stats.compressTimeMs)
         );
     }
-    double getTimeToDecompress() const {
+    double getDecompressTime() const {
         return std::max(
-            std::max(resQuadsUpdatedCodec.stats.timeToDecompressMs, resOffsetsUpdatedCodec.stats.timeToDecompressMs),
-            std::max(resQuadsRevealedCodec.stats.timeToDecompressMs, resOffsetsRevealedCodec.stats.timeToDecompressMs)
+            std::max(resQuadsUpdatedCodec.stats.decompressTimeMs, resOffsetsUpdatedCodec.stats.decompressTimeMs),
+            std::max(resQuadsRevealedCodec.stats.decompressTimeMs, resOffsetsRevealedCodec.stats.decompressTimeMs)
         );
     }
 

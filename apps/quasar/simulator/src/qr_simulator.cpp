@@ -608,17 +608,16 @@ int main(int argc, char** argv) {
 
             std::string frameType = sendReferenceFrame ? "Reference Frame" : "Residual Frame";
             spdlog::info("======================================================");
-            spdlog::info("Rendering Time ({}): {:.3f}ms", frameType, quasar.stats.totalRenderTime);
-            spdlog::info("Create Proxies Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateProxiesTime);
-            spdlog::info("  Gen Quad Map Time ({}): {:.3f}ms", frameType, quasar.stats.totalGenQuadMapTime);
-            spdlog::info("  Simplify Time ({}): {:.3f}ms", frameType, quasar.stats.totalSimplifyTime);
+            spdlog::info("Rendering Time ({}): {:.3f}ms", frameType, quasar.stats.totalRenderTimeMs);
+            spdlog::info("Create Proxies Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateProxiesTimeMs);
+            spdlog::info("  Gen Quad Map Time ({}): {:.3f}ms", frameType, quasar.stats.totalGenQuadMapTimeMs);
+            spdlog::info("  Simplify Time ({}): {:.3f}ms", frameType, quasar.stats.totalSimplifyTimeMs);
             spdlog::info("  Gather Quads Time ({}): {:.3f}ms", frameType, quasar.stats.totalGatherQuadsTime);
-            spdlog::info("Create Mesh Time ({}): {:.3f}ms", frameType, quasar.stats.totaltimeToCreateMeshMs);
-            spdlog::info("  Append Quads Time ({}): {:.3f}ms", frameType, quasar.stats.totalAppendQuadsTime);
-            spdlog::info("  Fill Output Quads Time ({}): {:.3f}ms", frameType, quasar.stats.totalFillQuadsIndiciesTime);
-            spdlog::info("  Create Vert/Ind Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateVertIndTime);
-            spdlog::info("Compress Time ({}): {:.3f}ms", frameType, quasar.stats.totalCompressTime);
-            if (showDepth) spdlog::info("Gen Depth Time ({}): {:.3f}ms", frameType, quasar.stats.totalGenDepthTime);
+            spdlog::info("Create Mesh Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateMeshTimeMs);
+            spdlog::info("  Append Quads Time ({}): {:.3f}ms", frameType, quasar.stats.totalAppendQuadsTimeMs);
+            spdlog::info("  Create Vert/Ind Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateVertIndTimeMs);
+            spdlog::info("Compress Time ({}): {:.3f}ms", frameType, quasar.stats.totalCompressTimeMs);
+            if (showDepth) spdlog::info("Gen Depth Time ({}): {:.3f}ms", frameType, quasar.stats.totalGenDepthTimeMs);
             spdlog::info("Frame Size: {:.3f}MB", (quasar.stats.totalSizes.quadsSize +
                                                   quasar.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
             spdlog::info("Num Proxies: {}Proxies", quasar.stats.totalSizes.numQuads);

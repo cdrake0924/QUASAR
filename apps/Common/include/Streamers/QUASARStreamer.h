@@ -60,17 +60,16 @@ public:
     std::string proxiesURL;
 
     struct Stats {
-        double totalRenderTime = 0.0;
-        double totalCreateProxiesTime = 0.0;
-        double totalGenQuadMapTime = 0.0;
-        double totalSimplifyTime = 0.0;
+        double totalRenderTimeMs = 0.0;
+        double totalCreateProxiesTimeMs = 0.0;
+        double totalGenQuadMapTimeMs = 0.0;
+        double totalSimplifyTimeMs = 0.0;
         double totalGatherQuadsTime = 0.0;
-        double totaltimeToCreateMeshMs = 0.0;
-        double totalAppendQuadsTime = 0.0;
-        double totalFillQuadsIndiciesTime = 0.0;
-        double totalCreateVertIndTime = 0.0;
-        double totalGenDepthTime = 0.0;
-        double totalCompressTime = 0.0;
+        double totalCreateMeshTimeMs = 0.0;
+        double totalAppendQuadsTimeMs = 0.0;
+        double totalCreateVertIndTimeMs = 0.0;
+        double totalGenDepthTimeMs = 0.0;
+        double totalCompressTimeMs = 0.0;
         QuadSet::Sizes totalSizes;
     } stats;
 
@@ -85,7 +84,7 @@ public:
         float wideFOV,
         const std::string& videoURL = "",
         const std::string& proxiesURL = "",
-        uint targetBitRate = 20);
+        uint targetBitRate = 28);
     ~QUASARStreamer();
 
     uint getNumTriangles() const;

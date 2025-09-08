@@ -205,9 +205,9 @@ int main(int argc, char** argv) {
 
             auto& videoStreamerRT = quadwarp.atlasVideoStreamerRT;
             ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: %.1f FPS (%.3f ms/frame)", videoStreamerRT.getFrameRate(), 1000.0f / videoStreamerRT.getFrameRate());
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy frame: %.3f ms", videoStreamerRT.stats.timeToTransferMs);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to encode frame: %.3f ms", videoStreamerRT.stats.timeToEncodeMs);
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to send frame: %.3f ms", videoStreamerRT.stats.timeToSendMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy frame: %.3f ms", videoStreamerRT.stats.transferTimeMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to encode frame: %.3f ms", videoStreamerRT.stats.encodeTimeMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to send frame: %.3f ms", videoStreamerRT.stats.sendTimeMs);
 
             ImGui::Separator();
 
@@ -307,17 +307,16 @@ int main(int argc, char** argv) {
                 camera.updateViewMatrix();
 
                 spdlog::info("======================================================");
-                spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTime);
-                spdlog::info("Create Proxies Time: {:.3f}ms", quadwarp.stats.totalCreateProxiesTime);
-                spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadwarp.stats.totalGenQuadMapTime);
-                spdlog::info("  Simplify Time: {:.3f}ms", quadwarp.stats.totalSimplifyTime);
+                spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTimeMs);
+                spdlog::info("Create Proxies Time: {:.3f}ms", quadwarp.stats.totalCreateProxiesTimeMs);
+                spdlog::info("  Gen Quad Map Time: {:.3f}ms", quadwarp.stats.totalGenQuadMapTimeMs);
+                spdlog::info("  Simplify Time: {:.3f}ms", quadwarp.stats.totalSimplifyTimeMs);
                 spdlog::info("  Gather Quads Time: {:.3f}ms", quadwarp.stats.totalGatherQuadsTime);
-                spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totaltimeToCreateMeshMs);
-                spdlog::info("  Append Quads Time: {:.3f}ms", quadwarp.stats.totalAppendQuadsTime);
-                spdlog::info("  Fill Output Quads Time: {:.3f}ms", quadwarp.stats.totalFillQuadsIndiciesTime);
-                spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTime);
-                spdlog::info("Compress Time: {:.3f}ms", quadwarp.stats.totalCompressTime);
-                if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadwarp.stats.totalGenDepthTime);
+                spdlog::info("Create Mesh Time: {:.3f}ms", quadwarp.stats.totalCreateMeshTimeMs);
+                spdlog::info("  Append Quads Time: {:.3f}ms", quadwarp.stats.totalAppendQuadsTimeMs);
+                spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTimeMs);
+                spdlog::info("Compress Time: {:.3f}ms", quadwarp.stats.totalCompressTimeMs);
+                if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadwarp.stats.totalGenDepthTimeMs);
                 spdlog::info("Frame Size: {:.3f}MB", (quadwarp.stats.totalSizes.quadsSize +
                                                       quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
                 spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);

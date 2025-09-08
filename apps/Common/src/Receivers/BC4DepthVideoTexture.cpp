@@ -45,7 +45,7 @@ void BC4DepthVideoTexture::onDataReceived(const std::vector<char>& compressedDat
     // Decompress in one shot
     size_t decompressedSize = codec.decompress(compressedData, decompressedData);
 
-    stats.timeToDecompressMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.decompressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     stats.compressionRatio = static_cast<float>(decompressedSize) / compressedData.size();
 
     // Extract pose ID
@@ -64,8 +64,8 @@ void BC4DepthVideoTexture::onDataReceived(const std::vector<char>& compressedDat
         depthFrames.pop_front();
     }
 
-    stats.timeToReceiveMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
-    stats.bitrateMbps = ((compressedData.size() * 8) / timeutils::millisToSeconds(stats.timeToReceiveMs)) / BYTES_PER_MEGABYTE;
+    stats.receiveTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - prevTime);
+    stats.bitrateMbps = ((compressedData.size() * 8) / timeutils::millisToSeconds(stats.receiveTimeMs)) / BYTES_PER_MEGABYTE;
 
     prevTime = timeutils::getTimeMicros();
 }

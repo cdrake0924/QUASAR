@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to receive frame: %.3f ms", videoTexture.stats.timeToReceiveMs);
+            ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to receive frame: %.3f ms", videoTexture.stats.receiveTimeMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Bitrate: %.3f Mbps", videoTexture.stats.bitrateMbps);
 
             ImGui::Separator();

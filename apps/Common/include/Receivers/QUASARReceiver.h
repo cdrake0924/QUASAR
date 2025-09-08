@@ -31,10 +31,10 @@ public:
 
     struct Stats {
         uint totalTriangles = 0;
-        double timeToLoadMs = 0.0;
-        double timeToDecompressMs = 0.0;
-        double timeToTransferMs = 0.0;
-        double timeToCreateMeshMs = 0.0;
+        double loadTimeMs = 0.0;
+        double decompressTimeMs = 0.0;
+        double transferTimeMs = 0.0;
+        double createMeshTimeMs = 0.0;
         QuadSet::Sizes sizes{};
     } stats;
 

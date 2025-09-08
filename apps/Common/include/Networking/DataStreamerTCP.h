@@ -19,7 +19,7 @@ public:
     int maxDataSize;
 
     struct Stats {
-        double timeToSendMs = 0.0;
+        double sendTimeMs = 0.0;
         double bitrateMbps = 0.0;
     } stats;
 
