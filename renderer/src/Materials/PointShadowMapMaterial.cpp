@@ -2,7 +2,7 @@
 
 using namespace quasar;
 
-Shader* PointShadowMapMaterial::shader = nullptr;
+std::shared_ptr<Shader> PointShadowMapMaterial::shader = nullptr;
 
 PointShadowMapMaterial::PointShadowMapMaterial() {
     if (shader == nullptr) {
@@ -19,13 +19,6 @@ PointShadowMapMaterial::PointShadowMapMaterial() {
             }
 #endif
         };
-        shader = new Shader(pointShadowMapParams);
-    }
-}
-
-PointShadowMapMaterial::~PointShadowMapMaterial() {
-    if (shader != nullptr) {
-        delete shader;
-        shader = nullptr;
+        shader = std::make_shared<Shader>(pointShadowMapParams);
     }
 }

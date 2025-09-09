@@ -2,7 +2,7 @@
 
 using namespace quasar;
 
-Shader* UnlitMaterial::shader = nullptr;
+std::shared_ptr<Shader> UnlitMaterial::shader = nullptr;
 std::vector<std::string> UnlitMaterial::extraShaderDefines;
 
 UnlitMaterial::UnlitMaterial(const UnlitMaterialCreateParams& params)
@@ -44,7 +44,7 @@ UnlitMaterial::UnlitMaterial(const UnlitMaterialCreateParams& params)
             .fragmentCodeSize = SHADER_BUILTIN_MATERIAL_UNLIT_FRAG_len,
             .defines = defines,
         };
-        shader = new Shader(unlitShaderParams);
+        shader = std::make_shared<Shader>(unlitShaderParams);
     }
 }
 
@@ -65,12 +65,5 @@ void UnlitMaterial::bind() const {
     else {
         shader->setInt(name, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
-    }
-}
-
-UnlitMaterial::~UnlitMaterial() {
-    if (shader != nullptr) {
-        delete shader;
-        shader = nullptr;
     }
 }

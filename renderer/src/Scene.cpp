@@ -103,7 +103,7 @@ void Scene::addPointLight(PointLight* pointLight) {
 }
 
 int Scene::bindMaterial(const Material* material) {
-    auto* shader = material->getShader();
+    auto shader = material->getShader();
 
     int texIdx = material->getTextureCount();
     if (hasPBREnvMap) {
@@ -153,7 +153,7 @@ int Scene::bindPointLights(const Material* material, int texIdx) {
     GPUPointLightBlock uboData{};
     uboData.numPointLights = static_cast<int>(pointLights.size());
 
-    auto* shader = material->getShader();
+    auto shader = material->getShader();
 
     for (int i = 0; i < uboData.numPointLights && i < PointLight::maxPointLights; i++) {
         auto& pointLight = pointLights[i];

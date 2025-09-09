@@ -23,17 +23,17 @@ public:
 
     QuadMaterial() = default;
     QuadMaterial(const QuadMaterialCreateParams& params);
-    ~QuadMaterial();
+    ~QuadMaterial() = default;
 
     void bind() const override;
 
-    Shader* getShader() const override {
+    std::shared_ptr<Shader> getShader() const override {
         return shader;
     }
 
     uint getTextureCount() const override { return 1; }
 
-    static Shader* shader;
+    static std::shared_ptr<Shader> shader;
 };
 
 } // namespace quasar

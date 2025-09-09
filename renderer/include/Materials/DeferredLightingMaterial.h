@@ -9,7 +9,7 @@ namespace quasar {
 class DeferredLightingMaterial : public Material {
 public:
     DeferredLightingMaterial();
-    ~DeferredLightingMaterial();
+    ~DeferredLightingMaterial() = default;
 
     void bindGBuffer(const GBuffer& FrameRenderTarget) const;
     void bindCamera(const Camera& camera) const;
@@ -18,13 +18,13 @@ public:
         shader->bind();
     }
 
-    Shader* getShader() const override {
+    std::shared_ptr<Shader> getShader() const override {
         return shader;
     }
 
     uint getTextureCount() const override { return 6; }
 
-    static Shader* shader;
+    static std::shared_ptr<Shader> shader;
 };
 
 } // namespace quasar

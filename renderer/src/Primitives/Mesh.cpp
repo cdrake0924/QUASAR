@@ -199,7 +199,7 @@ void Mesh::bindMaterial(Scene& scene, const glm::mat4& model, const Material* ov
     auto* materialToUse = overrideMaterial != nullptr ? overrideMaterial : material;
     materialToUse->bind();
 
-    auto* shader = materialToUse->getShader();
+    auto shader = materialToUse->getShader();
 
     // Update material uniforms with lighting information
     int texIdx = scene.bindMaterial(materialToUse);

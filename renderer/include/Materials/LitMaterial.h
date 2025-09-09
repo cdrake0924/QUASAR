@@ -46,17 +46,17 @@ public:
 
     LitMaterial() = default;
     LitMaterial(const LitMaterialCreateParams& params);
-    ~LitMaterial();
+    ~LitMaterial() = default;
 
     void bind() const override;
 
-    Shader* getShader() const override {
+    std::shared_ptr<Shader> getShader() const override {
         return shader;
     }
 
     uint getTextureCount() const override { return 6; }
 
-    static Shader* shader;
+    static std::shared_ptr<Shader> shader;
 
     static std::vector<std::string> extraShaderDefines;
 };

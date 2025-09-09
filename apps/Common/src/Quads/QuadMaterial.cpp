@@ -3,7 +3,7 @@
 
 using namespace quasar;
 
-Shader* QuadMaterial::shader = nullptr;
+std::shared_ptr<Shader> QuadMaterial::shader = nullptr;
 
 QuadMaterial::QuadMaterial(const QuadMaterialCreateParams& params)
     : baseColor(params.baseColor)
@@ -39,7 +39,7 @@ QuadMaterial::QuadMaterial(const QuadMaterialCreateParams& params)
                 "#define ALPHA_BLEND " + std::to_string(static_cast<uint8_t>(AlphaMode::TRANSPARENT))
             }
         };
-        shader = new Shader(unlitShaderParams);
+        shader = std::make_shared<Shader>(unlitShaderParams);
     }
 }
 
@@ -60,12 +60,5 @@ void QuadMaterial::bind() const {
     else {
         shader->setInt(name, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
-    }
-}
-
-QuadMaterial::~QuadMaterial() {
-    if (shader != nullptr) {
-        delete shader;
-        shader = nullptr;
     }
 }

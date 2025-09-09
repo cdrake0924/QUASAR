@@ -31,7 +31,7 @@ public:
         }
     }
 
-    virtual Shader* getShader() const = 0;
+    virtual std::shared_ptr<Shader> getShader() const = 0;
 
     virtual uint getTextureCount() const = 0;
 };

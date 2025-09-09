@@ -3,7 +3,7 @@
 
 using namespace quasar;
 
-Shader* LitMaterial::shader = nullptr;
+std::shared_ptr<Shader> LitMaterial::shader = nullptr;
 std::vector<std::string> LitMaterial::extraShaderDefines;
 
 LitMaterial::LitMaterial(const LitMaterialCreateParams& params)
@@ -109,7 +109,7 @@ LitMaterial::LitMaterial(const LitMaterialCreateParams& params)
 #endif
             .defines = defines
         };
-        shader = new Shader(pbrShaderParams);
+        shader = std::make_shared<Shader>(pbrShaderParams);
     }
 }
 
@@ -165,12 +165,5 @@ void LitMaterial::bind() const {
             shader->setInt(name, i);
             glBindTexture(GL_TEXTURE_2D, 0);
         }
-    }
-}
-
-LitMaterial::~LitMaterial() {
-    if (shader != nullptr) {
-        delete shader;
-        shader = nullptr;
     }
 }

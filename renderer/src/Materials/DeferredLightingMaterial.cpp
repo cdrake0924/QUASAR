@@ -3,7 +3,7 @@
 
 using namespace quasar;
 
-Shader* DeferredLightingMaterial::shader = nullptr;
+std::shared_ptr<Shader> DeferredLightingMaterial::shader = nullptr;
 
 DeferredLightingMaterial::DeferredLightingMaterial() {
     if (shader == nullptr) {
@@ -16,14 +16,7 @@ DeferredLightingMaterial::DeferredLightingMaterial() {
                 "#define MAX_POINT_LIGHTS " + std::to_string(PointLight::maxPointLights),
             }
         };
-        shader = new Shader(dirShadowMapParams);
-    }
-}
-
-DeferredLightingMaterial::~DeferredLightingMaterial() {
-    if (shader != nullptr) {
-        delete shader;
-        shader = nullptr;
+        shader = std::make_shared<Shader>(dirShadowMapParams);
     }
 }
 

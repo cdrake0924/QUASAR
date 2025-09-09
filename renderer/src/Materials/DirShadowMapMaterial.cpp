@@ -2,7 +2,7 @@
 
 using namespace quasar;
 
-Shader* DirShadowMapMaterial::shader = nullptr;
+std::shared_ptr<Shader> DirShadowMapMaterial::shader = nullptr;
 
 DirShadowMapMaterial::DirShadowMapMaterial() {
     if (shader == nullptr) {
@@ -12,13 +12,6 @@ DirShadowMapMaterial::DirShadowMapMaterial() {
             .fragmentCodeData = SHADER_BUILTIN_DIRSHADOW_FRAG,
             .fragmentCodeSize = SHADER_BUILTIN_DIRSHADOW_FRAG_len,
         };
-        shader = new Shader(dirShadowMapParams);
-    }
-}
-
-DirShadowMapMaterial::~DirShadowMapMaterial() {
-    if (shader != nullptr) {
-        delete shader;
-        shader = nullptr;
+        shader = std::make_shared<Shader>(dirShadowMapParams);
     }
 }

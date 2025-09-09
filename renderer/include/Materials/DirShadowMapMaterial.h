@@ -8,17 +8,17 @@ namespace quasar {
 class DirShadowMapMaterial : public ShadowMapMaterial {
 public:
     DirShadowMapMaterial();
-    ~DirShadowMapMaterial();
+    ~DirShadowMapMaterial() = default;
 
     void bind() const override {
         shader->bind();
     }
 
-    Shader* getShader() const override {
+    std::shared_ptr<Shader> getShader() const override {
         return shader;
     }
 
-    static Shader* shader;
+    static std::shared_ptr<Shader> shader;
 };
 
 } // namespace quasar
