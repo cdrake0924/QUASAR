@@ -1,7 +1,7 @@
 #ifndef SHOW_DEPTH_H
 #define SHOW_DEPTH_H
 
-#include <Shaders/ToneMapShader.h>
+#include <Shaders/TonemapShader.h>
 
 #include <PostProcessing/PostProcessingEffect.h>
 

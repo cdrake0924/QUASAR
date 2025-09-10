@@ -6,7 +6,7 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 
 #include <Streamers/QuadsStreamer.h>
 #include <Receivers/PoseReceiver.h>
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
     PoseReceiver poseReceiver(&camera, poseURL);
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
 
     bool showDepth = false;
     bool showNormals = false;
@@ -353,8 +353,8 @@ int main(int argc, char** argv) {
 
         // Render to screen
         if (config.showWindow) {
-            toneMapper.enableToneMapping(!showNormals);
-            toneMapper.drawToScreen(renderer);
+            tonemapper.enableTonemapping(!showNormals);
+            tonemapper.drawToScreen(renderer);
         }
     });
 

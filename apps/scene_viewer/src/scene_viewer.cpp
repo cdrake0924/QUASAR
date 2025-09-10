@@ -5,7 +5,7 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 #include <PostProcessing/ShowPositionsEffect.h>
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
     loader.loadScene(sceneFile, scene, camera);
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
     ShowDepthEffect showDepthEffect(camera);
     ShowNormalsEffect showNormalsEffect;
     ShowPositionsEffect showPositionsEffect;
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-    }, renderer, toneMapper, outputPath, config.targetFramerate);
+    }, renderer, tonemapper, outputPath, config.targetFramerate);
     CameraAnimator cameraAnimator(cameraPathFile);
 
     if (saveImages) {
@@ -422,8 +422,8 @@ int main(int argc, char** argv) {
 
         // Render to screen
         if (shaderIndex == 0) {
-            toneMapper.setExposure(exposure);
-            toneMapper.drawToScreen(renderer);
+            tonemapper.setExposure(exposure);
+            tonemapper.drawToScreen(renderer);
         }
         else if (shaderIndex == 1) {
             showDepthEffect.drawToScreen(renderer);

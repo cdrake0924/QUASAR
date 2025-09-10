@@ -192,7 +192,7 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
     );
     if (!showNormals) {
         remoteRenderer.copyToFrameRT(referenceFrameRT_noTone);
-        toneMapper.drawToRenderTarget(remoteRenderer, referenceFrameRT);
+        tonemapper.drawToRenderTarget(remoteRenderer, referenceFrameRT);
     }
     else {
         showNormalsEffect.drawToRenderTarget(remoteRenderer, referenceFrameRT_noTone);
@@ -236,8 +236,8 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
         );
         if (!showNormals) {
             residualFrameRT.blit(residualFrameRT_noTone);
-            toneMapper.setUniforms(residualFrameRT_noTone);
-            toneMapper.drawToRenderTarget(remoteRenderer, residualFrameRT, false);
+            tonemapper.setUniforms(residualFrameRT_noTone);
+            tonemapper.drawToRenderTarget(remoteRenderer, residualFrameRT, false);
         }
         else {
             showNormalsEffect.drawToRenderTarget(remoteRenderer, residualFrameRT_noTone);

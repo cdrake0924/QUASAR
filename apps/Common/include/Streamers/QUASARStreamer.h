@@ -8,7 +8,7 @@
 #include <Renderers/DepthPeelingRenderer.h>
 #include <Networking/DataStreamerTCP.h>
 #include <Streamers/VideoStreamer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 
 namespace quasar {
@@ -138,7 +138,7 @@ private:
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;
 
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
     ShowNormalsEffect showNormalsEffect;
 };
 

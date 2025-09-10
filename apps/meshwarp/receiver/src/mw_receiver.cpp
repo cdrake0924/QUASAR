@@ -4,7 +4,7 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 
 #include <Path.h>
 #include <Recorder.h>
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
     scene.addChildNode(&nodeWireframe);
 
     // Post processing
-    ToneMapper toneMapper(false);
+    Tonemapper tonemapper(false);
 
     Shader videoShader({
         .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
@@ -169,7 +169,7 @@ int main(int argc, char** argv) {
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-    }, renderer, toneMapper, outputPath, config.targetFramerate);
+    }, renderer, tonemapper, outputPath, config.targetFramerate);
 
     double elapsedTimeColor, elapsedTimeDepth;
     pose_id_t poseIdColor = -1, poseIdDepth = -1;
@@ -466,7 +466,7 @@ int main(int argc, char** argv) {
         renderStats = renderer.drawObjects(scene, camera);
 
         // Render to screen
-        toneMapper.drawToScreen(renderer);
+        tonemapper.drawToScreen(renderer);
     });
 
     // Run app loop (blocking)

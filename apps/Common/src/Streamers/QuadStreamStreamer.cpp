@@ -189,8 +189,8 @@ void QuadStreamStreamer::generateFrame(bool showNormals, bool showDepth) {
         );
         if (!showNormals) {
             renderTargetToUse.blit(renderTargetToUse_noTone);
-            toneMapper.setUniforms(renderTargetToUse_noTone);
-            toneMapper.drawToRenderTarget(remoteRenderer, renderTargetToUse, false);
+            tonemapper.setUniforms(renderTargetToUse_noTone);
+            tonemapper.drawToRenderTarget(remoteRenderer, renderTargetToUse, false);
         }
         else {
             showNormalsEffect.drawToRenderTarget(remoteRenderer, renderTargetToUse_noTone);

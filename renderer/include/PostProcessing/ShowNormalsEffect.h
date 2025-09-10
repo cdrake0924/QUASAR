@@ -1,7 +1,7 @@
 #ifndef SHOW_NORMALS_H
 #define SHOW_NORMALS_H
 
-#include <Shaders/ToneMapShader.h>
+#include <Shaders/TonemapShader.h>
 
 #include <PostProcessing/PostProcessingEffect.h>
 

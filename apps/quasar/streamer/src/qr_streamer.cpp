@@ -444,7 +444,7 @@ int main(int argc, char** argv) {
         // Render to screen
         if (config.showWindow) {
             auto quadsGenerator = quasar.getQuadsGenerator();
-            holeFiller.enableToneMapping(!showNormals);
+            holeFiller.enableTonemapping(!showNormals);
             holeFiller.setDepthThreshold(quadsGenerator->params.depthThreshold);
             holeFiller.drawToScreen(renderer);
         }

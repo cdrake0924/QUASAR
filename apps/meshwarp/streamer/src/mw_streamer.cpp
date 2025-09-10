@@ -5,7 +5,7 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
 #include <Streamers/VideoStreamer.h>
@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
     PoseReceiver poseReceiver(&camera, poseURL);
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
     ShowDepthEffect showDepthEffect(camera);
 
     bool sendFrame = true;
@@ -267,7 +267,7 @@ int main(int argc, char** argv) {
                 camera.updateViewMatrix();
 
                 // Copy color and depth to video frames
-                toneMapper.drawToRenderTarget(renderer, videoStreamerColorRT);
+                tonemapper.drawToRenderTarget(renderer, videoStreamerColorRT);
                 showDepthEffect.drawToRenderTarget(renderer, bc4DepthStreamerRT);
 
                 // Send video and depth frames
@@ -281,7 +281,7 @@ int main(int argc, char** argv) {
 
         // Render to screen
         if (config.showWindow) {
-            toneMapper.drawToScreen(renderer);
+            tonemapper.drawToScreen(renderer);
         }
     });
 

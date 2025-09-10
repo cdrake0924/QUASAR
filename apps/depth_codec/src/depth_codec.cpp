@@ -5,7 +5,7 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
 #include <Path.h>
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
     });
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
     ShowDepthEffect showDepthEffect(camera);
 
     // Original size of depth buffer
@@ -394,8 +394,8 @@ int main(int argc, char** argv) {
         renderStats = renderer.drawObjects(scene, camera);
 
         // Render to screen
-        toneMapper.enableToneMapping(false);
-        toneMapper.drawToScreen(renderer);
+        tonemapper.enableTonemapping(false);
+        tonemapper.drawToScreen(renderer);
     });
 
     // Run app loop (blocking)

@@ -6,7 +6,7 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 
 #include <Path.h>
 #include <Recorder.h>
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     });
 
     // Post processing
-    ToneMapper toneMapper(false);
+    Tonemapper tonemapper(false);
 
     Shader atwShader({
         .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-    }, renderer, toneMapper, outputPath, config.targetFramerate);
+    }, renderer, tonemapper, outputPath, config.targetFramerate);
     CameraAnimator cameraAnimator(cameraPathFile);
 
     if (saveImages) {
@@ -412,9 +412,9 @@ int main(int argc, char** argv) {
             remoteRenderer.drawObjects(remoteScene, remoteCamera);
 
             // Copy rendered result to video render target
-            toneMapper.enableToneMapping(true);
-            toneMapper.drawToRenderTarget(remoteRenderer, renderTarget);
-            toneMapper.enableToneMapping(false);
+            tonemapper.enableTonemapping(true);
+            tonemapper.drawToRenderTarget(remoteRenderer, renderTarget);
+            tonemapper.enableTonemapping(false);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", timeutils::secondsToMillis(window->getTime() - startTime));
@@ -443,7 +443,7 @@ int main(int argc, char** argv) {
         renderStats = remoteRenderer.drawToRenderTarget(atwShader, renderer.frameRT);
 
         double startTime = window->getTime();
-        toneMapper.drawToScreen(renderer);
+        tonemapper.drawToScreen(renderer);
         if (!updateClient) {
             return;
         }

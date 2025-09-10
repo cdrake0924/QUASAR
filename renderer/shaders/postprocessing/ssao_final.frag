@@ -1,4 +1,4 @@
-#include "tone_map.glsl"
+#include "tonemap.glsl"
 
 out vec4 FragColor;
 
@@ -12,7 +12,7 @@ uniform usampler2D idTexture;
 
 uniform sampler2D ssao;
 
-uniform bool toneMap = true;
+uniform bool tonemap = true;
 uniform float exposure = 1.0;
 
 void main() {

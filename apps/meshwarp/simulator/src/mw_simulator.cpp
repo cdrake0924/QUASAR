@@ -6,7 +6,7 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
 #include <Path.h>
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
     });
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
     ShowDepthEffect showDepthEffect(camera);
 
     Recorder recorder({
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-    }, renderer, toneMapper, outputPath, config.targetFramerate);
+    }, renderer, tonemapper, outputPath, config.targetFramerate);
     CameraAnimator cameraAnimator(cameraPathFile);
 
     if (saveImages) {
@@ -443,7 +443,7 @@ int main(int argc, char** argv) {
             if (ImGui::Button("Save Depth")) {
                 bc4DepthStreamerRT.writeToFile(outputPath / "depth.bc4.zstd");
                 Path colorFileName = outputPath / "color";
-                toneMapper.drawToRenderTarget(remoteRenderer, renderTargetCopy);
+                tonemapper.drawToRenderTarget(remoteRenderer, renderTargetCopy);
                 renderTargetCopy.writeColorAsJPG(colorFileName.appendToName(".jpg"));
             }
 
@@ -554,8 +554,8 @@ int main(int argc, char** argv) {
             remoteRenderer.drawObjects(remoteScene, remoteCamera);
 
             // Copy rendered result to video render target
-            toneMapper.enableToneMapping(false);
-            toneMapper.drawToRenderTarget(remoteRenderer, renderTarget);
+            tonemapper.enableTonemapping(false);
+            tonemapper.drawToRenderTarget(remoteRenderer, renderTarget);
             showDepthEffect.drawToRenderTarget(remoteRenderer, bc4DepthStreamerRT);
 
             totalRenderTimeMs = timeutils::secondsToMillis(window->getTime() - startTime);
@@ -612,8 +612,8 @@ int main(int argc, char** argv) {
         // Render generated meshes
         renderStats = renderer.drawObjects(scene, camera);
 
-        toneMapper.enableToneMapping(true);
-        toneMapper.drawToScreen(renderer);
+        tonemapper.enableTonemapping(true);
+        tonemapper.drawToScreen(renderer);
         if (!updateClient) {
             return;
         }

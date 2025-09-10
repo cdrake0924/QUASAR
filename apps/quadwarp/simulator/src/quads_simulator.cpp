@@ -6,7 +6,7 @@
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
 #include <Renderers/DeferredRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 
 #include <Path.h>
 #include <Recorder.h>
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
     quadwarp.addMeshesToScene(localScene);
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
 
     Recorder recorder({
         .width = windowSize.x,
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-    }, renderer, toneMapper, outputPath, config.targetFramerate);
+    }, renderer, tonemapper, outputPath, config.targetFramerate);
     CameraAnimator cameraAnimator(cameraPathFile);
 
     if (saveImages) {
@@ -593,8 +593,8 @@ int main(int argc, char** argv) {
         renderStats = renderer.drawObjects(localScene, camera);
 
         // Render to screen
-        toneMapper.enableToneMapping(!showNormals);
-        toneMapper.drawToScreen(renderer);
+        tonemapper.enableTonemapping(!showNormals);
+        tonemapper.drawToScreen(renderer);
         if (!updateClient) {
             return;
         }

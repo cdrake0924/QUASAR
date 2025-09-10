@@ -21,9 +21,9 @@ public:
         shader.setFloat("depthThreshold", depthThreshold);
     }
 
-    void enableToneMapping(bool enable) {
+    void enableTonemapping(bool enable) {
         shader.bind();
-        shader.setBool("toneMap", enable);
+        shader.setBool("tonemap", enable);
     }
 
     RenderStats drawToScreen(OpenGLRenderer& renderer) override {

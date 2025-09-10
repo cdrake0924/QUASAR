@@ -1,11 +1,11 @@
-#include "tone_map.glsl"
+#include "tonemap.glsl"
 
 out vec4 FragColor;
 in vec2 TexCoord;
 
 uniform sampler2D screenColor;
 
-uniform bool toneMap = true;
+uniform bool tonemap = true;
 uniform float exposure = 1.0;
 
 // FXAA Parameters
@@ -21,10 +21,9 @@ float computeLuminance(vec3 color) {
     return dot(color, vec3(0.299, 0.587, 0.114));
 }
 
-vec3 performToneMapping(vec3 color) {
-    if (toneMap) {
-        color = applyToneMapExponential(color, exposure);
-        color = linearToSRGB(color);
+vec3 performTonemapping(vec3 color) {
+    if (tonemap) {
+        color = tonemapExponential(color, exposure);
     }
     return color;
 }
@@ -46,7 +45,7 @@ void main() {
     float threshold = max(contrastThreshold, relativeThreshold * lumaMax);
 
     if (contrast < threshold) {
-        FragColor = vec4(performToneMapping(color), 1.0);
+        FragColor = vec4(performTonemapping(color), 1.0);
         return;
     }
 
@@ -173,5 +172,5 @@ void main() {
     }
 
     color = texture(screenColor, uv).rgb;
-    FragColor = vec4(performToneMapping(color), 1.0);
+    FragColor = vec4(performTonemapping(color), 1.0);
 }

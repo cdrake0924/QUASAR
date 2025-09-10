@@ -1,4 +1,4 @@
-#include "tone_map.glsl"
+#include "tonemap.glsl"
 
 out vec4 FragColor;
 
@@ -10,14 +10,13 @@ uniform sampler2D screenNormals;
 uniform sampler2D screenPositions;
 uniform usampler2D idTexture;
 
-uniform bool toneMap;
+uniform bool tonemap;
 uniform float exposure;
 
 void main() {
     vec3 color = texture(screenColor, TexCoord).rgb;
-    if (toneMap) {
-        color = applyToneMapExponential(color, exposure);
-        color = linearToSRGB(color);
+    if (tonemap) {
+        color = tonemapExponential(color, exposure);
     }
     FragColor = vec4(color, 1.0);
 }

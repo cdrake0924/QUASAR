@@ -5,14 +5,14 @@
 
 namespace quasar {
 
-class ToneMapShader : public Shader {
+class TonemapShader : public Shader {
 public:
-    ToneMapShader()
+    TonemapShader()
         : Shader({
             .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,
-            .fragmentCodeData = SHADER_BUILTIN_TONE_MAP_FRAG,
-            .fragmentCodeSize = SHADER_BUILTIN_TONE_MAP_FRAG_len,
+            .fragmentCodeData = SHADER_BUILTIN_TONEMAP_FRAG,
+            .fragmentCodeSize = SHADER_BUILTIN_TONEMAP_FRAG_len,
         })
     {}
 };

@@ -369,7 +369,8 @@
     <p>Please download and unzip into <code>assets/models/scenes/</code> (this will be gitignored). You must download these and place them in the correct path for the evaluation to be run.</p>
 
     <h2 id="building">Building</h2>
-    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">mkdir build; cd build
+    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex"># in repo root (QUASAR directory)
+mkdir build; cd build
 cmake ..; cmake --build . -j $(nproc)</span></code></pre></div>
     <p>In the <code>build/</code> directory, there will be a folder called <code>apps/</code>, which follows the same directory layout as <code>&lt;repo root&gt;/apps/</code>.</p>
 

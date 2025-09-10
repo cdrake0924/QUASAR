@@ -6,7 +6,7 @@
 #include <Quads/FrameGenerator.h>
 #include <Networking/DataStreamerTCP.h>
 #include <Streamers/VideoStreamer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 
 namespace quasar {
@@ -104,7 +104,7 @@ private:
     std::vector<FrameRenderTarget> referenceFrameRTs_noTone;
 
     // Shaders
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
     ShowNormalsEffect showNormalsEffect;
 
     QuadMaterial wireframeMaterial;

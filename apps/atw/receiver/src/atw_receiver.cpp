@@ -5,7 +5,7 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 
 #include <Path.h>
 #include <Recorder.h>
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     });
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
 
     Recorder recorder({
         .width = windowSize.x,
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
         .wrapT = GL_CLAMP_TO_EDGE,
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
-    }, renderer, toneMapper, outputPath, config.targetFramerate);
+    }, renderer, tonemapper, outputPath, config.targetFramerate);
 
     bool atwEnabled = true;
     double elapsedTime = 0.0f;

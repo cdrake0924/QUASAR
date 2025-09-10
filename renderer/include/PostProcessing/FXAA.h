@@ -1,7 +1,7 @@
 #ifndef FXAA_H
 #define FXAA_H
 
-#include <Shaders/ToneMapShader.h>
+#include <Shaders/TonemapShader.h>
 
 #include <PostProcessing/PostProcessingEffect.h>
 
@@ -17,9 +17,9 @@ public:
             .fragmentCodeSize = SHADER_BUILTIN_FXAA_FRAG_len,
         }) {}
 
-    void enableToneMapping(bool enable) {
+    void enableTonemapping(bool enable) {
         shader.bind();
-        shader.setBool("toneMap", enable);
+        shader.setBool("tonemap", enable);
     }
 
     void setExposure(float exposure) {

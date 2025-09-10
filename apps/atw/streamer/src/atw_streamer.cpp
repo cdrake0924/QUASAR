@@ -5,7 +5,7 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/DeferredRenderer.h>
-#include <PostProcessing/ToneMapper.h>
+#include <PostProcessing/Tonemapper.h>
 
 #include <Streamers/VideoStreamer.h>
 #include <Receivers/PoseReceiver.h>
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     PoseReceiver poseReceiver(camera.get(), poseURL);
 
     // Post processing
-    ToneMapper toneMapper;
+    Tonemapper tonemapper;
 
     bool sendFrame = true;
 
@@ -269,7 +269,7 @@ int main(int argc, char** argv) {
                 }
 
                 // Copy rendered result to video render target
-                toneMapper.drawToRenderTarget(renderer, videoStreamerRT);
+                tonemapper.drawToRenderTarget(renderer, videoStreamerRT);
 
                 // Send video frame
                 prevPoseID = poseID;
@@ -280,7 +280,7 @@ int main(int argc, char** argv) {
         }
 
         if (config.showWindow) {
-            toneMapper.drawToScreen(renderer);
+            tonemapper.drawToScreen(renderer);
         }
     });
 

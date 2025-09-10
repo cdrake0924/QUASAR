@@ -1,5 +1,5 @@
 #include "constants.glsl"
-#include "tone_map.glsl"
+#include "tonemap.glsl"
 
 out vec4 FragColor;
 
@@ -11,7 +11,7 @@ uniform sampler2D screenNormals;
 uniform sampler2D screenPositions;
 uniform usampler2D idTexture;
 
-uniform bool toneMap = true;
+uniform bool tonemap = true;
 uniform float exposure = 1.0;
 
 uniform float depthThreshold;
@@ -71,9 +71,8 @@ void main() {
         }
     }
 
-    if (toneMap) {
-        color = applyToneMapExponential(color, exposure);
-        color = linearToSRGB(color);
+    if (tonemap) {
+        color = tonemapExponential(color, exposure);
     }
 
     FragColor = vec4(color, 1.0);

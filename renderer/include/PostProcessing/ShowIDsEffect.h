@@ -1,7 +1,7 @@
 #ifndef SHOW_IDS_H
 #define SHOW_IDS_H
 
-#include <Shaders/ToneMapShader.h>
+#include <Shaders/TonemapShader.h>
 
 #include <PostProcessing/PostProcessingEffect.h>
 

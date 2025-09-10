@@ -1,23 +1,23 @@
 #ifndef TONE_MAP_EFFECT_H
 #define TONE_MAP_EFFECT_H
 
-#include <Shaders/ToneMapShader.h>
+#include <Shaders/TonemapShader.h>
 #include <RenderTargets/FrameRenderTarget.h>
 
 #include <PostProcessing/PostProcessingEffect.h>
 
 namespace quasar {
 
-class ToneMapper : public PostProcessingEffect {
+class Tonemapper : public PostProcessingEffect {
 public:
-    ToneMapper(bool toneMap = true) {
-        enableToneMapping(toneMap);
+    Tonemapper(bool tonemap = true) {
+        enableTonemapping(tonemap);
         setExposure(1.0f);
     }
 
-    void enableToneMapping(bool enable) {
+    void enableTonemapping(bool enable) {
         shader.bind();
-        shader.setBool("toneMap", enable);
+        shader.setBool("tonemap", enable);
     }
 
     void setExposure(float exposure) {
@@ -46,7 +46,7 @@ public:
     }
 
 private:
-    ToneMapShader shader;
+    TonemapShader shader;
 };
 
 } // namespace quasar

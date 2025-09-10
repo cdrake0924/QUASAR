@@ -1,7 +1,7 @@
 #ifndef SHOW_POSITIONS_H
 #define SHOW_POSITIONS_H
 
-#include <Shaders/ToneMapShader.h>
+#include <Shaders/TonemapShader.h>
 
 #include <PostProcessing/PostProcessingEffect.h>
 
