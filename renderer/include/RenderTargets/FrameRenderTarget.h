@@ -127,9 +127,9 @@ public:
     }
 
     void blit(FrameRenderTarget& frameRT,
-                       GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
-                       GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
-                       GLenum filter = GL_NEAREST)
+              GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+              GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
+              GLenum filter = GL_NEAREST)
     {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameRT.getFramebufferID());
