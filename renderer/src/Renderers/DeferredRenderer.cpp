@@ -17,13 +17,13 @@ DeferredRenderer::DeferredRenderer(const Config& config)
         .magFilter = GL_LINEAR,
         .multiSampled = false,
     })
-    , frameRT({
+    , gBuffer({
         .width = config.width,
         .height = config.height,
         .multiSampled = false,
     })
 #if !defined(__APPLE__) && !defined(__ANDROID__)
-    , frameRT_MS({
+    , gBuffer_MS({
         .width = config.width,
         .height = config.height,
         .multiSampled = true,
@@ -38,44 +38,44 @@ void DeferredRenderer::setScreenShaderUniforms(const Shader& screenShader) {
     screenShader.bind();
     screenShader.setTexture("screenColor", outputRT.colorTexture, 0);
     screenShader.setTexture("screenDepth", outputRT.depthStencilTexture, 1);
-    screenShader.setTexture("screenNormals", frameRT.normalsTexture, 2);
-    screenShader.setTexture("screenPositions", frameRT.positionTexture, 3);
-    screenShader.setTexture("idTexture", frameRT.idTexture, 4);
+    screenShader.setTexture("screenNormals", gBuffer.normalsTexture, 2);
+    screenShader.setTexture("screenPositions", gBuffer.positionTexture, 3);
+    screenShader.setTexture("idTexture", gBuffer.idTexture, 4);
 }
 
 void DeferredRenderer::resize(uint width, uint height) {
     OpenGLRenderer::resize(width, height);
     outputRT.resize(width, height);
-    frameRT.resize(width, height);
+    gBuffer.resize(width, height);
 #if !defined(__APPLE__) && !defined(__ANDROID__)
-    frameRT_MS.resize(width, height);
+    gBuffer_MS.resize(width, height);
 #endif
 }
 
 void DeferredRenderer::beginRendering() {
 #if !defined(__APPLE__) && !defined(__ANDROID__)
     if (!multiSampled) {
-        frameRT.bind();
+        gBuffer.bind();
     }
     else {
-        frameRT_MS.bind();
+        gBuffer_MS.bind();
     }
 #else
-    frameRT.bind();
+    gBuffer.bind();
 #endif
 }
 
 void DeferredRenderer::endRendering() {
 #if !defined(__APPLE__) && !defined(__ANDROID__)
     if (!multiSampled) {
-        frameRT.unbind();
+        gBuffer.unbind();
     }
     else {
-        frameRT_MS.blit(frameRT);
-        frameRT_MS.unbind();
+        gBuffer_MS.blit(gBuffer);
+        gBuffer_MS.unbind();
     }
 #else
-    frameRT.unbind();
+    gBuffer.unbind();
 #endif
 }
 
@@ -130,13 +130,13 @@ RenderStats DeferredRenderer::drawObjects(Scene& scene, const Camera& camera, ui
         pipeline.rasterState.scissorTestEnabled = true;
 
         // Left eye
-        frameRT.setScissor(0, 0, width / 2, height);
-        frameRT.setViewport(0, 0, width / 2, height);
+        gBuffer.setScissor(0, 0, width / 2, height);
+        gBuffer.setViewport(0, 0, width / 2, height);
         stats += drawObjects(scene, vrCamera->left, clearMask);
 
         // Right eye
-        frameRT.setScissor(width / 2, 0, width / 2, height);
-        frameRT.setViewport(width / 2, 0, width / 2, height);
+        gBuffer.setScissor(width / 2, 0, width / 2, height);
+        gBuffer.setViewport(width / 2, 0, width / 2, height);
         stats += drawObjects(scene, vrCamera->right, clearMask);
     }
     else {
@@ -166,14 +166,14 @@ RenderStats DeferredRenderer::lightingPass(Scene& scene, const Camera& camera) {
     RenderStats stats;
 
     lightingMaterial.bind();
-    lightingMaterial.bindGBuffer(frameRT);
+    lightingMaterial.bindGBuffer(gBuffer);
     lightingMaterial.bindCamera(camera);
 
     // Update material uniforms with lighting information
     scene.bindMaterial(&lightingMaterial);
 
     // Copy depth from FrameRenderTarget to outputRT
-    frameRT.blitDepthToRenderTarget(outputRT);
+    gBuffer.blitDepthToRenderTarget(outputRT);
 
     glDepthFunc(GL_LEQUAL);
 
@@ -191,7 +191,7 @@ RenderStats DeferredRenderer::lightingPass(Scene& scene, const Camera& camera) {
     return stats;
 }
 
-void DeferredRenderer::copyToFrameRT(FrameRenderTarget& gBufferDst) {
-    frameRT.blit(gBufferDst); // Copy normals, id, and depth
-    outputRT.blit(gBufferDst); // Copy color
+void DeferredRenderer::copyToFrameRT(FrameRenderTarget& frameRT) {
+    gBuffer.blit(frameRT); // Copy alpha, normals, id, and depth
+    outputRT.blit(frameRT); // Copy color
 }

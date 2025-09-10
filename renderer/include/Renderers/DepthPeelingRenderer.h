@@ -18,6 +18,7 @@ public:
     DepthPeelingRenderer(const Config& config, uint maxLayers = 4, bool edp = false);
     ~DepthPeelingRenderer() = default;
 
+    void setViewSphereDiameter(float viewSphereDiameter) { this->viewSphereDiameter = viewSphereDiameter; }
     virtual void setScreenShaderUniforms(const Shader& screenShader) override;
 
     virtual void resize(uint width, uint height) override;
@@ -31,10 +32,6 @@ public:
     virtual RenderStats drawObjectsNoLighting(Scene& scene, const Camera& camera, uint32_t clearMask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT) override;
 
     RenderStats compositeLayers();
-
-    void setViewSphereDiameter(float viewSphereDiameter) {
-        this->viewSphereDiameter = viewSphereDiameter;
-    }
 
 private:
     bool edp;

@@ -9,6 +9,7 @@ namespace quasar {
 class FrameRenderTarget : public RenderTargetBase {
 public:
     Texture colorTexture;
+    Texture alphaTexture;
     Texture normalsTexture;
     Texture idTexture;
     Texture depthStencilTexture;
@@ -20,7 +21,20 @@ public:
             .height = height,
             .internalFormat = GL_RGBA16F,
             .format = GL_RGBA,
-            .type = GL_HALF_FLOAT,
+            .type = GL_FLOAT,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
+            .minFilter = params.minFilter,
+            .magFilter = params.magFilter,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples,
+        })
+        , alphaTexture({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_R8,
+            .format = GL_RED,
+            .type = GL_UNSIGNED_BYTE,
             .wrapS = params.wrapS,
             .wrapT = params.wrapT,
             .minFilter = params.minFilter,
@@ -70,16 +84,18 @@ public:
     {
         framebuffer.bind();
         framebuffer.attachTexture(colorTexture, GL_COLOR_ATTACHMENT0);
-        framebuffer.attachTexture(normalsTexture, GL_COLOR_ATTACHMENT1);
-        framebuffer.attachTexture(idTexture, GL_COLOR_ATTACHMENT2);
+        framebuffer.attachTexture(alphaTexture, GL_COLOR_ATTACHMENT1);
+        framebuffer.attachTexture(normalsTexture, GL_COLOR_ATTACHMENT2);
+        framebuffer.attachTexture(idTexture, GL_COLOR_ATTACHMENT3);
         framebuffer.attachTexture(depthStencilTexture, GL_DEPTH_STENCIL_ATTACHMENT);
 
-        uint attachments[3] = {
+        uint attachments[4] = {
             GL_COLOR_ATTACHMENT0,
             GL_COLOR_ATTACHMENT1,
-            GL_COLOR_ATTACHMENT2
+            GL_COLOR_ATTACHMENT2,
+            GL_COLOR_ATTACHMENT3
         };
-        glDrawBuffers(3, attachments);
+        glDrawBuffers(4, attachments);
 
         if (!framebuffer.checkStatus()) {
             throw std::runtime_error("FrameRenderTarget Framebuffer is not complete!");
@@ -136,24 +152,31 @@ public:
 
         // Color
         glReadBuffer(GL_COLOR_ATTACHMENT0);
-        GLenum drawBuffers0[] = { GL_COLOR_ATTACHMENT0 };
-        glDrawBuffers(1, drawBuffers0);
+        GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+        glDrawBuffers(1, drawBuffers);
         glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
                           dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
-        // Normals
+        // Alpha
         glReadBuffer(GL_COLOR_ATTACHMENT1);
-        GLenum drawBuffers1[] = { GL_COLOR_ATTACHMENT1 };
-        glDrawBuffers(1, drawBuffers1);
+        GLenum drawBuffersA[] = { GL_COLOR_ATTACHMENT1 };
+        glDrawBuffers(1, drawBuffersA);
+        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1,
+                          GL_COLOR_BUFFER_BIT, filter);
+        // Normals
+        glReadBuffer(GL_COLOR_ATTACHMENT2);
+        GLenum drawBuffersN[] = { GL_COLOR_ATTACHMENT2 };
+        glDrawBuffers(1, drawBuffersN);
         glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
                           dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, filter);
 
         // IDs
-        glReadBuffer(GL_COLOR_ATTACHMENT2);
-        GLenum drawBuffers2[] = { GL_COLOR_ATTACHMENT2 };
-        glDrawBuffers(1, drawBuffers2);
+        glReadBuffer(GL_COLOR_ATTACHMENT3);
+        GLenum drawBuffersID[] = { GL_COLOR_ATTACHMENT3 };
+        glDrawBuffers(1, drawBuffersID);
         glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
                           dstX0, dstY0, dstX1, dstY1,
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -174,6 +197,7 @@ public:
         RenderTargetBase::resize(width, height);
 
         colorTexture.resize(width, height);
+        alphaTexture.resize(width, height);
         normalsTexture.resize(width, height);
         idTexture.resize(width, height);
         depthStencilTexture.resize(width, height);

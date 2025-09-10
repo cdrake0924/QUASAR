@@ -173,18 +173,26 @@ public:
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameRT.getFramebufferID());
 
+        // Alpha
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
+        GLenum drawBuffersA[] = { GL_COLOR_ATTACHMENT1 };
+        glDrawBuffers(1, drawBuffersA);
+        glBlitFramebuffer(0, 0, width, height,
+                          0, 0, frameRT.width, frameRT.height,
+                          GL_COLOR_BUFFER_BIT, filter);
+
         // Normals
         glReadBuffer(GL_COLOR_ATTACHMENT4);
-        GLenum drawBuffers1[] = { GL_COLOR_ATTACHMENT1 };
-        glDrawBuffers(1, drawBuffers1);
+        GLenum drawBuffersN[] = { GL_COLOR_ATTACHMENT2 };
+        glDrawBuffers(1, drawBuffersN);
         glBlitFramebuffer(0, 0, width, height,
                           0, 0, frameRT.width, frameRT.height,
                           GL_COLOR_BUFFER_BIT, filter);
 
         // ID buffer
         glReadBuffer(GL_COLOR_ATTACHMENT7);
-        GLenum drawBuffers2[] = { GL_COLOR_ATTACHMENT2 };
-        glDrawBuffers(1, drawBuffers2);
+        GLenum drawBuffersID[] = { GL_COLOR_ATTACHMENT3 };
+        glDrawBuffers(1, drawBuffersID);
         glBlitFramebuffer(0, 0, width, height,
                           0, 0, frameRT.width, frameRT.height,
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);

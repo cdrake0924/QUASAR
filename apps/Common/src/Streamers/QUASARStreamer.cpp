@@ -434,6 +434,15 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
             stats.totalGenDepthTimeMs += meshToUseDepth.stats.genDepthTime;
         }
 
+        frameToUse.bind();
+        std::vector<unsigned char> pixels(frameToUse.width * frameToUse.height * 1 * sizeof(uint8_t));
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
+        frameToUse.alphaTexture.readPixels(pixels.data());
+        // save as png for debugging
+        FileIO::flipVerticallyOnWrite(true);
+        FileIO::writeToPNG("alpha_layer" + std::to_string(layer) + ".png", frameToUse.width, frameToUse.height, 1, pixels.data());
+        frameToUse.unbind();
+
         if (!(createResidualFrame && layer == 0)) {
             stats.totalSizes.numQuads += referenceFrames[layer].getTotalNumQuads();
             stats.totalSizes.numDepthOffsets += referenceFrames[layer].getTotalNumDepthOffsets();

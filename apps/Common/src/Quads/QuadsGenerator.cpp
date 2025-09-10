@@ -122,7 +122,7 @@ void QuadsGenerator::generateInitialQuadMap(
         createQuadMapShader.setImageTexture(1, colorTexture, 0, GL_FALSE, 0, GL_READ_WRITE, colorTexture.internalFormat);
     }
     createQuadMapShader.dispatch((gBufferSize.x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
-                              (gBufferSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
+                                 (gBufferSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
     createQuadMapShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     stats.generateQuadsTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);

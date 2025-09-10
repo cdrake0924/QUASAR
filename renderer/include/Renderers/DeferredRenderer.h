@@ -15,9 +15,9 @@ public:
     bool multiSampled = false;
 
     RenderTarget outputRT;
-    GBuffer frameRT;
+    GBuffer gBuffer;
 #if !defined(__APPLE__) && !defined(__ANDROID__)
-    GBuffer frameRT_MS;
+    GBuffer gBuffer_MS;
 #endif
 
     DeferredRenderer(const Config& config);
@@ -35,7 +35,7 @@ public:
     virtual RenderStats drawObjects(Scene& scene, const Camera& camera, uint32_t clearMask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT) override;
     virtual RenderStats drawObjectsNoLighting(Scene& scene, const Camera& camera, uint32_t clearMask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT) override;
 
-    virtual void copyToFrameRT(FrameRenderTarget& gBufferDst);
+    virtual void copyToFrameRT(FrameRenderTarget& frameRT);
 
 protected:
     DeferredLightingMaterial lightingMaterial;
