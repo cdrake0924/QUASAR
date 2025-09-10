@@ -1,13 +1,14 @@
 #include "constants.glsl"
 #include "camera.glsl"
 
-layout(location = 0) out vec4 gAlbedo;
-layout(location = 1) out vec4 gPBR;
-layout(location = 2) out vec2 gAlpha;
-layout(location = 3) out vec3 gNormal;
-layout(location = 4) out vec4 gPosition;
-layout(location = 5) out vec4 gLightPosition;
-layout(location = 6) out uvec3 gIDs;
+layout(location = 0) out vec3 gAlbedo;
+layout(location = 1) out float gAlpha;
+layout(location = 2) out vec3 gPBR;
+layout(location = 3) out vec4 gEmissive;
+layout(location = 4) out vec3 gNormal;
+layout(location = 5) out vec3 gPosition;
+layout(location = 6) out vec4 gLightPosition;
+layout(location = 7) out uvec3 gIDs;
 
 in VertexData {
     flat uint DrawID;
@@ -197,25 +198,25 @@ void main() {
     // Apply emissive component
     vec3 emissive = vec3(0.0);
     if (material.hasEmissiveMap) {
-        emissive = texture(material.emissiveMap, fsIn.TexCoord).rgb;
+        emissive = material.emissiveFactor * texture(material.emissiveMap, fsIn.TexCoord).rgb;
     }
 
     // Apply ambient occlusion
-    float ambient = 1.0;
+    float ao = 1.0;
     if (material.hasAOMap) {
-        float ao = texture(material.aoMap, fsIn.TexCoord).r;
-        ambient *= ao;
+        ao = texture(material.aoMap, fsIn.TexCoord).r;
     }
 
-    gAlbedo = vec4(albedo, emissive.r);
-    gPBR = vec4(metallic, roughness, ambient, emissive.g);
-    gAlpha = vec2(alpha, emissive.b);
+    gAlbedo = albedo;
+    gAlpha = alpha;
+    gPBR = vec3(metallic, roughness, ao);
+    gEmissive = vec4(emissive, material.IBL);
 #ifdef VIEW_DEPENDENT_LIGHTING
     gNormal = vec3(N);
 #else
     gNormal = vec3(normalize(fsIn.Normal));
 #endif
-    gPosition = vec4(fsIn.FragPosWorld, material.IBL);
+    gPosition = fsIn.FragPosWorld;
     gLightPosition = fsIn.FragPosLightSpace;
     gIDs = uvec3(fsIn.DrawID, gl_PrimitiveID, 0);
     gIDs.z = floatBitsToUint((-fsIn.FragPosView.z - camera.near) / (camera.far - camera.near));

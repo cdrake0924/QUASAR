@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
         static bool showUI = true;
-        static bool showLayerPreviews = true;
+        static bool showLayerPreviews = false;
         static bool showFrameCaptureWindow = false;
         static char fileNameBase[256] = "screenshot";
         static bool writeToHDR = false;
@@ -298,7 +298,7 @@ int main(int argc, char** argv) {
         }
 
         if (showLayerPreviews) {
-            flags = 0;
+            flags = ImGuiWindowFlags_AlwaysAutoResize;
             const int texturePreviewSize = (windowSize.x * 2/3) / renderer.maxLayers;
             for (int i = 0; i < renderer.maxLayers; i++) {
                 int layerIdx = renderer.maxLayers - i - 1;

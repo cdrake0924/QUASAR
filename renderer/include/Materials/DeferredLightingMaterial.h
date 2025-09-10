@@ -22,7 +22,7 @@ public:
         return shader;
     }
 
-    uint getTextureCount() const override { return 6; }
+    uint getTextureCount() const override { return 7; }
 
     static std::shared_ptr<Shader> shader;
 };

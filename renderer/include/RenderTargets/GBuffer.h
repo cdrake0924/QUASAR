@@ -10,8 +10,9 @@ namespace quasar {
 class GBuffer : public RenderTargetBase {
 public:
     Texture albedoTexture;
-    Texture pbrTexture;
     Texture alphaTexture;
+    Texture pbrTexture;
+    Texture emissiveTexture;
     Texture positionTexture;
     Texture normalsTexture;
     Texture lightPositionTexture;
@@ -23,24 +24,11 @@ public:
         , albedoTexture({
             .width = width,
             .height = height,
-            .internalFormat = GL_RGBA8,
-            .format = GL_RGBA,
+            .internalFormat = GL_RGB8,
+            .format = GL_RGB,
             .type = GL_UNSIGNED_BYTE,
-            .wrapS = GL_CLAMP_TO_EDGE,
-            .wrapT = GL_CLAMP_TO_EDGE,
-            .minFilter = params.minFilter,
-            .magFilter = params.magFilter,
-            .multiSampled = params.multiSampled,
-            .numSamples = params.numSamples,
-        })
-        , pbrTexture({
-            .width = width,
-            .height = height,
-            .internalFormat = GL_RGBA8,
-            .format = GL_RGBA,
-            .type = GL_UNSIGNED_BYTE,
-            .wrapS = GL_CLAMP_TO_EDGE,
-            .wrapT = GL_CLAMP_TO_EDGE,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
             .minFilter = params.minFilter,
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
@@ -49,11 +37,37 @@ public:
         , alphaTexture({
             .width = width,
             .height = height,
-            .internalFormat = GL_RG8,
-            .format = GL_RG,
+            .internalFormat = GL_R8,
+            .format = GL_RED,
             .type = GL_UNSIGNED_BYTE,
-            .wrapS = GL_CLAMP_TO_EDGE,
-            .wrapT = GL_CLAMP_TO_EDGE,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
+            .minFilter = params.minFilter,
+            .magFilter = params.magFilter,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples,
+        })
+        , pbrTexture({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGB8,
+            .format = GL_RGB,
+            .type = GL_UNSIGNED_BYTE,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
+            .minFilter = params.minFilter,
+            .magFilter = params.magFilter,
+            .multiSampled = params.multiSampled,
+            .numSamples = params.numSamples,
+        })
+        , emissiveTexture({
+            .width = width,
+            .height = height,
+            .internalFormat = GL_RGBA8,
+            .format = GL_RGBA,
+            .type = GL_UNSIGNED_BYTE,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
             .minFilter = params.minFilter,
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
@@ -65,8 +79,8 @@ public:
             .internalFormat = GL_RGB16F,
             .format = GL_RGB,
             .type = GL_HALF_FLOAT,
-            .wrapS = GL_CLAMP_TO_EDGE,
-            .wrapT = GL_CLAMP_TO_EDGE,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
             .minFilter = params.minFilter,
             .magFilter = params.magFilter,
             .multiSampled = params.multiSampled,
@@ -75,11 +89,11 @@ public:
         , positionTexture({
             .width = width,
             .height = height,
-            .internalFormat = GL_RGBA16F,
-            .format = GL_RGBA,
+            .internalFormat = GL_RGB16F,
+            .format = GL_RGB,
             .type = GL_HALF_FLOAT,
-            .wrapS = GL_CLAMP_TO_EDGE,
-            .wrapT = GL_CLAMP_TO_EDGE,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
             .multiSampled = params.multiSampled,
@@ -91,8 +105,8 @@ public:
             .internalFormat = GL_RGBA16F,
             .format = GL_RGBA,
             .type = GL_HALF_FLOAT,
-            .wrapS = GL_CLAMP_TO_EDGE,
-            .wrapT = GL_CLAMP_TO_EDGE,
+            .wrapS = params.wrapS,
+            .wrapT = params.wrapT,
             .minFilter = GL_NEAREST,
             .magFilter = GL_NEAREST,
             .multiSampled = params.multiSampled,
@@ -127,24 +141,26 @@ public:
     {
         framebuffer.bind();
         framebuffer.attachTexture(albedoTexture, GL_COLOR_ATTACHMENT0);
-        framebuffer.attachTexture(pbrTexture, GL_COLOR_ATTACHMENT1);
-        framebuffer.attachTexture(alphaTexture, GL_COLOR_ATTACHMENT2);
-        framebuffer.attachTexture(normalsTexture, GL_COLOR_ATTACHMENT3);
-        framebuffer.attachTexture(positionTexture, GL_COLOR_ATTACHMENT4);
-        framebuffer.attachTexture(lightPositionTexture, GL_COLOR_ATTACHMENT5);
-        framebuffer.attachTexture(idTexture, GL_COLOR_ATTACHMENT6);
+        framebuffer.attachTexture(alphaTexture, GL_COLOR_ATTACHMENT1);
+        framebuffer.attachTexture(pbrTexture, GL_COLOR_ATTACHMENT2);
+        framebuffer.attachTexture(emissiveTexture, GL_COLOR_ATTACHMENT3);
+        framebuffer.attachTexture(normalsTexture, GL_COLOR_ATTACHMENT4);
+        framebuffer.attachTexture(positionTexture, GL_COLOR_ATTACHMENT5);
+        framebuffer.attachTexture(lightPositionTexture, GL_COLOR_ATTACHMENT6);
+        framebuffer.attachTexture(idTexture, GL_COLOR_ATTACHMENT7);
         framebuffer.attachTexture(depthStencilTexture, GL_DEPTH_STENCIL_ATTACHMENT);
 
-        uint attachments[7] = {
+        uint attachments[8] = {
             GL_COLOR_ATTACHMENT0,
             GL_COLOR_ATTACHMENT1,
             GL_COLOR_ATTACHMENT2,
             GL_COLOR_ATTACHMENT3,
             GL_COLOR_ATTACHMENT4,
             GL_COLOR_ATTACHMENT5,
-            GL_COLOR_ATTACHMENT6
+            GL_COLOR_ATTACHMENT6,
+            GL_COLOR_ATTACHMENT7
         };
-        glDrawBuffers(7, attachments);
+        glDrawBuffers(8, attachments);
 
         if (!framebuffer.checkStatus()) {
             throw std::runtime_error("FrameRenderTarget Framebuffer is not complete!");
@@ -153,20 +169,20 @@ public:
         framebuffer.unbind();
     }
 
-    void blit(FrameRenderTarget & frameRT, GLenum filter = GL_NEAREST) {
+    void blit(FrameRenderTarget& frameRT, GLenum filter = GL_NEAREST) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.ID);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameRT.getFramebufferID());
 
         // Normals
-        glReadBuffer(GL_COLOR_ATTACHMENT3);
+        glReadBuffer(GL_COLOR_ATTACHMENT4);
         GLenum drawBuffers1[] = { GL_COLOR_ATTACHMENT1 };
         glDrawBuffers(1, drawBuffers1);
         glBlitFramebuffer(0, 0, width, height,
                           0, 0, frameRT.width, frameRT.height,
                           GL_COLOR_BUFFER_BIT, filter);
 
-        // Id buffer
-        glReadBuffer(GL_COLOR_ATTACHMENT6);
+        // ID buffer
+        glReadBuffer(GL_COLOR_ATTACHMENT7);
         GLenum drawBuffers2[] = { GL_COLOR_ATTACHMENT2 };
         glDrawBuffers(1, drawBuffers2);
         glBlitFramebuffer(0, 0, width, height,
@@ -188,10 +204,10 @@ public:
         // Colors
         GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2,
                                  GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5,
-                                 GL_COLOR_ATTACHMENT6 };
-        glDrawBuffers(7, drawBuffers);
+                                 GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7 };
+        glDrawBuffers(8, drawBuffers);
 
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 8; i++) {
             glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
             glBlitFramebuffer(0, 0, width, height,
                               0, 0, gBuffer.width, gBuffer.height,
@@ -225,8 +241,9 @@ public:
         RenderTargetBase::resize(width, height);
 
         albedoTexture.resize(width, height);
-        pbrTexture.resize(width, height);
         alphaTexture.resize(width, height);
+        pbrTexture.resize(width, height);
+        emissiveTexture.resize(width, height);
         positionTexture.resize(width, height);
         normalsTexture.resize(width, height);
         lightPositionTexture.resize(width, height);

@@ -7,17 +7,18 @@ out vec4 FragColor;
 in vec2 TexCoord;
 
 uniform sampler2D gAlbedo; // 0
-uniform sampler2D gPBR; // 1
-uniform sampler2D gAlpha; // 2
-uniform sampler2D gNormal; // 3
-uniform sampler2D gPosition; // 4
-uniform sampler2D gLightPosition; // 5
+uniform sampler2D gAlpha; // 1
+uniform sampler2D gPBR; // 2
+uniform sampler2D gEmissive; // 3
+uniform sampler2D gNormal; // 4
+uniform sampler2D gPosition; // 5
+uniform sampler2D gLightPosition; // 6
 
 // Material
 uniform struct Material {
-    samplerCube irradianceMap; // 6
-    samplerCube prefilterMap; // 7
-    sampler2D brdfLUT; // 8
+    samplerCube irradianceMap; // 7
+    samplerCube prefilterMap; // 8
+    sampler2D brdfLUT; // 9
 } material;
 
 uniform AmbientLight ambientLight;
@@ -39,24 +40,20 @@ uniform samplerCube pointLightShadowMaps3; // 13
 #endif
 
 void main() {
-    vec4 albedo_er = texture(gAlbedo, TexCoord);
-    vec4 mra_eg = texture(gPBR, TexCoord);
-    vec2 alpha_eb = texture(gAlpha, TexCoord).rg;
+    vec3 albedo = texture(gAlbedo, TexCoord).rgb;
+    float alpha = texture(gAlpha, TexCoord).r;
+    vec3 mra = texture(gPBR, TexCoord).rgb;
+    vec4 emissive_IBL = texture(gEmissive, TexCoord);
     vec3 fragNormal = texture(gNormal, TexCoord).rgb;
-    vec4 fragPosWorld_ibl = texture(gPosition, TexCoord);
+    vec3 fragPosWorld = texture(gPosition, TexCoord).xyz;
     vec4 fragPosLightSpace = texture(gLightPosition, TexCoord);
 
-    vec3 albedo = albedo_er.rgb;
-    float alpha = alpha_eb.r;
-    vec3 mra = mra_eg.rgb;
     float metallic = mra.r;
     float roughness = mra.g;
     float ao = mra.b;
-    vec3 emissive = vec3(albedo_er.a, mra_eg.a, alpha_eb.g);
 
-    float IBL = fragPosWorld_ibl.a;
-
-    vec3 fragPosWorld = fragPosWorld_ibl.xyz;
+    vec3 emissive = emissive_IBL.rgb;
+    float IBL = emissive_IBL.a;
 
     // Input lighting data
     vec3 N = fragNormal;
