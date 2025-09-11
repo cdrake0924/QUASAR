@@ -247,18 +247,13 @@ RenderStats OpenGLRenderer::drawSkyBoxImpl(Scene& scene, const Camera& camera) {
         return stats;
     }
 
-    auto& skybox = *scene.envCubeMap;
-
-    skyboxShader.bind();
-    skyboxShader.setTexture("environmentMap", skybox, 0);
-
     // Disable writing to the depth buffer
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_FALSE);
 
-    if (scene.envCubeMap != nullptr) {
-        stats = scene.envCubeMap->draw(skyboxShader, camera);
-    }
+    skyboxShader.bind();
+    skyboxShader.setTexture("environmentMap", *scene.envCubeMap, 0);
+    stats = scene.envCubeMap->draw(skyboxShader, camera);
 
     // Restore depth func
     glDepthFunc(GL_LESS);
@@ -346,7 +341,7 @@ RenderStats OpenGLRenderer::drawNode(Scene& scene, const Camera& camera, Node* n
 
 #ifdef GL_CORE
             // Restore polygon mode
-            if (node->wireframe) {
+            if (node->wireframe || node->primitiveType == GL_LINES) {
                 glDisable(GL_POLYGON_OFFSET_LINE);
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             }
@@ -363,7 +358,7 @@ RenderStats OpenGLRenderer::drawNode(Scene& scene, const Camera& camera, Node* n
     }
 
     for (auto& child : node->children) {
-        stats += drawNode(scene, camera, child, model, materialToUse);
+        stats += drawNode(scene, camera, child, model, frustumCull, materialToUse);
     }
 
     return stats;
@@ -400,7 +395,7 @@ RenderStats OpenGLRenderer::drawToScreen(const Shader& screenShader, const Rende
         glViewport(0, 0, windowWidth, windowHeight);
     }
 
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     screenShader.bind();

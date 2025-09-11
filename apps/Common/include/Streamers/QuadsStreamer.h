@@ -29,8 +29,8 @@ public:
     QuadMesh residualFrameMesh;
     Node residualFrameNodeLocal;
 
-    VideoStreamer atlasVideoStreamerRT;
-    FrameRenderTarget alphaRT;
+    VideoStreamer videoAtlasStreamerRT;
+    FrameRenderTarget alphaAtlasRT;
 
     // Local objects
     std::vector<Node> referenceFrameNodesLocal;

@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            auto& videoStreamerRT = quasar.atlasVideoStreamerRT;
+            auto& videoStreamerRT = quasar.videoAtlasStreamerRT;
             ImGui::TextColored(ImVec4(1,0.5,0,1), "Video Frame Rate: %.1f FPS (%.3f ms/frame)", videoStreamerRT.getFrameRate(), 1000.0f / videoStreamerRT.getFrameRate());
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to copy frame: %.3f ms", videoStreamerRT.stats.transferTimeMs);
             ImGui::TextColored(ImVec4(0,0.5,0,1), "Time to encode frame: %.3f ms", videoStreamerRT.stats.encodeTimeMs);

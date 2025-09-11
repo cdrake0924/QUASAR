@@ -5,6 +5,7 @@ layout(location = 2) out uvec4 FragIDs;
 in VertexData {
     flat uint DrawID;
     vec3 TexCoord3D;
+    vec2 ExpandedUV;
     vec3 FragPos;
 } fsIn;
 
@@ -25,24 +26,23 @@ uniform struct Material {
 } material;
 
 void main() {
+    vec4 color;
     vec2 uv = fsIn.TexCoord3D.xy / fsIn.TexCoord3D.z;
-
-    vec4 baseColor;
     if (material.hasBaseColorMap) {
-        baseColor = texture(material.baseColorMap, uv) * material.baseColorFactor;
+        color = texture(material.baseColorMap, uv) * material.baseColorFactor;
     }
     else {
-        baseColor = material.baseColor * material.baseColorFactor;
+        color = material.baseColor * material.baseColorFactor;
     }
 
-    float alpha = (material.alphaMode == ALPHA_OPAQUE) ? 1.0 : baseColor.a;
+    float alpha = (material.alphaMode == ALPHA_OPAQUE) ? 1.0 : color.a;
     if (material.hasAlphaMap) {
-        alpha *= texture(material.alphaMap, uv).r;
+        alpha = texture(material.alphaMap, uv).r;
     }
     if (alpha < material.maskThreshold)
         discard;
 
-    FragColor = vec4(baseColor.rgb, alpha);
+    FragColor = vec4(color.rgb, alpha);
     // FragNormal = vec4(normalize(fsIn.Normal), 1.0);
     FragIDs = uvec4(fsIn.DrawID, gl_PrimitiveID, 0.0, 1.0);
 }

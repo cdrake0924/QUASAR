@@ -27,6 +27,14 @@ DepthPeelingRenderer::DepthPeelingRenderer(const Config& config, uint maxLayers,
     RenderTargetCreateParams params {
         .width = config.width,
         .height = config.height,
+        .internalFormat = outputRT.colorTexture.internalFormat,
+        .format = outputRT.colorTexture.format,
+        .type = outputRT.colorTexture.type,
+        .wrapS = outputRT.colorTexture.wrapS,
+        .wrapT = outputRT.colorTexture.wrapT,
+        .minFilter = outputRT.colorTexture.minFilter,
+        .magFilter = outputRT.colorTexture.magFilter,
+        .multiSampled = outputRT.colorTexture.multiSampled,
     };
     peelingLayers.reserve(maxLayers);
     for (int i = 0; i < maxLayers; i++) {
@@ -65,8 +73,7 @@ RenderStats DepthPeelingRenderer::drawScene(Scene& scene, const Camera& camera, 
     for (int i = 0; i < maxLayers; i++) {
         beginRendering();
         if (clearMask != 0) {
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            glClear(clearMask);
+            gBuffer.clear(clearMask);
         }
 
         // Disable blending
@@ -202,8 +209,7 @@ RenderStats DepthPeelingRenderer::compositeLayers() {
     }
 
     outputRT.bind();
-    glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    outputRT.clear(GL_COLOR_BUFFER_BIT);
     stats += outputFsQuad.draw();
     outputRT.unbind();
 

@@ -78,7 +78,7 @@ QUASARStreamer::QUASARStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , atlasVideoStreamerRT({
+    , videoAtlasStreamerRT({
         .width = 2 * quadSet.getSize().x,
         .height = 3 * quadSet.getSize().y,
         .internalFormat = GL_SRGB8_ALPHA8,
@@ -89,7 +89,7 @@ QUASARStreamer::QUASARStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL, 5, targetBitRate)
-    , alphaRT({
+    , alphaAtlasRT({
         .width = 2 * quadSet.getSize().x,
         .height = 3 * quadSet.getSize().y,
         .internalFormat = GL_R8,
@@ -221,7 +221,7 @@ QUASARStreamer::QUASARStreamer(
 }
 
 QUASARStreamer::~QUASARStreamer() {
-    atlasVideoStreamerRT.stop();
+    videoAtlasStreamerRT.stop();
 }
 
 uint QUASARStreamer::getNumTriangles() const {
@@ -465,39 +465,51 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
         }
     }
 
-    // Update texture atlas (tile frames side by side)
+    // Update color and alpha atlases (tile frames side by side)
     uint row = 0, col = 0;
     uint dstWidth = referenceFrameRT.width, dstHeight = referenceFrameRT.height;
     for (int layer = 0; layer < maxLayers; layer++) {
         if (layer == 0) {
-            referenceFrameRT.blit(atlasVideoStreamerRT,
+            referenceFrameRT.blit(videoAtlasStreamerRT,
+                0, 0, referenceFrameRT.width, referenceFrameRT.height,
+                col, row, dstWidth, dstHeight
+            );
+            referenceFrameRT.blit(alphaAtlasRT,
                 0, 0, referenceFrameRT.width, referenceFrameRT.height,
                 col, row, dstWidth, dstHeight
             );
         }
         else {
             int hiddenLayerIndex = layer - 1;
-            frameRTsHidLayer[hiddenLayerIndex].blit(atlasVideoStreamerRT,
+            frameRTsHidLayer[hiddenLayerIndex].blit(videoAtlasStreamerRT,
                 0, 0, frameRTsHidLayer[hiddenLayerIndex].width, frameRTsHidLayer[hiddenLayerIndex].height,
+                col, row, dstWidth, dstHeight
+            );
+            frameRTsHidLayer_noTone[hiddenLayerIndex].blit(alphaAtlasRT,
+                0, 0, frameRTsHidLayer_noTone[hiddenLayerIndex].width, frameRTsHidLayer_noTone[hiddenLayerIndex].height,
                 col, row, dstWidth, dstHeight
             );
         }
         col += referenceFrameRT.width;
         dstWidth += referenceFrameRT.width;
-        if (col >= atlasVideoStreamerRT.width) {
+        if (col >= videoAtlasStreamerRT.width) {
             col = 0;
             dstWidth = referenceFrameRT.width;
 
             row += referenceFrameRT.height;
             dstHeight += referenceFrameRT.height;
-            if (row >= atlasVideoStreamerRT.height) {
+            if (row >= videoAtlasStreamerRT.height) {
                 row = 0;
                 dstHeight = referenceFrameRT.height;
             }
         }
     }
-    residualFrameRT.blit(atlasVideoStreamerRT,
+    residualFrameRT.blit(videoAtlasStreamerRT,
         0, 0, residualFrameRT.width, residualFrameRT.height,
+        col, row, dstWidth, dstHeight
+    );
+    residualFrameRT_noTone.blit(alphaAtlasRT,
+        0, 0, residualFrameRT_noTone.width, residualFrameRT_noTone.height,
         col, row, dstWidth, dstHeight
     );
 }
@@ -505,7 +517,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
 void QUASARStreamer::sendProxies(pose_id_t poseID, bool createResidualFrame) {
     if (!videoURL.empty() && !proxiesURL.empty()) {
         // Send atlas frame
-        atlasVideoStreamerRT.sendFrame(poseID);
+        videoAtlasStreamerRT.sendFrame(poseID);
         // Send proxies
         writeToMemory(poseID, createResidualFrame, compressedData);
         send(compressedData);
@@ -535,11 +547,11 @@ size_t QUASARStreamer::writeToFiles(const Path& outputPath) {
 
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    atlasVideoStreamerRT.writeColorAsJPG(colorFileName);
+    videoAtlasStreamerRT.writeColorAsJPG(colorFileName);
 
     // Save alpha
     Path alphaFileName = (outputPath / "alpha").withExtension(".png");
-    alphaRT.writeAlphaAsPNG(alphaFileName);
+    alphaAtlasRT.writeAlphaAsPNG(alphaFileName);
 
     // Save proxies
     size_t totalOutputSize = 0;

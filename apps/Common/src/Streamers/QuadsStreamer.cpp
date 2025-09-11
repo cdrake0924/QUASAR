@@ -72,7 +72,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , atlasVideoStreamerRT({
+    , videoAtlasStreamerRT({
         .width = 2 * quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_SRGB8_ALPHA8,
@@ -83,7 +83,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL, 5, targetBitRate)
-    , alphaRT({
+    , alphaAtlasRT({
         .width = 2 * quadSet.getSize().x,
         .height = quadSet.getSize().y,
         .internalFormat = GL_R8,
@@ -147,7 +147,7 @@ QuadsStreamer::QuadsStreamer(
 }
 
 QuadsStreamer::~QuadsStreamer() {
-    atlasVideoStreamerRT.stop();
+    videoAtlasStreamerRT.stop();
 }
 
 uint QuadsStreamer::getNumTriangles() const {
@@ -277,23 +277,24 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
 
     residualFrameNodeLocal.visible = createResidualFrame;
 
-    // Update atlas texture
-    referenceFrameRT.blit(atlasVideoStreamerRT,
+    // Update color atlas texture
+    referenceFrameRT.blit(videoAtlasStreamerRT,
         0, 0, referenceFrameRT.width, referenceFrameRT.height,
         0, 0, referenceFrameRT.width, referenceFrameRT.height
     );
-    residualFrameRT.blit(atlasVideoStreamerRT,
+    residualFrameRT.blit(videoAtlasStreamerRT,
         0, 0, residualFrameRT.width, residualFrameRT.height,
-        referenceFrameRT.width, 0, atlasVideoStreamerRT.width, atlasVideoStreamerRT.height
+        referenceFrameRT.width, 0, videoAtlasStreamerRT.width, videoAtlasStreamerRT.height
     );
 
-    referenceFrameRT.blit(alphaRT,
+    // Update alpha atlas texture
+    referenceFrameRT.blit(alphaAtlasRT,
         0, 0, referenceFrameRT.width, referenceFrameRT.height,
         0, 0, referenceFrameRT.width, referenceFrameRT.height
     );
-    residualFrameRT.blit(alphaRT,
-        0, 0, residualFrameRT.width, residualFrameRT.height,
-        referenceFrameRT.width, 0, alphaRT.width, alphaRT.height
+    residualFrameRT_noTone.blit(alphaAtlasRT,
+        0, 0, residualFrameRT_noTone.width, residualFrameRT_noTone.height,
+        referenceFrameRT.width, 0, alphaAtlasRT.width, alphaAtlasRT.height
     );
 
     // For debugging: Generate point cloud from depth map
@@ -325,7 +326,7 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
 void QuadsStreamer::sendProxies(pose_id_t poseID, bool createResidualFrame) {
     if (!videoURL.empty() && !proxiesURL.empty()) {
         // Send atlas frame
-        atlasVideoStreamerRT.sendFrame(poseID);
+        videoAtlasStreamerRT.sendFrame(poseID);
         // Send proxies
         writeToMemory(poseID, createResidualFrame, compressedData);
         send(compressedData);
@@ -347,11 +348,11 @@ size_t QuadsStreamer::writeToFiles(const Path& outputPath) {
 
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    atlasVideoStreamerRT.writeColorAsJPG(colorFileName);
+    videoAtlasStreamerRT.writeColorAsJPG(colorFileName);
 
     // Save alpha
     Path alphaFileName = (outputPath / "alpha").withExtension(".png");
-    alphaRT.writeAlphaAsPNG(alphaFileName);
+    alphaAtlasRT.writeAlphaAsPNG(alphaFileName);
 
     // Save proxies
     size_t totalOutputSize = referenceFrame.writeToFiles(outputPath) + residualFrame.writeToFiles(outputPath);

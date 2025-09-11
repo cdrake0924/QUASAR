@@ -65,6 +65,17 @@ public:
         glBlitFramebuffer(0, 0, width, height, 0, 0, rt.width, rt.height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
     }
 
+    void clear(uint32_t clearMask) override {
+        if (clearMask & GL_COLOR_BUFFER_BIT) {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+        if (clearMask & (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)) {
+            glClearDepth(1.0f);
+            glClearStencil(0);
+        }
+        glClear(clearMask);
+    }
+
     void resize(uint width, uint height) override {
         this->width = width;
         this->height = height;

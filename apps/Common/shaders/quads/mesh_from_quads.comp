@@ -6,6 +6,7 @@ layout(local_size_x = THREADS_PER_LOCALGROUP, local_size_y = THREADS_PER_LOCALGR
 struct Vertex {
     vec3 position;
     vec3 texCoord3D;
+    vec2 expandedUV;
 };
 
 layout(std430, binding = 0) buffer MeshBufferSizes {
@@ -61,6 +62,8 @@ uniform mat4 viewInverse;
 uniform mat4 projectionInverse;
 uniform float near;
 uniform float far;
+
+const float expandUVAmount = 0.05;
 
 #define VERTICES_IN_A_QUAD  4u
 #define INDICES_IN_A_QUAD   6u
@@ -128,23 +131,17 @@ Plane quadMapDataToPlane(in QuadMapData quadMapData) {
     return proxyPlane;
 }
 
-void createSurfel(out Quad surfel, in Quad2D surfelPixelCoords, in vec4 depthOffsets, in Plane proxyPlane) {
-    Quad2D surfelUVs;
-    surfelUVs.bottomLeft  = surfelPixelCoords.bottomLeft  / gBufferSize;
-    surfelUVs.bottomRight = surfelPixelCoords.bottomRight / gBufferSize;
-    surfelUVs.topLeft     = surfelPixelCoords.topLeft     / gBufferSize;
-    surfelUVs.topRight    = surfelPixelCoords.topRight    / gBufferSize;
+void createSurfel(in Quad2D surfelPixelCoords, in vec4 depthOffsets, in Plane proxyPlane, out Quad surfel, out Quad2D surfelUVs) {
+    surfelUVs.bottomLeft  = (surfelPixelCoords.bottomLeft  + vec2(-expandUVAmount, -expandUVAmount)) / gBufferSize;
+    surfelUVs.bottomRight = (surfelPixelCoords.bottomRight + vec2(+expandUVAmount, -expandUVAmount)) / gBufferSize;
+    surfelUVs.topLeft     = (surfelPixelCoords.topLeft     + vec2(-expandUVAmount, +expandUVAmount)) / gBufferSize;
+    surfelUVs.topRight    = (surfelPixelCoords.topRight    + vec2(+expandUVAmount, +expandUVAmount)) / gBufferSize;
 
     Quad2D surfelNDCs;
     surfelNDCs.bottomLeft  = surfelUVs.bottomLeft  * 2.0 - 1.0;
     surfelNDCs.bottomRight = surfelUVs.bottomRight * 2.0 - 1.0;
     surfelNDCs.topLeft     = surfelUVs.topLeft     * 2.0 - 1.0;
     surfelNDCs.topRight    = surfelUVs.topRight    * 2.0 - 1.0;
-
-    surfelNDCs.bottomLeft  += vec2(-0.025, -0.025) / gBufferSize;
-    surfelNDCs.bottomRight += vec2(+0.025, -0.025) / gBufferSize;
-    surfelNDCs.topLeft     += vec2(-0.025, +0.025) / gBufferSize;
-    surfelNDCs.topRight    += vec2(+0.025, +0.025) / gBufferSize;
 
     Quad surfelNearPlane;
     surfelNearPlane.bottomLeft  = ndcToView(projectionInverse, surfelNDCs.bottomLeft, 0.0);
@@ -164,6 +161,40 @@ void createSurfel(out Quad surfel, in Quad2D surfelPixelCoords, in vec4 depthOff
     surfel.bottomRight = quadPtsOnPlane.bottomRight + depthOffsets.y * normalize(quadPtsOnPlane.bottomRight);
     surfel.topLeft     = quadPtsOnPlane.topLeft     + depthOffsets.z * normalize(quadPtsOnPlane.topLeft);
     surfel.topRight    = quadPtsOnPlane.topRight    + depthOffsets.w * normalize(quadPtsOnPlane.topRight);
+}
+
+void uvToUVQ(in Quad quad, in Quad2D uvsSrc, out Quad uvsDst) {
+    vec3 vertPositionsView[4] = vec3[4](quad.bottomLeft, quad.bottomRight, quad.topRight, quad.topLeft);
+
+    // UV coordinates have to be in 3D to properly interpolate them in the fragment shader
+    // To do this, add a q component to the uvs and the fragment shader will perform perspective-correct interpolation
+    vec3 uvqs[4];
+    uvqs[0] = vec3(uvsSrc.bottomLeft,  1.0);
+    uvqs[1] = vec3(uvsSrc.bottomRight, 1.0);
+    uvqs[2] = vec3(uvsSrc.topRight,    1.0);
+    uvqs[3] = vec3(uvsSrc.topLeft,     1.0);
+
+    // Adapted from:
+    // https://www.roxlu.com/2014/026/mapping-a-texture-on-a-disc
+    // and
+    // https://www.reedbeta.com/blog/quadrilateral-interpolation-part-1/
+    float vertDistanceToCenter[4];
+    vec3 intersectPointView = lineLineIntersection(
+                                vertPositionsView[0], vertPositionsView[2],
+                                vertPositionsView[1], vertPositionsView[3]);
+    for (int i = 0; i < 4; i++) {
+        float dist = distance(intersectPointView, vertPositionsView[i]);
+        vertDistanceToCenter[i] = dist;
+    }
+    for (int i = 0; i < 4; i++) {
+        int i2 = (i + 2) % 4;
+        uvqs[i] = uvqs[i] * ((vertDistanceToCenter[i] + vertDistanceToCenter[i2]) / vertDistanceToCenter[i2]);
+    }
+
+    uvsDst.bottomLeft  = uvqs[0];
+    uvsDst.bottomRight = uvqs[1];
+    uvsDst.topRight    = uvqs[2];
+    uvsDst.topLeft     = uvqs[3];
 }
 
 void storeSurfel(in Quad quad, in Quad2D uvsSrc, in QuadMapData quadMapData) {
@@ -190,41 +221,17 @@ void storeSurfel(in Quad quad, in Quad2D uvsSrc, in QuadMapData quadMapData) {
     uint vertexIdxBottomRight = vertexIdxBase + 3u;
     vertices[vertexIdxBottomRight].position = viewToWorld(viewInverse, quad.bottomRight);
 
-    vec3 vertPositionsView[4];
-    vertPositionsView[0] = quad.bottomLeft;
-    vertPositionsView[1] = quad.bottomRight;
-    vertPositionsView[2] = quad.topRight;
-    vertPositionsView[3] = quad.topLeft;
+    Quad uvqs;
+    uvToUVQ(quad, uvsSrc, uvqs);
+    vertices[vertexIdxBottomLeft].texCoord3D  = uvqs.bottomLeft;
+    vertices[vertexIdxBottomRight].texCoord3D = uvqs.bottomRight;
+    vertices[vertexIdxTopRight].texCoord3D    = uvqs.topRight;
+    vertices[vertexIdxTopLeft].texCoord3D     = uvqs.topLeft;
 
-    // UV coordinates have to be in 3D to properly interpolate them in the fragment shader.
-    // To do this, add a q component to the uvs and the fragment shader will perform perspective-correct interpolation.
-    vec3 uvqs[4];
-    uvqs[0] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.bottomLeft),  1.0);
-    uvqs[1] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.bottomRight), 1.0);
-    uvqs[2] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.topRight),    1.0);
-    uvqs[3] = vec3(mix(textureExtent.xy, textureExtent.zw, uvsSrc.topLeft),     1.0);
-
-    // Adapted from:
-    // https://www.roxlu.com/2014/026/mapping-a-texture-on-a-disc
-    // and
-    // https://www.reedbeta.com/blog/quadrilateral-interpolation-part-1/
-    float vertDistanceToCenter[4];
-    vec3 intersectPointView = lineLineIntersection(
-                                vertPositionsView[0], vertPositionsView[2],
-                                vertPositionsView[1], vertPositionsView[3]);
-    for (int i = 0; i < 4; i++) {
-        float dist = distance(intersectPointView, vertPositionsView[i]);
-        vertDistanceToCenter[i] = dist;
-    }
-    for (int i = 0; i < 4; i++) {
-        int i2 = (i + 2) % 4;
-        uvqs[i] = uvqs[i] * ((vertDistanceToCenter[i] + vertDistanceToCenter[i2]) / vertDistanceToCenter[i2]);
-    }
-
-    vertices[vertexIdxBottomLeft].texCoord3D  = uvqs[0];
-    vertices[vertexIdxBottomRight].texCoord3D = uvqs[1];
-    vertices[vertexIdxTopRight].texCoord3D    = uvqs[2];
-    vertices[vertexIdxTopLeft].texCoord3D     = uvqs[3];
+    vertices[vertexIdxBottomLeft].expandedUV  = vec2(0, 0) + vec2(-expandUVAmount, -expandUVAmount) / gBufferSize;
+    vertices[vertexIdxBottomRight].expandedUV = vec2(1, 0) + vec2(+expandUVAmount, -expandUVAmount) / gBufferSize;
+    vertices[vertexIdxTopRight].expandedUV    = vec2(1, 1) + vec2(+expandUVAmount, +expandUVAmount) / gBufferSize;
+    vertices[vertexIdxTopLeft].expandedUV     = vec2(0, 1) + vec2(-expandUVAmount, +expandUVAmount) / gBufferSize;
 
     uint indexIdxBase = atomicAdd(numIndices, INDICES_IN_A_QUAD);
 
@@ -265,14 +272,8 @@ void storeSurfelsFromQuadMap(in QuadMapData quadMapData) {
 
             ivec2 depthOffsetPixelCoords = 2 * ivec2(quadMapData.offset) + ivec2(i, j);
             vec4 depthOffsets = loadDepthOffsets(depthOffsetPixelCoords);
-            Quad surfel;
-            createSurfel(surfel, surfelPixelCoords, depthOffsets, proxyPlane);
-
-            Quad2D surfelUVs;
-            surfelUVs.bottomLeft  = surfelPixelCoords.bottomLeft  / gBufferSize;
-            surfelUVs.bottomRight = surfelPixelCoords.bottomRight / gBufferSize;
-            surfelUVs.topLeft     = surfelPixelCoords.topLeft     / gBufferSize;
-            surfelUVs.topRight    = surfelPixelCoords.topRight    / gBufferSize;
+            Quad surfel; Quad2D surfelUVs;
+            createSurfel(surfelPixelCoords, depthOffsets, proxyPlane, surfel, surfelUVs);
             storeSurfel(surfel, surfelUVs, quadMapData);
         }
     }
@@ -284,15 +285,9 @@ void storeSurfelsFromQuadMap(in QuadMapData quadMapData) {
         surfelPixelCoords.topLeft     = proxyPlanePixelCoords + vec2(-halfGridSize, +halfGridSize);
         surfelPixelCoords.topRight    = proxyPlanePixelCoords + vec2(+halfGridSize, +halfGridSize);
 
-        Quad surfel;
         vec4 depthOffsets = vec4(0.0);
-        createSurfel(surfel, surfelPixelCoords, depthOffsets, proxyPlane);
-
-        Quad2D surfelUVs;
-        surfelUVs.bottomLeft  = surfelPixelCoords.bottomLeft  / gBufferSize;
-        surfelUVs.bottomRight = surfelPixelCoords.bottomRight / gBufferSize;
-        surfelUVs.topLeft     = surfelPixelCoords.topLeft     / gBufferSize;
-        surfelUVs.topRight    = surfelPixelCoords.topRight    / gBufferSize;
+        Quad surfel; Quad2D surfelUVs;
+        createSurfel(surfelPixelCoords, depthOffsets, proxyPlane, surfel, surfelUVs);
         storeSurfel(surfel, surfelUVs, quadMapData);
     }
 }

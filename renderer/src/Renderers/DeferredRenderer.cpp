@@ -178,12 +178,8 @@ RenderStats DeferredRenderer::lightingPass(Scene& scene, const Camera& camera) {
     glDepthFunc(GL_LEQUAL);
 
     outputRT.bind();
-
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
+    outputRT.clear(GL_COLOR_BUFFER_BIT);
     stats += outputFsQuad.draw();
-
     outputRT.unbind();
 
     glDepthFunc(GL_LESS);

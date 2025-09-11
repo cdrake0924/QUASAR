@@ -41,9 +41,7 @@ public:
         }
     } viewport;
 
-    RenderTargetBase(const RenderTargetCreateParams& params)
-        : framebuffer()
-    {
+    RenderTargetBase(const RenderTargetCreateParams& params) {
         width = params.width;
         height = params.height;
 
@@ -62,6 +60,11 @@ public:
 
     void blitToScreen(uint width, uint height) {
         framebuffer.blitToScreen(width, height);
+    }
+
+    virtual void clear(uint32_t clearMask) {
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(clearMask);
     }
 
     void setScissor(uint x, uint y, uint width, uint height) {
