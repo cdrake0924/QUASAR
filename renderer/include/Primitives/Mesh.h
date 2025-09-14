@@ -52,23 +52,16 @@ public:
     Buffer vertexBuffer;
     Buffer indexBuffer;
     Buffer indirectBuffer;
-
-    uint vertexSize;
-    VertexInputAttributes attributes;
-
-    const Material* material;
+    bool indirectDraw = false;
 
     float IBL = 1.0;
-
-    GLenum usage;
-
-    bool indirectDraw = false;
+    const Material* material;
 
     Mesh();
     Mesh(const MeshDataCreateParams& params);
     Mesh(const MeshSizeCreateParams& params);
 
-    virtual void bindMaterial(Scene& scene, const glm::mat4& model,
+    virtual void bindMaterial(Scene& scene, Buffer& pointLightsUBO,
                               const Material* overrideMaterial = nullptr, const Texture* prevIDMap = nullptr) override;
 
     virtual RenderStats draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model,
@@ -84,7 +77,11 @@ public:
     void updateAABB(const void* vertices, uint verticesSize);
 
 protected:
+    GLenum usage;
+    uint vertexSize;
+
     GLuint vertexArrayBuffer;
+    VertexInputAttributes attributes;
 
     void setArrayBufferAttributes(const VertexInputAttributes& attributes, uint vertexSize);
 

@@ -44,7 +44,7 @@ public:
     Model(const ModelCreateParams& params);
     ~Model();
 
-    virtual void bindMaterial(Scene& scene, const glm::mat4& model,
+    virtual void bindMaterial(Scene& scene, Buffer& pointLightsUBO,
                               const Material* overrideMaterial = nullptr, const Texture* prevIDMap = nullptr) override;
 
     virtual RenderStats draw(GLenum primitiveType, const Camera& camera, const glm::mat4& model,
