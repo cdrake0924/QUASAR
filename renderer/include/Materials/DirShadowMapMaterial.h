@@ -11,7 +11,7 @@ public:
     ~DirShadowMapMaterial() = default;
 
     void bind() const override {
-        shader->bind();
+        getShader()->bind();
     }
 
     std::shared_ptr<Shader> getShader() const override {

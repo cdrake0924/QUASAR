@@ -27,7 +27,7 @@ QuadMaterial::QuadMaterial(const QuadMaterialCreateParams& params)
         textures.push_back(params.baseColorTexture);
     }
 
-    if (shader == nullptr) {
+    if (getShader() == nullptr) {
         ShaderDataCreateParams unlitShaderParams{
             .vertexCodeData = SHADER_COMMON_MATERIAL_QUAD_VERT,
             .vertexCodeSize = SHADER_COMMON_MATERIAL_QUAD_VERT_len,

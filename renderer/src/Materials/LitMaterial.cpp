@@ -82,7 +82,7 @@ LitMaterial::LitMaterial(const LitMaterialCreateParams& params)
         textures.push_back(params.emissiveTexture);
     }
 
-    if (shader == nullptr) {
+    if (getShader() == nullptr) {
         std::vector<std::string> defines = {
             "#define MAX_POINT_LIGHTS " + std::to_string(PointLight::maxPointLights),
             "#define ALPHA_OPAQUE " + std::to_string(static_cast<uint8_t>(AlphaMode::OPAQUE)),
