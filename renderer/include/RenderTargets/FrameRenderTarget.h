@@ -217,6 +217,13 @@ public:
         unbind();
     }
 
+    void writeAlphaAsPNG(const std::string& path) {
+        bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
+        alphaTexture.writeToPNG(path);
+        unbind();
+    }
+
     void writeColorAsJPG(const std::string& path, int quality = 85) {
         bind();
         glReadBuffer(GL_COLOR_ATTACHMENT0);
@@ -235,6 +242,13 @@ public:
         bind();
         glReadBuffer(GL_COLOR_ATTACHMENT0);
         colorTexture.writeJPGToMemory(outputData, quality);
+        unbind();
+    }
+
+    void writeAlphaToMemory(std::vector<unsigned char>& outputData) {
+        bind();
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
+        alphaTexture.readPixels(outputData.data(), false);
         unbind();
     }
 };

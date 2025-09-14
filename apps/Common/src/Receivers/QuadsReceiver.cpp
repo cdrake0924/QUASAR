@@ -23,9 +23,18 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& videoURL, cons
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL)
-    , referenceFrameMesh(quadSet, atlasVideoTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
+    , alphaTexture({
+        .width = 2 * quadSet.getSize().x,
+        .height = quadSet.getSize().y,
+        .internalFormat = GL_R8,
+        .format = GL_RED,
+        .type = GL_UNSIGNED_BYTE,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE
+    })
+    , referenceFrameMesh(quadSet, atlasVideoTexture, alphaTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
-    , residualFrameMesh(quadSet, atlasVideoTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f))
+    , residualFrameMesh(quadSet, atlasVideoTexture, alphaTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f))
     , DataReceiverTCP(proxiesURL)
 {
     remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
@@ -118,6 +127,10 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
     // Read color data
     Path colorFileName = dataPath / "color.jpg";
     atlasVideoTexture.loadFromFile(colorFileName, true, false);
+
+    // Read alpha data
+    Path alphaFileName = dataPath / "alpha.png";
+    alphaTexture.loadFromFile(alphaFileName, true, false);
 
     // Read previous camera data
     Path cameraFileNamePrev = dataPath / "camera_prev.bin";

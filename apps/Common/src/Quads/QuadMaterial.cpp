@@ -27,6 +27,15 @@ QuadMaterial::QuadMaterial(const QuadMaterialCreateParams& params)
         textures.push_back(params.baseColorTexture);
     }
 
+    if (params.alphaTexturePath != "") {
+        textureParams.path = params.alphaTexturePath;
+        Texture* texture = new Texture(textureParams);
+        textures.push_back(texture);
+    }
+    else {
+        textures.push_back(params.alphaTexture);
+    }
+
     if (getShader() == nullptr) {
         ShaderDataCreateParams unlitShaderParams{
             .vertexCodeData = SHADER_COMMON_MATERIAL_QUAD_VERT,
@@ -59,6 +68,17 @@ void QuadMaterial::bind() const {
     }
     else {
         shader->setInt(name, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    name = "material.alphaMap";
+    glActiveTexture(GL_TEXTURE1);
+    shader->setBool("material.hasAlphaMap", textures.size() > 1 && textures[1] != nullptr);
+    if (textures.size() > 1 && textures[1] != nullptr) {
+        shader->setTexture(name, *textures[1], 1);
+    }
+    else {
+        shader->setInt(name, 1);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 }

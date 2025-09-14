@@ -16,16 +16,19 @@ uniform struct Material {
     int alphaMode;
     float maskThreshold;
 
-    bool hasBaseColorMap; // use diffuse map
+    bool hasBaseColorMap; // use color map
+    bool hasAlphaMap; // use alpha map
 
     // Material textures
     sampler2D baseColorMap; // 0
+    sampler2D alphaMap; // 1
 } material;
 
 void main() {
+    vec2 uv = fsIn.TexCoord3D.xy / fsIn.TexCoord3D.z;
+
     vec4 baseColor;
     if (material.hasBaseColorMap) {
-        vec2 uv = fsIn.TexCoord3D.xy / fsIn.TexCoord3D.z;
         baseColor = texture(material.baseColorMap, uv) * material.baseColorFactor;
     }
     else {
@@ -33,6 +36,9 @@ void main() {
     }
 
     float alpha = (material.alphaMode == ALPHA_OPAQUE) ? 1.0 : baseColor.a;
+    if (material.hasAlphaMap) {
+        alpha *= texture(material.alphaMap, uv).r;
+    }
     if (alpha < material.maskThreshold)
         discard;
 

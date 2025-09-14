@@ -10,7 +10,7 @@
 
 using namespace quasar;
 
-QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, const glm::vec4& textureExtent, uint maxProxies)
+QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, Texture& alphaTexture, const glm::vec4& textureExtent, uint maxProxies)
     : maxProxies(maxProxies)
     , currentQuadBuffers(maxProxies)
     , textureExtent(textureExtent)
@@ -51,14 +51,14 @@ QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, const glm::vec
         .maxIndices = 0,
         .vertexSize = sizeof(QuadVertex),
         .attributes = QuadVertex::getVertexInputAttributes(),
-        .material = new QuadMaterial({ .baseColorTexture = &colorTexture }),
+        .material = new QuadMaterial({ .baseColorTexture = &colorTexture, .alphaTexture = &alphaTexture }),
         .usage = GL_DYNAMIC_DRAW,
         .indirectDraw = true
     })
 {}
 
-QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, uint maxProxies)
-    : QuadMesh(quadSet, colorTexture, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), maxProxies)
+QuadMesh::QuadMesh(const QuadSet& quadSet, Texture& colorTexture, Texture& alphaTexture, uint maxProxies)
+    : QuadMesh(quadSet, colorTexture, alphaTexture, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), maxProxies)
 {}
 
 QuadMesh::BufferSizes QuadMesh::getBufferSizes() const {

@@ -9,7 +9,7 @@ QuadStreamReceiver::QuadStreamReceiver(QuadSet& quadSet, uint maxViews)
     , uncompressedQuads(sizeof(uint) + quadSet.quadBuffers.maxProxies * sizeof(QuadMapDataPacked))
     , uncompressedOffsets(quadSet.depthOffsets.getSize().x * quadSet.depthOffsets.getSize().y * 4 * sizeof(uint16_t))
 {
-    TextureDataCreateParams texParams = {
+    TextureDataCreateParams colorTexParams = {
         .internalFormat = GL_RGB,
         .format = GL_RGB,
         .wrapS = GL_REPEAT,
@@ -17,14 +17,26 @@ QuadStreamReceiver::QuadStreamReceiver(QuadSet& quadSet, uint maxViews)
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     };
+
+    TextureDataCreateParams alphaTexParams = {
+        .internalFormat = GL_R8,
+        .format = GL_RED,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    };
+
     remoteCameras.reserve(maxViews);
     colorTextures.reserve(maxViews);
+    alphaTextures.reserve(maxViews);
     meshes.reserve(maxViews);
     for (int view = 0; view < maxViews; view++) {
         remoteCameras.emplace_back(quadSet.getSize());
 
-        colorTextures.emplace_back(texParams);
-        meshes.emplace_back(quadSet, colorTextures[view]);
+        colorTextures.emplace_back(colorTexParams);
+        alphaTextures.emplace_back(alphaTexParams);
+        meshes.emplace_back(quadSet, colorTextures[view], alphaTextures[view]);
     }
 
     threadPool = std::make_unique<BS::thread_pool<>>(2);

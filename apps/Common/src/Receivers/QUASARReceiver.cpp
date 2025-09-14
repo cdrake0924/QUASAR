@@ -25,7 +25,18 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL)
-    , residualFrameMesh(quadSet, atlasVideoTexture)
+    , alphaTexture({
+        .width = 2 * quadSet.getSize().x,
+        .height = 3 * quadSet.getSize().y,
+        .internalFormat = GL_R8,
+        .format = GL_RED,
+        .type = GL_UNSIGNED_BYTE,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
+    , residualFrameMesh(quadSet, atlasVideoTexture, alphaTexture)
     , bufferPool(quadSet.getSize(), maxLayers)
     , DataReceiverTCP(proxiesURL)
 {
@@ -38,7 +49,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
     // Untile texture atlas
     glm::vec4 textureExtent(0.0f, 0.0f, 0.5f, 1.0f / 3.0f);
     for (int layer = 0; layer < maxLayers; layer++) {
-        meshes.emplace_back(quadSet, atlasVideoTexture, textureExtent);
+        meshes.emplace_back(quadSet, atlasVideoTexture, alphaTexture, textureExtent);
 
         textureExtent.x += 0.5f;
         if (textureExtent.x >= 1.0f) {

@@ -67,7 +67,7 @@ QuadStreamStreamer::QuadStreamStreamer(
         referenceFrameRTs.emplace_back(rtParams);
         referenceFrameRTs_noTone.emplace_back(rtParams);
 
-        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRTs_noTone[view].colorTexture);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRTs_noTone[view].colorTexture, referenceFrameRTs_noTone[view].alphaTexture);
         referenceFrameNodesLocal.emplace_back(&referenceFrameMeshes[view]);
         referenceFrameNodesLocal[view].frustumCulled = false;
 
@@ -242,11 +242,14 @@ size_t QuadStreamStreamer::writeToFiles(const Path& outputPath) {
     };
     FileIO::writeToBinaryFile(outputPath / "metadata.bin", metadata.data(), metadata.size() * sizeof(float));
 
-    // Save color data and proxies
+    // Save color + alpha data and proxies
     size_t totalOutputSize = 0;
     for (int view = 0; view < maxViews; view++) {
         Path colorFileName = (outputPath / ("color" + std::to_string(view))).withExtension(".jpg");
         referenceFrameRTs[view].writeColorAsJPG(colorFileName);
+
+        Path alphaFileName = (outputPath / ("alpha" + std::to_string(view))).withExtension(".png");
+        referenceFrameRTs[view].writeAlphaAsPNG(alphaFileName);
 
         totalOutputSize += referenceFrames[view].writeToFiles(outputPath, view);
     }

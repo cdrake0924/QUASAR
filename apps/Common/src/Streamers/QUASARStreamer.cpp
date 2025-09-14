@@ -89,8 +89,19 @@ QUASARStreamer::QUASARStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL, 5, targetBitRate)
+    , alphaRT({
+        .width = 2 * quadSet.getSize().x,
+        .height = 3 * quadSet.getSize().y,
+        .internalFormat = GL_R8,
+        .format = GL_RED,
+        .type = GL_UNSIGNED_BYTE,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
-    , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture)
+    , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture, residualFrameRT_noTone.alphaTexture)
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
     , DataStreamerTCP(proxiesURL)
@@ -140,7 +151,7 @@ QUASARStreamer::QUASARStreamer(
 
     // Setup visible layer for reference frame
     for (int i = 0; i < meshScenes.size(); i++) {
-        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT_noTone.colorTexture);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT_noTone.colorTexture, referenceFrameRT_noTone.alphaTexture);
 
         referenceFrameNodes.emplace_back(&referenceFrameMeshes[i]);
         referenceFrameNodes[i].frustumCulled = false;
@@ -173,7 +184,7 @@ QUASARStreamer::QUASARStreamer(
     depthNode.primitiveType = GL_POINTS;
 
     for (int layer = 0; layer < numHidLayers; layer++) {
-        meshesHidLayer.emplace_back(quadSet, frameRTsHidLayer_noTone[layer].colorTexture);
+        meshesHidLayer.emplace_back(quadSet, frameRTsHidLayer_noTone[layer].colorTexture, frameRTsHidLayer_noTone[layer].alphaTexture);
 
         nodesHidLayer.emplace_back(&meshesHidLayer[layer]);
         nodesHidLayer[layer].frustumCulled = false;
@@ -525,6 +536,10 @@ size_t QUASARStreamer::writeToFiles(const Path& outputPath) {
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
     atlasVideoStreamerRT.writeColorAsJPG(colorFileName);
+
+    // Save alpha
+    Path alphaFileName = (outputPath / "alpha").withExtension(".png");
+    alphaRT.writeAlphaAsPNG(alphaFileName);
 
     // Save proxies
     size_t totalOutputSize = 0;

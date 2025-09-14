@@ -83,7 +83,18 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL, 5, targetBitRate)
-    , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture)
+    , alphaRT({
+        .width = 2 * quadSet.getSize().x,
+        .height = quadSet.getSize().y,
+        .internalFormat = GL_R8,
+        .format = GL_RED,
+        .type = GL_UNSIGNED_BYTE,
+        .wrapS = GL_CLAMP_TO_EDGE,
+        .wrapT = GL_CLAMP_TO_EDGE,
+        .minFilter = GL_NEAREST,
+        .magFilter = GL_NEAREST,
+    })
+    , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture, residualFrameRT_noTone.alphaTexture)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
     , maskWireframeMaterial({ .baseColor = colors[colors.size()-1] })
@@ -99,7 +110,7 @@ QuadsStreamer::QuadsStreamer(
     remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
 
     for (int i = 0; i < meshScenes.size(); i++) {
-        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT_noTone.colorTexture);
+        referenceFrameMeshes.emplace_back(quadSet, referenceFrameRT_noTone.colorTexture, referenceFrameRT_noTone.alphaTexture);
 
         referenceFrameNodes.emplace_back(&referenceFrameMeshes[i]);
         referenceFrameNodes[i].frustumCulled = false;
@@ -276,6 +287,15 @@ void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bo
         referenceFrameRT.width, 0, atlasVideoStreamerRT.width, atlasVideoStreamerRT.height
     );
 
+    referenceFrameRT.blit(alphaRT,
+        0, 0, referenceFrameRT.width, referenceFrameRT.height,
+        0, 0, referenceFrameRT.width, referenceFrameRT.height
+    );
+    residualFrameRT.blit(alphaRT,
+        0, 0, residualFrameRT.width, residualFrameRT.height,
+        referenceFrameRT.width, 0, alphaRT.width, alphaRT.height
+    );
+
     // For debugging: Generate point cloud from depth map
     if (showDepth) {
         depthMesh.update(remoteCamera, referenceFrameRT);
@@ -328,6 +348,10 @@ size_t QuadsStreamer::writeToFiles(const Path& outputPath) {
     // Save color
     Path colorFileName = (outputPath / "color").withExtension(".jpg");
     atlasVideoStreamerRT.writeColorAsJPG(colorFileName);
+
+    // Save alpha
+    Path alphaFileName = (outputPath / "alpha").withExtension(".png");
+    alphaRT.writeAlphaAsPNG(alphaFileName);
 
     // Save proxies
     size_t totalOutputSize = referenceFrame.writeToFiles(outputPath) + residualFrame.writeToFiles(outputPath);

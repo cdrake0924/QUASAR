@@ -45,6 +45,7 @@ public:
     float viewSphereDiameter;
 
     VideoTexture atlasVideoTexture;
+    Texture alphaTexture;
 
     QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::string& videoURL = "", const std::string& proxiesURL = "");
     QUASARReceiver(QuadSet& quadSet, uint maxLayers, float remoteFOV, float remoteFOVWide, const std::string& videoURL = "", const std::string& proxiesURL = "");

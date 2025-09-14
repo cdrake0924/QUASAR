@@ -30,6 +30,7 @@ public:
     Node residualFrameNodeLocal;
 
     VideoStreamer atlasVideoStreamerRT;
+    FrameRenderTarget alphaRT;
 
     // Local objects
     std::vector<Node> referenceFrameNodesLocal;
