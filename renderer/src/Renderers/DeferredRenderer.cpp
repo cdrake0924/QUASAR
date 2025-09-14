@@ -170,7 +170,7 @@ RenderStats DeferredRenderer::lightingPass(Scene& scene, const Camera& camera) {
     lightingMaterial.bindCamera(camera);
 
     // Update material uniforms with lighting information
-    scene.bindMaterial(&lightingMaterial);
+    scene.bindMaterial(&lightingMaterial, pointLightsUBO);
 
     // Copy depth from FrameRenderTarget to outputRT
     gBuffer.blitDepthToRenderTarget(outputRT);

@@ -16,7 +16,9 @@ Shader::Shader(const ShaderDataCreateParams& params)
     , extensions(params.extensions)
     , defines(params.defines)
 {
-    loadFromData(params.vertexCodeData, params.vertexCodeSize, params.fragmentCodeData, params.fragmentCodeSize, params.geometryData, params.geometryMetadataSize);
+    loadFromData(params.vertexCodeData, params.vertexCodeSize,
+                 params.fragmentCodeData, params.fragmentCodeSize,
+                 params.geometryData, params.geometrySize);
 }
 
 void Shader::loadFromFiles(const std::string vertexPath, const std::string fragmentPath, const std::string geometryPath) {

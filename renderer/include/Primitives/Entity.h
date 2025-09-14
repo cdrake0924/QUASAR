@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include <Buffer.h>
 #include <Materials/Material.h>
 #include <Culling/AABB.h>
 #include <Culling/BoundingSphere.h>
@@ -53,7 +54,7 @@ public:
 
     int getID() const { return ID; }
 
-    virtual void bindMaterial(Scene& scene, const glm::mat4& model,
+    virtual void bindMaterial(Scene& scene, Buffer& pointLightsUBO,
                               const Material* overrideMaterial = nullptr,
                               const Texture* prevIDMap = nullptr) = 0;
 

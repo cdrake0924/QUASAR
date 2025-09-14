@@ -92,7 +92,12 @@ OpenGLRenderer::OpenGLRenderer(const Config& config)
         .fragmentCodeData = SHADER_BUILTIN_SKYBOX_FRAG,
         .fragmentCodeSize = SHADER_BUILTIN_SKYBOX_FRAG_len,
     })
-    , outputFsQuad()
+    , pointLightsUBO({
+        .target = GL_UNIFORM_BUFFER,
+        .dataSize = sizeof(Scene::GPUPointLightBlock),
+        .numElems = 1,
+        .usage = GL_DYNAMIC_DRAW,
+    })
 {
 #ifdef GL_CORE
     // Enable setting vertex size for point clouds
@@ -313,8 +318,7 @@ RenderStats OpenGLRenderer::drawNode(Scene& scene, const Camera& camera, Node* n
     RenderStats stats;
     if (node->entity != nullptr) {
         if (node->visible) {
-            node->entity->bindMaterial(scene, model, materialToUse, prevIDMap);
-            bool doFrustumCull = frustumCull && node->frustumCulled;
+            node->entity->bindMaterial(scene, pointLightsUBO, materialToUse, prevIDMap);
 
 #ifdef GL_CORE
             // Set polygon mode to wireframe if needed
@@ -337,7 +341,8 @@ RenderStats OpenGLRenderer::drawNode(Scene& scene, const Camera& camera, Node* n
             }
 #endif
 
-            stats += node->entity->draw(node->primitiveType, camera, model, doFrustumCull, materialToUse);
+            frustumCull = frustumCull && node->frustumCulled;
+            stats += node->entity->draw(node->primitiveType, camera, model, frustumCull, materialToUse);
 
 #ifdef GL_CORE
             // Restore polygon mode

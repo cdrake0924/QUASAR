@@ -481,9 +481,9 @@ Texture* Model::loadMaterialTexture(aiMaterial const* aiMat, aiString aiTextureP
     }
 }
 
-void Model::bindMaterial(Scene& scene, const glm::mat4& model, const Material* overrideMaterial, const Texture* prevIDMap) {
+void Model::bindMaterial(Scene& scene, Buffer& pointLightsUBO, const Material* overrideMaterial, const Texture* prevIDMap) {
     for (auto& mesh : meshes) {
-        mesh->bindMaterial(scene, model, overrideMaterial, prevIDMap);
+        mesh->bindMaterial(scene, pointLightsUBO, overrideMaterial, prevIDMap);
     }
 }
 

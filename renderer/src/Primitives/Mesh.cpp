@@ -195,14 +195,14 @@ void Mesh::setMaterialCameraParams(const Camera& camera, const Material* materia
     material->getShader()->setFloat("camera.far", camera.getFar());
 }
 
-void Mesh::bindMaterial(Scene& scene, const glm::mat4& model, const Material* overrideMaterial, const Texture* prevIDMap) {
+void Mesh::bindMaterial(Scene& scene, Buffer& pointLightsUBO, const Material* overrideMaterial, const Texture* prevIDMap) {
     auto* materialToUse = overrideMaterial != nullptr ? overrideMaterial : material;
     materialToUse->bind();
 
     auto shader = materialToUse->getShader();
 
     // Update material uniforms with lighting information
-    int texIdx = scene.bindMaterial(materialToUse);
+    int texIdx = scene.bindMaterial(materialToUse, pointLightsUBO);
     shader->setFloat("material.IBL", IBL);
 
     shader->setBool("peelDepth", prevIDMap != nullptr);

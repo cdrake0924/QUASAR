@@ -51,8 +51,9 @@ public:
 
 protected:
     Shader skyboxShader;
-
     FullScreenQuad outputFsQuad;
+
+    Buffer pointLightsUBO;
 
     RenderStats drawSceneImpl(Scene& scene, const Camera& camera, uint32_t clearMask);
     RenderStats drawLightsImpl(Scene& scene, const Camera& camera);

@@ -6,7 +6,7 @@ using namespace quasar;
 std::shared_ptr<Shader> DeferredLightingMaterial::shader = nullptr;
 
 DeferredLightingMaterial::DeferredLightingMaterial() {
-    if (shader == nullptr) {
+    if (getShader() == nullptr) {
         ShaderDataCreateParams deferredLightingMatParams{
             .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
             .vertexCodeSize = SHADER_BUILTIN_POSTPROCESS_VERT_len,

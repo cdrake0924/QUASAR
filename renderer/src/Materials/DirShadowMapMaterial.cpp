@@ -5,7 +5,7 @@ using namespace quasar;
 std::shared_ptr<Shader> DirShadowMapMaterial::shader = nullptr;
 
 DirShadowMapMaterial::DirShadowMapMaterial() {
-    if (shader == nullptr) {
+    if (getShader() == nullptr) {
         ShaderDataCreateParams dirShadowMapParams{
             .vertexCodeData = SHADER_BUILTIN_DIRSHADOW_VERT,
             .vertexCodeSize = SHADER_BUILTIN_DIRSHADOW_VERT_len,
