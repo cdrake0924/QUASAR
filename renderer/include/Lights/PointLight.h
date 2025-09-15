@@ -31,7 +31,7 @@ public:
 #if defined(PLATFORM_GLES) // We limit GLES to 4 point lights due to performance constraints
     static const uint maxPointLights = 4;
 #elif defined(__APPLE__) // Apple platforms have a limit on number of texture units
-    static const uint maxPointLights = 6;
+    static const uint maxPointLights = 5;
 #else
     static const uint maxPointLights = 8;
 #endif
