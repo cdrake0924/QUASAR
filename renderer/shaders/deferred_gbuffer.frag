@@ -157,7 +157,8 @@ void main() {
             discard;
 #ifdef EDP
         vec3 fragViewPos = fsIn.FragPosView;
-        if (!inPVHV(pixelCoords, fragViewPos, q))
+        float prevAlpha = uintBitsToFloat(q.w);
+        if ((prevAlpha >= (1.0 - epsilon)) && !inPVHV(pixelCoords, fragViewPos, q))
             discard;
 #endif
     }

@@ -1,3 +1,4 @@
+#include "constants.glsl"
 #include "camera.glsl"
 
 layout(location = 0) out vec4 FragColor;
@@ -29,9 +30,6 @@ uniform struct Material {
     // Material textures
     sampler2D baseColorMap; // 0
 } material;
-
-#define MAX_DEPTH 0.9999
-const float PI = 3.1415926535897932384626433832795;
 
 #ifdef DO_DEPTH_PEELING
 uniform bool peelDepth;
@@ -107,7 +105,8 @@ void main() {
             discard;
 #ifdef EDP
         vec3 fragViewPos = fsIn.FragPosView;
-        if (!inPVHV(pixelCoords, fragViewPos, q))
+        float prevAlpha = uintBitsToFloat(q.w);
+        if ((prevAlpha >= (1.0 - epsilon)) && !inPVHV(pixelCoords, fragViewPos, q))
             discard;
 #endif
     }
