@@ -44,9 +44,9 @@ public:
     void resize(size_t newNumProxies);
 
 #ifdef GL_CORE
-    size_t writeToMemory(std::vector<char>& outputData);
+    size_t writeToMemory(std::vector<char>& outputData, bool applyDeltaEncoding = true);
 #endif
-    size_t loadFromMemory(const std::vector<char>& inputData);
+    size_t loadFromMemory(std::vector<char>& inputData, bool applyDeltaEncoding = true);
 
 private:
 #if defined(HAS_CUDA)

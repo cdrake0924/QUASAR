@@ -14,7 +14,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
     , proxiesURL(proxiesURL)
     , remoteCamera(quadSet.getSize())
     , remoteCameraWideFOV(quadSet.getSize())
-    , atlasVideoTexture({
+    , videoAtlasTexture({
         .width = 2 * quadSet.getSize().x,
         .height = 3 * quadSet.getSize().y,
         .internalFormat = GL_RGB,
@@ -25,7 +25,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     }, videoURL)
-    , alphaTexture({
+    , alphaAtlasTexture({
         .width = 2 * quadSet.getSize().x,
         .height = 3 * quadSet.getSize().y,
         .internalFormat = GL_R8,
@@ -36,7 +36,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
-    , residualFrameMesh(quadSet, atlasVideoTexture, alphaTexture)
+    , residualFrameMesh(quadSet, videoAtlasTexture, alphaAtlasTexture)
     , bufferPool(quadSet.getSize(), maxLayers)
     , DataReceiverTCP(proxiesURL)
 {
@@ -49,7 +49,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
     // Untile texture atlas
     glm::vec4 textureExtent(0.0f, 0.0f, 0.5f, 1.0f / 3.0f);
     for (int layer = 0; layer < maxLayers; layer++) {
-        meshes.emplace_back(quadSet, atlasVideoTexture, alphaTexture, textureExtent);
+        meshes.emplace_back(quadSet, videoAtlasTexture, alphaAtlasTexture, textureExtent);
 
         textureExtent.x += 0.5f;
         if (textureExtent.x >= 1.0f) {
@@ -98,7 +98,7 @@ QuadFrame::FrameType QUASARReceiver::recvData() {
         return frameType;
     }
 
-    if (!atlasVideoTexture.containsFrames()) {
+    if (!videoAtlasTexture.containsFrames()) {
         return frameType;
     }
 
@@ -110,7 +110,7 @@ QuadFrame::FrameType QUASARReceiver::recvData() {
             return frameType;
         }
 
-        if (atlasVideoTexture.getLatestPoseID() < framePending->poseID) { // Video is behind, wait until video catches up
+        if (videoAtlasTexture.getLatestPoseID() < framePending->poseID) { // Video is behind, wait until video catches up
             return frameType;
         }
 
@@ -120,14 +120,14 @@ QuadFrame::FrameType QUASARReceiver::recvData() {
     }
 
     // If video is ahead, search for a previous frame
-    if (!atlasVideoTexture.containsFrameWithPoseID(frame->poseID)) {
+    if (!videoAtlasTexture.containsFrameWithPoseID(frame->poseID)) {
         // This means we dropped a video frame. We have to wait for the next reference frame to resync
         waitUntilReferenceFrame = true;
     }
     else if (!waitUntilReferenceFrame || (waitUntilReferenceFrame && frame->frameType == QuadFrame::FrameType::REFERENCE)) {
         // Update texture
-        atlasVideoTexture.bind();
-        atlasVideoTexture.draw(frame->poseID);
+        videoAtlasTexture.bind();
+        videoAtlasTexture.draw(frame->poseID);
 
         // Reconstruct meshes from frame
         frameType = reconstructFrame(frame);
@@ -153,7 +153,11 @@ QuadFrame::FrameType QUASARReceiver::loadFromFiles(const Path& dataPath) {
 
     // Read color data
     Path colorFileName = dataPath / "color.jpg";
-    atlasVideoTexture.loadFromFile(colorFileName, true, false);
+    videoAtlasTexture.loadFromFile(colorFileName, true, false);
+
+    // Read alpha data
+    Path alphaFileName = dataPath / "alpha.png";
+    alphaAtlasTexture.loadFromFile(alphaFileName, true, false);
 
     // Read previous camera data
     Path cameraFileNamePrev = dataPath / "camera_prev.bin";

@@ -33,8 +33,8 @@ public:
     std::string proxiesURL;
     std::string videoURL;
 
-    VideoTexture atlasVideoTexture;
-    Texture alphaTexture;
+    VideoTexture videoAtlasTexture;
+    Texture alphaAtlasTexture;
 
     QuadsReceiver(QuadSet& quadSet, const std::string& videoURL = "", const std::string& proxiesURL = "");
     QuadsReceiver(QuadSet& quadSet, float remoteFOV, const std::string& videoURL = "", const std::string& proxiesURL = "");

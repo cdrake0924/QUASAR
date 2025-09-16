@@ -17,7 +17,6 @@ QuadStreamReceiver::QuadStreamReceiver(QuadSet& quadSet, uint maxViews)
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     };
-
     TextureDataCreateParams alphaTexParams = {
         .internalFormat = GL_R8,
         .format = GL_RED,
@@ -29,14 +28,14 @@ QuadStreamReceiver::QuadStreamReceiver(QuadSet& quadSet, uint maxViews)
 
     remoteCameras.reserve(maxViews);
     colorTextures.reserve(maxViews);
-    alphaTextures.reserve(maxViews);
+    alphaAtlasTextures.reserve(maxViews);
     meshes.reserve(maxViews);
     for (int view = 0; view < maxViews; view++) {
         remoteCameras.emplace_back(quadSet.getSize());
 
         colorTextures.emplace_back(colorTexParams);
-        alphaTextures.emplace_back(alphaTexParams);
-        meshes.emplace_back(quadSet, colorTextures[view], alphaTextures[view]);
+        alphaAtlasTextures.emplace_back(alphaTexParams);
+        meshes.emplace_back(quadSet, colorTextures[view], alphaAtlasTextures[view]);
     }
 
     threadPool = std::make_unique<BS::thread_pool<>>(2);

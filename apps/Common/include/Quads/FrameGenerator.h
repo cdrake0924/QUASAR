@@ -27,6 +27,10 @@ public:
         double compressTimeMs = 0.0;
     } stats;
 
+    struct Params {
+        bool applyDeltaEncoding = true;
+    } params;
+
     FrameGenerator(QuadSet& quadSet);
 
     std::shared_ptr<QuadsGenerator> getQuadsGenerator() { return quadsGenerator; }

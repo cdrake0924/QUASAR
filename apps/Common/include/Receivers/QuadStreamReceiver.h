@@ -61,7 +61,7 @@ private:
 
     QuadMaterial quadMaterial;
     std::vector<Texture> colorTextures;
-    std::vector<Texture> alphaTextures;
+    std::vector<Texture> alphaAtlasTextures;
     std::vector<QuadMesh> meshes;
 
     std::unique_ptr<BS::thread_pool<>> threadPool;

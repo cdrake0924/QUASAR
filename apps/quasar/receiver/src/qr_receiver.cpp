@@ -249,9 +249,9 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             const int columns = 3;
-            for (int i = 0; i < maxLayers; i++) {
-                ImGui::Checkbox(("Show Layer " + std::to_string(i)).c_str(), &showLayers[i]);
-                if ((i + 1) % columns != 0) {
+            for (int layer = 0; layer < maxLayers; layer++) {
+                ImGui::Checkbox(("Show Layer " + std::to_string(layer)).c_str(), &showLayers[layer]);
+                if ((layer + 1) % columns != 0) {
                     ImGui::SameLine();
                 }
             }
@@ -289,7 +289,7 @@ int main(int argc, char** argv) {
         if (showVideoPreviewWindow) {
             flags = 0;
             ImGui::Begin("Texture Atlas Video", 0, flags);
-            ImGui::Image((void*)(intptr_t)(quasarReceiver.atlasVideoTexture),
+            ImGui::Image((void*)(intptr_t)(quasarReceiver.videoAtlasTexture),
                          ImVec2(430, 510), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }

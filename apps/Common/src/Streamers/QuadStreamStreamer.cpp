@@ -38,6 +38,7 @@ QuadStreamStreamer::QuadStreamStreamer(
     quadsGenerator->params.flattenThreshold = 0.05f; // This has been changed from original paper
     quadsGenerator->params.proxySimilarityThreshold = 0.1f;
     quadsGenerator->params.maxIterForceMerge = 1; // Only merge once (similar-ish to doing quad splitting)
+    frameGenerator.params.applyDeltaEncoding = false;
 
     RenderTargetCreateParams rtParams = {
         .width = quadSet.getSize().x,
