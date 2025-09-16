@@ -58,8 +58,8 @@ public:
         , idTexture({
             .width = width,
             .height = height,
-            .internalFormat = GL_RGB32UI,
-            .format = GL_RGB_INTEGER,
+            .internalFormat = GL_RGBA32UI,
+            .format = GL_RGBA_INTEGER,
             .type = GL_UNSIGNED_INT,
             .wrapS = params.wrapS,
             .wrapT = params.wrapT,

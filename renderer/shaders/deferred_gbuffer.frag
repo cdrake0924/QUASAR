@@ -8,7 +8,7 @@ layout(location = 3) out vec4 gEmissive;
 layout(location = 4) out vec3 gNormal;
 layout(location = 5) out vec3 gPosition;
 layout(location = 6) out vec4 gLightPosition;
-layout(location = 7) out uvec3 gIDs;
+layout(location = 7) out uvec4 gIDs;
 
 in VertexData {
     flat uint DrawID;
@@ -218,6 +218,6 @@ void main() {
 #endif
     gPosition = fsIn.FragPosWorld;
     gLightPosition = fsIn.FragPosLightSpace;
-    gIDs = uvec3(fsIn.DrawID, gl_PrimitiveID, 0);
+    gIDs = uvec4(fsIn.DrawID, gl_PrimitiveID, 0, floatBitsToUint(alpha));
     gIDs.z = floatBitsToUint((-fsIn.FragPosView.z - camera.near) / (camera.far - camera.near));
 }
