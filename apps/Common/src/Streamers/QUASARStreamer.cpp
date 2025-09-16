@@ -236,6 +236,13 @@ uint QUASARStreamer::getNumTriangles() const {
 }
 
 void QUASARStreamer::addMeshesToScene(Scene& localScene) {
+    // Add in reverse order to have correct layering
+    for (int layer = maxLayers - 2; layer >= 0; layer--) {
+        localScene.addChildNode(&nodesHidLayer[layer]);
+        localScene.addChildNode(&wireframesHidLayer[layer]);
+        localScene.addChildNode(&depthNodesHidLayer[layer]);
+    }
+
     for (int i = 0; i < meshScenes.size(); i++) {
         localScene.addChildNode(&referenceFrameNodesLocal[i]);
         localScene.addChildNode(&referenceFrameWireframesLocal[i]);
@@ -243,12 +250,6 @@ void QUASARStreamer::addMeshesToScene(Scene& localScene) {
     localScene.addChildNode(&residualFrameNode);
     localScene.addChildNode(&residualFrameWireframesLocal);
     localScene.addChildNode(&depthNode);
-
-    for (int layer = 0; layer < maxLayers - 1; layer++) {
-        localScene.addChildNode(&nodesHidLayer[layer]);
-        localScene.addChildNode(&wireframesHidLayer[layer]);
-        localScene.addChildNode(&depthNodesHidLayer[layer]);
-    }
 }
 
 void QUASARStreamer::setViewSphereDiameter(float viewSphereDiameter) {

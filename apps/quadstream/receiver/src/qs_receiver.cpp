@@ -101,7 +101,8 @@ int main(int argc, char** argv) {
     // Create node and wireframe node
     std::vector<Node> nodes(maxViews);
     std::vector<Node> nodeWireframes(maxViews);
-    for (int view = 0; view < maxViews; view++) {
+    // Add in reverse order to have correct layering
+    for (int view = maxViews - 1; view >= 0; view--) {
         nodes[view].setEntity(&quadstreamReceiver.getMesh(view));
         nodes[view].frustumCulled = false;
         scene.addChildNode(&nodes[view]);

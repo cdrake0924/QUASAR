@@ -108,7 +108,8 @@ int main(int argc, char** argv) {
     // Create node and wireframe node
     std::vector<Node> refNodes(maxLayers);
     std::vector<Node> refNodeWireframes(maxLayers);
-    for (int layer = 0; layer < maxLayers; layer++) {
+    // Add in reverse order to have correct layering
+    for (int layer = maxLayers - 1; layer >= 0; layer--) {
         refNodes[layer].setEntity(&quasarReceiver.getMesh(layer));
         refNodes[layer].frustumCulled = false;
         scene.addChildNode(&refNodes[layer]);
