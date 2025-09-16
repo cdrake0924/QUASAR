@@ -46,8 +46,8 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
     outputData.resize(maxDataSize);
     size_t bufferOffset = 0;
 
-    std::memcpy(outputData.data(), &numProxies, sizeof(size_t));
-    bufferOffset += sizeof(size_t);
+    std::memcpy(outputData.data(), &numProxies, sizeof(uint32_t));
+    bufferOffset += sizeof(uint32_t);
 
     uint32_t* normals = reinterpret_cast<uint32_t*>(outputData.data() + bufferOffset);
     bufferOffset += numProxies * sizeof(uint32_t);
@@ -126,8 +126,8 @@ size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDelta
     size_t bufferOffset = 0;
     void* ptr;
 
-    size_t newNumProxies = *reinterpret_cast<const size_t*>(inputData.data());
-    bufferOffset += sizeof(size_t);
+    uint32_t newNumProxies = *reinterpret_cast<const uint32_t*>(inputData.data());
+    bufferOffset += sizeof(uint32_t);
 
     uint32_t* normals = reinterpret_cast<uint32_t*>(inputData.data() + bufferOffset);
     bufferOffset += newNumProxies * sizeof(uint32_t);

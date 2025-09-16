@@ -50,7 +50,8 @@ int main(int argc, char** argv) {
     config.width = windowSize.x;
     config.height = windowSize.y;
 
-    config.enableVSync = !args::get(novsync);
+    config.enableVSync = !args::get(novsync) && !saveImages;
+    config.showWindow = !args::get(saveImages);
 
     Path sceneFile = args::get(sceneFileIn);
     Path cameraPathFile = args::get(cameraPathFileIn);
@@ -88,14 +89,31 @@ int main(int argc, char** argv) {
         .minFilter = GL_LINEAR,
         .magFilter = GL_LINEAR,
     }, renderer, tonemapper, outputPath, config.targetFramerate);
+    CameraAnimator cameraAnimator(cameraPathFile);
+
+    if (saveImages) {
+        recorder.setTargetFrameRate(-1 /* unlimited */);
+        recorder.setFormat(Recorder::OutputFormat::PNG);
+        recorder.start();
+
+        cameraAnimator.copyPoseToCamera(camera);
+    }
 
     float exposure = 1.0f;
     int shaderIndex = 0;
     bool recording = false;
+
+    bool runAnimations = cameraPathFileIn;
+    float animationInterval = (MILLISECONDS_IN_SECOND / 30.0f);
+    double totalTime = 0.0;
+    double totalDT = 0.0;
+    double lastRenderTime = -INFINITY;
+    bool updateClient = !saveImages;
+
     RenderStats renderStats;
     guiManager->onRender([&](double now, double dt) {
         static bool showFPS = true;
-        static bool showUI = true;
+        static bool showUI = !saveImages;
         static bool showLayerPreviews = false;
         static bool showFrameCaptureWindow = false;
         static char fileNameBase[256] = "screenshot";
@@ -103,6 +121,11 @@ int main(int argc, char** argv) {
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
+        static bool showAnimationsWindow = false;
+
+        static int allowedFramerates[] = {1, 5, 10, 24, 30, 60};
+        static const char* framerateLabels[] = {"1 FPS", "5 FPS", "10 FPS", "24 FPS", "30 FPS", "60 FPS"};
+        static int currentFramerateIndex = 4;
 
         static bool showSkyBox = true;
 
@@ -122,6 +145,10 @@ int main(int argc, char** argv) {
             ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
             ImGui::MenuItem("Record", 0, &showRecordWindow);
             ImGui::MenuItem("Layer Previews", 0, &showLayerPreviews);
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Animations")) {
+            ImGui::MenuItem("Animations", 0, &showAnimationsWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -309,6 +336,34 @@ int main(int argc, char** argv) {
                 ImGui::End();
             }
         }
+
+        if (showAnimationsWindow) {
+            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 90), ImGuiCond_FirstUseEver);
+            ImGui::Begin("Animations", &showAnimationsWindow);
+
+            ImGui::TextColored(ImVec4(0,1,0,1), "Current Time: %.3f s", totalTime);
+
+            ImGui::Separator();
+
+            ImGui::Text("Animation Framerate:");
+            int animationFramerate = allowedFramerates[currentFramerateIndex];
+            if (ImGui::Combo("", &currentFramerateIndex, framerateLabels, IM_ARRAYSIZE(framerateLabels))) {
+                animationFramerate = allowedFramerates[currentFramerateIndex];
+                animationInterval = MILLISECONDS_IN_SECOND / static_cast<float>(animationFramerate);
+            }
+
+            ImGui::Separator();
+
+            if (!runAnimations) {
+                if (ImGui::Button("Play", ImVec2(ImGui::GetContentRegionAvail().x, 0))) { runAnimations = true; }
+            }
+            else {
+                if (ImGui::Button("Pause", ImVec2(ImGui::GetContentRegionAvail().x, 0))) { runAnimations = false; }
+            }
+
+            ImGui::End();
+        }
     });
 
     app.onResize([&](uint width, uint height) {
@@ -357,12 +412,33 @@ int main(int argc, char** argv) {
         if (keys.ESC_PRESSED) {
             window->close();
         }
-        auto scroll = window->getScrollOffset();
-        camera.processScroll(scroll.y);
-        camera.processKeyboard(keys, dt);
+
+        if (cameraAnimator.running) {
+            updateClient = cameraAnimator.update(!cameraPathFileIn ? dt : 1.0 / MILLISECONDS_IN_SECOND);
+            now = cameraAnimator.now;
+            dt = cameraAnimator.dt;
+            if (updateClient) {
+                cameraAnimator.copyPoseToCamera(camera);
+            }
+        }
+        else {
+            auto scroll = window->getScrollOffset();
+            camera.processScroll(scroll.y);
+            camera.processKeyboard(keys, dt);
+        }
+        if (runAnimations) {
+            totalTime += dt;
+            totalDT += dt;
+        }
 
         // Update all animations
-        scene.updateAnimations(dt);
+        if (animationInterval > 0.0 && (now - lastRenderTime) >= (animationInterval - 1.0) / MILLISECONDS_IN_SECOND) {
+            if (runAnimations) {
+                scene.updateAnimations(totalDT);
+                totalDT = 0.0;
+            }
+            lastRenderTime = now;
+        }
 
         // Render all objects in scene
         renderStats = renderer.drawObjects(scene, camera);
@@ -388,6 +464,22 @@ int main(int argc, char** argv) {
         else if (shaderIndex == 5) {
             showIDsEffect.showObjectIDs(false);
             showIDsEffect.drawToScreen(renderer);
+        }
+
+        if (!updateClient) {
+            return;
+        }
+
+        if (cameraPathFileIn) {
+            recorder.captureFrame(camera);
+
+            if (!cameraAnimator.running) {
+                recorder.stop();
+                window->close();
+            }
+        }
+        else if (recording) {
+            recorder.captureFrame(camera);
         }
     });
 
