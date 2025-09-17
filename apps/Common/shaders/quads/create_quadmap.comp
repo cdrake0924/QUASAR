@@ -30,7 +30,7 @@ layout(std430, binding = 1) writeonly buffer NormalSphericalsBufferOutput {
 };
 
 layout(std430, binding = 2) writeonly buffer DepthsBufferOutput {
-    float depthsOutput[];
+    uint depthsOutput[];
 };
 
 layout(std430, binding = 3) writeonly buffer MetadatasBufferOutput {
@@ -322,7 +322,7 @@ void storeQuadMap(in ivec2 pixelCoord, in QuadMapData quadMapData) {
 
     uint index = uint(pixelCoord.y) * uint(quadMapSize.x) + uint(pixelCoord.x);
     normalSphericalsOutput[index] = quadMapDataPacked.normalSpherical;
-    depthsOutput[index] = quadMapDataPacked.depth;
+    depthsOutput[index] = packDepthUNORM16(quadMapDataPacked.depth);
     metadatasOutput[index] = quadMapDataPacked.metadata;
 }
 

@@ -131,3 +131,12 @@ vec3 unpackSphericalToNormal(uint packedNormal) {
 
     return normalize(vec3(x, y, z));
 }
+
+uint packDepthUNORM16(float depth) {
+    depth = clamp(depth, 0.0, 1.0);
+    return uint(round(depth * 65535.0));
+}
+
+float unpackDepthUNORM16(uint bits) {
+    return float(bits & 0xFFFFu) / 65535.0;
+}

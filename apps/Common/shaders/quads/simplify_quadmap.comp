@@ -8,7 +8,7 @@ layout(std430, binding = 0) readonly buffer NormalSphericalsBufferInput {
 };
 
 layout(std430, binding = 1) readonly buffer DepthsBufferInput {
-    float depthsInput[];
+    uint depthsInput[];
 };
 
 layout(std430, binding = 2) buffer MetadatasBufferInput {
@@ -20,7 +20,7 @@ layout(std430, binding = 3) writeonly buffer NormalSphericalsBufferOutput {
 };
 
 layout(std430, binding = 4) writeonly buffer DepthsBufferOutput {
-    float depthsOutput[];
+    uint depthsOutput[];
 };
 
 layout(std430, binding = 5) writeonly buffer MetadatasBufferOutput {
@@ -100,7 +100,7 @@ QuadMapData loadInputQuadMap(ivec2 pixelCoord) {
 
     QuadMapDataPacked quadMapDataPacked;
     quadMapDataPacked.normalSpherical = normalSphericalsInput[index];
-    quadMapDataPacked.depth = depthsInput[index];
+    quadMapDataPacked.depth = unpackDepthUNORM16(depthsInput[index]);
     quadMapDataPacked.metadata = metadatasInput[index];
 
     QuadMapData quadMapData;
@@ -129,7 +129,7 @@ void storeQuadMap(in ivec2 pixelCoord, in QuadMapData quadMapData) {
 
     uint index = uint(pixelCoord.y) * uint(outputQuadMapSize.x) + uint(pixelCoord.x);
     normalSphericalsOutput[index] = quadMapDataPacked.normalSpherical;
-    depthsOutput[index] = quadMapDataPacked.depth;
+    depthsOutput[index] = packDepthUNORM16(quadMapDataPacked.depth);
     metadatasOutput[index] = quadMapDataPacked.metadata;
 }
 
