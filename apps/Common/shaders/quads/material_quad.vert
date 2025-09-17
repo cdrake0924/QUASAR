@@ -2,7 +2,6 @@
 
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aTexCoord3D;
-layout(location = 2) in vec2 aExpandedUV;
 
 #ifdef ANDROID
 layout(num_views = 2) in;
@@ -11,7 +10,6 @@ layout(num_views = 2) in;
 out VertexData {
     flat uint DrawID;
     vec3 TexCoord3D;
-    vec2 ExpandedUV;
     vec3 FragPos;
 } vsOut;
 
@@ -24,7 +22,6 @@ void main() {
     vsOut.DrawID = drawID;
     vsOut.FragPos = vec3(model * vec4(aPos, 1.0));
     vsOut.TexCoord3D = aTexCoord3D;
-    vsOut.ExpandedUV = aExpandedUV;
 
 #ifndef ANDROID
     gl_Position = camera.projection * camera.view * vec4(vsOut.FragPos, 1.0);

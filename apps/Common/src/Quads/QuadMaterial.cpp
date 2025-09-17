@@ -8,8 +8,6 @@ std::shared_ptr<Shader> QuadMaterial::shader = nullptr;
 QuadMaterial::QuadMaterial(const QuadMaterialCreateParams& params)
     : baseColor(params.baseColor)
     , baseColorFactor(params.baseColorFactor)
-    , alphaMode(params.alphaMode)
-    , maskThreshold(params.maskThreshold)
 {
     TextureFileCreateParams textureParams{
         .wrapS = GL_REPEAT,
@@ -56,8 +54,6 @@ void QuadMaterial::bind() const {
     shader->bind();
     shader->setVec4("material.baseColor", baseColor);
     shader->setVec4("material.baseColorFactor", baseColorFactor);
-    shader->setInt("material.alphaMode", static_cast<int>(alphaMode));
-    shader->setFloat("material.maskThreshold", maskThreshold);
 
     std::string name = "material.baseColorMap";
     glActiveTexture(GL_TEXTURE0);

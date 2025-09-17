@@ -92,26 +92,6 @@ bool inPVHV(ivec2 pixelCoords, vec3 fragViewPos, uvec4 q) {
 #endif
 
 void main() {
-#ifdef DO_DEPTH_PEELING
-    if (peelDepth) {
-        ivec2 pixelCoords = ivec2(gl_FragCoord.xy);
-        uvec4 q = texelFetch(prevIDMap, pixelCoords, 0);
-
-        float currDepth = -fsIn.FragPosView.z;
-        float prevDepthNormalized = uintBitsToFloat(q.z);
-        if (prevDepthNormalized == 0 || prevDepthNormalized >= MAX_DEPTH)
-            discard;
-        if (-fsIn.FragPosView.z <= mix(camera.near, camera.far, prevDepthNormalized + DP_EPSILON))
-            discard;
-#ifdef EDP
-        vec3 fragViewPos = fsIn.FragPosView;
-        float prevAlpha = uintBitsToFloat(q.w);
-        if ((prevAlpha >= (1.0 - epsilon)) && !inPVHV(pixelCoords, fragViewPos, q))
-            discard;
-#endif
-    }
-#endif
-
     vec4 baseColor;
     if (material.hasBaseColorMap) {
         baseColor = texture(material.baseColorMap, fsIn.TexCoord) * material.baseColorFactor;
@@ -125,8 +105,28 @@ void main() {
     if (alpha < material.maskThreshold)
         discard;
 
+#ifdef DO_DEPTH_PEELING
+    if (peelDepth) {
+        ivec2 pixelCoords = ivec2(gl_FragCoord.xy);
+        uvec4 q = texelFetch(prevIDMap, pixelCoords, 0);
+
+        float currDepth = -fsIn.FragPosView.z;
+        float prevDepthNormalized = uintBitsToFloat(q.z);
+        if (prevDepthNormalized == 0 || prevDepthNormalized >= MAX_DEPTH)
+            discard;
+        if (-fsIn.FragPosView.z <= mix(camera.near, camera.far, prevDepthNormalized + DP_EPSILON))
+            discard;
+#ifdef EDP
+        vec3 fragViewPos = fsIn.FragPosView;
+        int prevAlphaMode = int(q.w);
+        if ((prevAlphaMode == ALPHA_OPAQUE) && !inPVHV(pixelCoords, fragViewPos, q))
+            discard;
+#endif
+    }
+#endif
+
     FragColor = vec4(baseColor.rgb, alpha);
     FragNormal = vec4(normalize(fsIn.Normal), 1.0);
-    FragIDs = uvec4(fsIn.DrawID, gl_PrimitiveID, 0, 1);
+    FragIDs = uvec4(fsIn.DrawID, gl_PrimitiveID, 0, material.alphaMode);
     FragIDs.z = floatBitsToUint((-fsIn.FragPosView.z - camera.near) / (camera.far - camera.near));
 }

@@ -157,8 +157,8 @@ void main() {
             discard;
 #ifdef EDP
         vec3 fragViewPos = fsIn.FragPosView;
-        float prevAlpha = uintBitsToFloat(q.w);
-        if ((prevAlpha >= (1.0 - epsilon)) && !inPVHV(pixelCoords, fragViewPos, q))
+        int prevAlphaMode = int(q.w);
+        if ((prevAlphaMode == ALPHA_OPAQUE) && !inPVHV(pixelCoords, fragViewPos, q))
             discard;
 #endif
     }
@@ -219,6 +219,6 @@ void main() {
 #endif
     gPosition = fsIn.FragPosWorld;
     gLightPosition = fsIn.FragPosLightSpace;
-    gIDs = uvec4(fsIn.DrawID, gl_PrimitiveID, 0, floatBitsToUint(alpha));
+    gIDs = uvec4(fsIn.DrawID, gl_PrimitiveID, 0, material.alphaMode);
     gIDs.z = floatBitsToUint((-fsIn.FragPosView.z - camera.near) / (camera.far - camera.near));
 }
