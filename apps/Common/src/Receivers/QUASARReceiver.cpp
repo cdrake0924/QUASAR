@@ -186,13 +186,14 @@ QuadFrame::FrameType QUASARReceiver::loadFromFiles(const Path& dataPath) {
     }
     stats.loadTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
+    // Decompress reference frame
     startTime = timeutils::getTimeMicros();
     frameInUse->frameType = QuadFrame::FrameType::REFERENCE;
-    frameInUse->decompressReferenceFrames(threadPool, referenceFrames);
+    size_t refSize = frameInUse->decompressReferenceHiddenLayersWideFOV(threadPool, referenceFrames);
     stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update reference GPU buffers
-    reconstructFrame(frameInUse);
+    if (refSize > 0) reconstructFrame(frameInUse);
 
     startTime = timeutils::getTimeMicros();
 
@@ -206,13 +207,15 @@ QuadFrame::FrameType QUASARReceiver::loadFromFiles(const Path& dataPath) {
     residualFrame.loadFromFiles(dataPath);
     stats.loadTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
+    // Decompress residual frame
     startTime = timeutils::getTimeMicros();
     frameInUse->frameType = QuadFrame::FrameType::RESIDUAL;
-    frameInUse->decompressReferenceAndResidualFrames(threadPool, referenceFrames, residualFrame);
+    size_t resSize = frameInUse->decompressResidualFrame(threadPool, residualFrame);
+    frameInUse->decompressHiddenLayersWideFOV(threadPool, referenceFrames);
     stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update residual GPU buffers
-    reconstructFrame(frameInUse);
+    if (resSize > 0) reconstructFrame(frameInUse);
 
     return frameInUse->frameType;
 }
@@ -309,10 +312,10 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
     // Decompress (asynchronous)
     startTime = timeutils::getTimeMicros();
     if (header.frameType == QuadFrame::FrameType::REFERENCE) {
-        frame->decompressReferenceFrames(threadPool, referenceFrames);
+        frame->decompressReferenceHiddenLayersWideFOV(threadPool, referenceFrames);
     }
     else {
-        frame->decompressReferenceAndResidualFrames(threadPool, referenceFrames, residualFrame);
+        frame->decompressResidualHiddenLayersWideFOV(threadPool, referenceFrames, residualFrame);
     }
     stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 

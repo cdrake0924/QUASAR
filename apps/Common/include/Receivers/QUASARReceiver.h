@@ -112,7 +112,7 @@ private:
         {}
         ~Frame() = default;
 
-        size_t decompressReferenceFrames(std::unique_ptr<BS::thread_pool<>>& threadPool,
+        size_t decompressReferenceHiddenLayersWideFOV(std::unique_ptr<BS::thread_pool<>>& threadPool,
                                          std::vector<ReferenceFrame>& referenceFrames) {
             std::vector<std::future<size_t>> futures;
             for (int layer = 0; layer < referenceFrames.size(); layer++) {
@@ -129,7 +129,45 @@ private:
             return outputSize;
         }
 
-        size_t decompressReferenceAndResidualFrames(std::unique_ptr<BS::thread_pool<>>& threadPool,
+        size_t decompressResidualFrame(std::unique_ptr<BS::thread_pool<>>& threadPool,
+                                      ResidualFrame& residualFrame) {
+            std::vector<std::future<size_t>> futures;
+            futures.emplace_back(threadPool->submit_task([&]() {
+                return residualFrame.decompressUpdatedDepthOffsets(bufferPool.uncompressedOffsets[0]);
+            }));
+            futures.emplace_back(threadPool->submit_task([&]() {
+                return residualFrame.decompressRevealedDepthOffsets(bufferPool.uncompressedOffsetsRevealed);
+            }));
+            futures.emplace_back(threadPool->submit_task([&]() {
+                return residualFrame.decompressUpdatedQuads(bufferPool.uncompressedQuads[0]);
+            }));
+            futures.emplace_back(threadPool->submit_task([&]() {
+                return residualFrame.decompressRevealedQuads(bufferPool.uncompressedQuadsRevealed);
+            }));
+
+            size_t outputSize = 0;
+            for (auto& f : futures) outputSize += f.get();
+            return outputSize;
+        }
+
+        size_t decompressHiddenLayersWideFOV(std::unique_ptr<BS::thread_pool<>>& threadPool,
+                                                    std::vector<ReferenceFrame>& referenceFrames) {
+            std::vector<std::future<size_t>> futures;
+            for (int layer = 1; layer < referenceFrames.size(); layer++) {
+                futures.emplace_back(threadPool->submit_task([&, layer]() {
+                    return referenceFrames[layer].decompressDepthOffsets(bufferPool.uncompressedOffsets[layer]);
+                }));
+                futures.emplace_back(threadPool->submit_task([&, layer]() {
+                    return referenceFrames[layer].decompressQuads(bufferPool.uncompressedQuads[layer]);
+                }));
+            }
+
+            size_t outputSize = 0;
+            for (auto& f : futures) outputSize += f.get();
+            return outputSize;
+        }
+
+        size_t decompressResidualHiddenLayersWideFOV(std::unique_ptr<BS::thread_pool<>>& threadPool,
                                                     std::vector<ReferenceFrame>& referenceFrames,
                                                     ResidualFrame& residualFrame) {
             std::vector<std::future<size_t>> futures;

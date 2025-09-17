@@ -256,12 +256,6 @@ int main(int argc, char** argv) {
                 }
             }
 
-            ImGui::Separator();
-
-            if (ImGui::Button("Reload Data", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                quasarReceiver.loadFromFiles(dataPath);
-            }
-
             ImGui::End();
         }
 

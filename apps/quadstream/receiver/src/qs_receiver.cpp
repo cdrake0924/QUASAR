@@ -119,6 +119,8 @@ int main(int argc, char** argv) {
     quadstreamReceiver.loadFromFiles(dataPath);
     quadstreamReceiver.copyPoseToCamera(camera);
 
+    bool restrictMovementToViewBox = true;
+
     bool* showViews = new bool[maxViews];
     for (int i = 0; i < maxViews; i++) {
         showViews[i] = true;
@@ -213,6 +215,13 @@ int main(int argc, char** argv) {
             ImGui::Checkbox("Show Wireframe", &showWireframe);
 
             ImGui::Separator();
+            if (ImGui::Button("Reload Proxies", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                quadstreamReceiver.loadFromFiles(dataPath);
+            }
+
+            ImGui::Checkbox("Restrict Movement to View Box", &restrictMovementToViewBox);
+
+            ImGui::Separator();
 
             const int columns = 4;
             for (int view = 0; view < maxViews; view++) {
@@ -220,13 +229,6 @@ int main(int argc, char** argv) {
                 if ((view + 1) % columns != 0) {
                     ImGui::SameLine();
                 }
-            }
-
-            ImGui::NewLine();
-            ImGui::Separator();
-
-            if (ImGui::Button("Reload Data", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                quadstreamReceiver.loadFromFiles(dataPath);
             }
 
             ImGui::End();
@@ -307,6 +309,17 @@ int main(int argc, char** argv) {
         for (int i = 0; i < maxViews; i++) {
             nodes[i].visible = showViews[i];
             nodeWireframes[i].visible = showWireframe && showViews[i];
+        }
+
+        if (restrictMovementToViewBox) {
+            glm::vec3 remotePosition = quadstreamReceiver.getRemoteCamera().getPosition();
+            glm::vec3 position = camera.getPosition();
+            // Restrict camera position to be inside position±viewBoxSize
+            position.x = glm::clamp(position.x, remotePosition.x - quadstreamReceiver.viewBoxSize/2, remotePosition.x + quadstreamReceiver.viewBoxSize/2);
+            position.y = glm::clamp(position.y, remotePosition.y - quadstreamReceiver.viewBoxSize/2, remotePosition.y + quadstreamReceiver.viewBoxSize/2);
+            position.z = glm::clamp(position.z, remotePosition.z - quadstreamReceiver.viewBoxSize/2, remotePosition.z + quadstreamReceiver.viewBoxSize/2);
+            camera.setPosition(position);
+            camera.updateViewMatrix();
         }
 
         // Render all objects in scene

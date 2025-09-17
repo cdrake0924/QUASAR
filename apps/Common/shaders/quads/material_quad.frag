@@ -34,6 +34,9 @@ void main() {
     float alpha = 1.0;
     if (material.hasAlphaMap) {
         alpha = texture(material.alphaMap, uv).r;
+        if (alpha == 0.0) { // HACK: This means its most likely an expanded edge, so show anyways
+            alpha = 1.0;
+        }
     }
 
     FragColor = vec4(color.rgb, alpha);

@@ -97,6 +97,10 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
 #endif
 
 size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDeltaEncoding) {
+    if (inputData.size() < sizeof(uint32_t)) {
+        return 0;
+    }
+
     size_t bufferOffset = 0;
     void* ptr;
 

@@ -143,11 +143,11 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
 
     startTime = timeutils::getTimeMicros();
     frameInUse->frameType = QuadFrame::FrameType::REFERENCE;
-    frameInUse->decompressReferenceFrame(threadPool, referenceFrame);
+    size_t refSize = frameInUse->decompressReferenceFrame(threadPool, referenceFrame);
     stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update reference GPU buffers
-    reconstructFrame(frameInUse);
+    if (refSize > 0) reconstructFrame(frameInUse);
 
     startTime = timeutils::getTimeMicros();
 
@@ -162,11 +162,11 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
 
     startTime = timeutils::getTimeMicros();
     frameInUse->frameType = QuadFrame::FrameType::RESIDUAL;
-    frameInUse->decompressResidualFrame(threadPool, residualFrame);
+    size_t resSize = frameInUse->decompressResidualFrame(threadPool, residualFrame);
     stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Update residual GPU buffers
-    reconstructFrame(frameInUse);
+    if (resSize > 0) reconstructFrame(frameInUse);
 
     return frameInUse->frameType;
 }
