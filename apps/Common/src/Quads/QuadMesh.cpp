@@ -98,16 +98,14 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
         appendQuadsShader.setUint("newNumProxies", newNumProxies);
     }
     {
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, quadSet.quadBuffers.normalSphericalsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadSet.quadBuffers.depthsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, quadSet.quadBuffers.metadatasBuffer);
+        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, quadSet.quadBuffers.normalSphericalDepthBuffer);
+        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadSet.quadBuffers.metadatasBuffer);
 
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, currentQuadBuffers.normalSphericalsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, currentQuadBuffers.depthsBuffer);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.metadatasBuffer);
+        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, currentQuadBuffers.normalSphericalDepthBuffer);
+        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, currentQuadBuffers.metadatasBuffer);
 
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadCreatedFlags);
-        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, quadIndexMap);
+        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, quadCreatedFlags);
+        appendQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, quadIndexMap);
     }
     appendQuadsShader.dispatch((newNumProxies + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1, 1);
     appendQuadsShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
@@ -148,12 +146,11 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, indexBuffer);
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, indirectBuffer);
 
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, currentQuadBuffers.normalSphericalsBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.depthsBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.metadatasBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, currentQuadBuffers.normalSphericalDepthBuffer);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currentQuadBuffers.metadatasBuffer);
 
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, quadCreatedFlags);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 8, quadIndexMap);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadCreatedFlags);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 7, quadIndexMap);
 
         createQuadMeshShader.setImageTexture(0, quadSet.depthOffsets.texture, 0, GL_FALSE, 0, GL_READ_ONLY, quadSet.depthOffsets.texture.internalFormat);
     }

@@ -2,35 +2,27 @@
 
 layout(local_size_x = THREADS_PER_LOCALGROUP, local_size_y = 1, local_size_z = 1) in;
 
-layout(std430, binding = 0) readonly buffer NormalSphericalsBufferInput {
-    uint normalSphericalsInput[];
+layout(std430, binding = 0) readonly buffer normalSphericalDepthBufferInput {
+    uint normalSphericalDepthInput[];
 };
 
-layout(std430, binding = 1) readonly buffer DepthsBufferInput {
-    uint depthsInput[];
-};
-
-layout(std430, binding = 2) readonly buffer MetadatasBufferInput {
+layout(std430, binding = 1) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 3) writeonly buffer NormalSphericalsBufferOutput {
-    uint normalSphericalsOutput[];
+layout(std430, binding = 2) writeonly buffer normalSphericalDepthBufferOutput {
+    uint normalSphericalDepthOutput[];
 };
 
-layout(std430, binding = 4) writeonly buffer DepthsBufferOutput {
-    uint depthsOutput[];
-};
-
-layout(std430, binding = 5) writeonly buffer MetadatasBufferOutput {
+layout(std430, binding = 3) writeonly buffer MetadatasBufferOutput {
     uint metadatasOutput[];
 };
 
-layout(std430, binding = 6) writeonly buffer QuadCreatedFlags {
+layout(std430, binding = 4) writeonly buffer QuadCreatedFlags {
     int quadCreatedFlags[];
 };
 
-layout(std430, binding = 7) writeonly buffer QuadIndexMap {
+layout(std430, binding = 5) writeonly buffer QuadIndexMap {
     uint quadIndexMap[];
 };
 
@@ -43,15 +35,14 @@ void quadIndexStore(ivec2 pixelCoords, uint index) {
     quadIndexMap[pixelIndex] = index;
 }
 
-QuadMapData loadQuadMapInput(uint index) {
+QuadMapData loadInputQuadMap(uint index) {
     QuadMapDataPacked quadMapDataPacked;
-    quadMapDataPacked.normalSpherical = normalSphericalsInput[index];
-    quadMapDataPacked.depth = quadMapDataPacked.depth = unpackDepthUNORM16(depthsInput[index]);
+    quadMapDataPacked.normalSphericalDepth = normalSphericalDepthInput[index];
     quadMapDataPacked.metadata = metadatasInput[index];
 
     QuadMapData quadMapData;
-    quadMapData.normal = unpackSphericalToNormal(quadMapDataPacked.normalSpherical);
-    quadMapData.depth = quadMapDataPacked.depth;
+    quadMapData.normal = unpackSphericalToNormal((quadMapDataPacked.normalSphericalDepth >> 16) & 0xFFFFu);
+    quadMapData.depth = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
 
     quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
     quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
@@ -75,7 +66,7 @@ void main() {
     if (quadIndex >= currNumProxies) {
         uint inputQuadIndex = quadIndex - currNumProxies;
 
-        QuadMapData quadMapData = loadQuadMapInput(inputQuadIndex);
+        QuadMapData quadMapData = loadInputQuadMap(inputQuadIndex);
         if (quadMapData.size == 0u) { // Ignore if quad is empty
             return;
         }
@@ -92,8 +83,7 @@ void main() {
         }
 
         // Append the quad map data
-        normalSphericalsOutput[quadIndex] = normalSphericalsInput[inputQuadIndex];
-        depthsOutput[quadIndex] = depthsInput[inputQuadIndex];
+        normalSphericalDepthOutput[quadIndex] = normalSphericalDepthInput[inputQuadIndex];
         metadatasOutput[quadIndex] = metadatasInput[inputQuadIndex];
     }
 }

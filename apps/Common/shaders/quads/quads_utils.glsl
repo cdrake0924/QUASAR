@@ -9,8 +9,7 @@ struct QuadMapData {
 };
 
 struct QuadMapDataPacked {
-    uint normalSpherical;
-    float depth;
+    uint normalSphericalDepth;
     uint metadata;
 };
 

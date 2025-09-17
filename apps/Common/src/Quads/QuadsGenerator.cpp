@@ -114,9 +114,8 @@ void QuadsGenerator::generateInitialQuadMap(
     {
         createQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, sizesBuffer);
 
-        createQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadMaps[closestQuadMapIdx].normalSphericalsBuffer);
-        createQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, quadMaps[closestQuadMapIdx].depthsBuffer);
-        createQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, quadMaps[closestQuadMapIdx].metadatasBuffer);
+        createQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, quadMaps[closestQuadMapIdx].normalSphericalDepthBuffer);
+        createQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, quadMaps[closestQuadMapIdx].metadatasBuffer);
 
         createQuadMapShader.setImageTexture(0, quadSet.depthOffsets.texture, 0, GL_FALSE, 0, GL_WRITE_ONLY, quadSet.depthOffsets.texture.internalFormat);
         createQuadMapShader.setImageTexture(1, colorTexture, 0, GL_FALSE, 0, GL_READ_WRITE, colorTexture.internalFormat);
@@ -181,13 +180,11 @@ void QuadsGenerator::simplifyQuadMaps(const PerspectiveCamera& remoteCamera, con
             simplifyQuadMapShader.setVec2("outputQuadMapSize", currQuadMapSize);
         }
         {
-            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, prevQuadMaps.normalSphericalsBuffer);
-            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, prevQuadMaps.depthsBuffer);
-            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, prevQuadMaps.metadatasBuffer);
+            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, prevQuadMaps.normalSphericalDepthBuffer);
+            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, prevQuadMaps.metadatasBuffer);
 
-            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, currQuadMaps.normalSphericalsBuffer);
-            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, currQuadMaps.depthsBuffer);
-            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, currQuadMaps.metadatasBuffer);
+            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, currQuadMaps.normalSphericalDepthBuffer);
+            simplifyQuadMapShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, currQuadMaps.metadatasBuffer);
         }
         simplifyQuadMapShader.dispatch((currQuadMapSize.x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
                                        (currQuadMapSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
@@ -229,13 +226,11 @@ void QuadsGenerator::gatherOutputQuads(const glm::vec2& gBufferSize) {
         {
             gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 0, sizesBuffer);
 
-            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, currQuadMaps.normalSphericalsBuffer);
-            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, currQuadMaps.depthsBuffer);
-            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, currQuadMaps.metadatasBuffer);
+            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, currQuadMaps.normalSphericalDepthBuffer);
+            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, currQuadMaps.metadatasBuffer);
 
-            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, quadSet.quadBuffers.normalSphericalsBuffer);
-            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, quadSet.quadBuffers.depthsBuffer);
-            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, quadSet.quadBuffers.metadatasBuffer);
+            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, quadSet.quadBuffers.normalSphericalDepthBuffer);
+            gatherQuadsShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, quadSet.quadBuffers.metadatasBuffer);
         }
         gatherQuadsShader.dispatch((currQuadMapSize.x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
                                    (currQuadMapSize.y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);

@@ -20,22 +20,20 @@ struct QuadMapData {
 };
 
 struct QuadMapDataPacked {
-    // Normal converted into spherical coordinates. 16 bits of padding + theta, phi (8 bits each) packed into 16 bits.
-    uint32_t normalSpherical;
-    // Full resolution depth. 32 bits used.
-    uint32_t depth;
-    // offset.x << 20 | offset.y << 8 (12 bits each) | size << 1 (6 bits) | flattened (1 bit). 31 bits used.
+    // normal is converted into spherical coordinates quantized to 8 bits (16 bits).
+    // depth is quantized to 16 bits.
+    // (normal theta << 24) | (normal phi << 16) | (depth). 16 + 16 bits = 32 bits used.
+    uint32_t normalSphericalDepth;
+    // (offset.x << 20) | (offset.y << 8) | (size << 1) | (flattened). 12 + 12 + 6 + 1 bits = 32 bits used.
     uint32_t metadata;
-}; // 96 bits total
+}; // 64 bits total
 
 class QuadBuffers {
 public:
     size_t maxProxies;
     size_t numProxies;
-    size_t maxDataSize;
 
-    Buffer normalSphericalsBuffer;
-    Buffer depthsBuffer;
+    Buffer normalSphericalDepthBuffer;
     Buffer metadatasBuffer;
 
     QuadBuffers(size_t maxProxies);
@@ -50,8 +48,7 @@ public:
 
 private:
 #if defined(HAS_CUDA)
-    CudaGLBuffer cudaBufferNormalSphericals;
-    CudaGLBuffer cudaBufferDepths;
+    CudaGLBuffer cudaBufferNormalSphericalDepth;
     CudaGLBuffer cudaBufferMetadatas;
 #endif
 };

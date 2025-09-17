@@ -7,14 +7,7 @@ using namespace quasar;
 QuadBuffers::QuadBuffers(size_t maxProxies)
     : maxProxies(maxProxies)
     , numProxies(maxProxies)
-    , normalSphericalsBuffer({
-        .target = GL_SHADER_STORAGE_BUFFER,
-        .dataSize = sizeof(uint32_t),
-        .numElems = maxProxies,
-        .maxElems = maxProxies,
-        .usage = GL_DYNAMIC_COPY,
-    })
-    , depthsBuffer({
+    , normalSphericalDepthBuffer({
         .target = GL_SHADER_STORAGE_BUFFER,
         .dataSize = sizeof(uint32_t),
         .numElems = maxProxies,
@@ -29,11 +22,9 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
         .usage = GL_DYNAMIC_COPY,
     })
 #if defined(HAS_CUDA)
-    , cudaBufferNormalSphericals(normalSphericalsBuffer)
-    , cudaBufferDepths(depthsBuffer)
+    , cudaBufferNormalSphericalDepth(normalSphericalDepthBuffer)
     , cudaBufferMetadatas(metadatasBuffer)
 #endif
-    , maxDataSize(sizeof(uint) + maxProxies * sizeof(QuadMapDataPacked))
 {}
 
 void QuadBuffers::resize(size_t newNumProxies) {
@@ -43,16 +34,13 @@ void QuadBuffers::resize(size_t newNumProxies) {
 
 #ifdef GL_CORE
 size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDeltaEncoding) {
-    outputData.resize(maxDataSize);
+    outputData.resize(sizeof(uint32_t) + maxProxies * sizeof(QuadMapDataPacked));
     size_t bufferOffset = 0;
 
     std::memcpy(outputData.data(), &numProxies, sizeof(uint32_t));
     bufferOffset += sizeof(uint32_t);
 
-    uint32_t* normals = reinterpret_cast<uint32_t*>(outputData.data() + bufferOffset);
-    bufferOffset += numProxies * sizeof(uint32_t);
-
-    uint32_t* depths = reinterpret_cast<uint32_t*>(outputData.data() + bufferOffset);
+    uint32_t* normalSphericalDepth = reinterpret_cast<uint32_t*>(outputData.data() + bufferOffset);
     bufferOffset += numProxies * sizeof(uint32_t);
 
     uint32_t* metadatas = reinterpret_cast<uint32_t*>(outputData.data() + bufferOffset);
@@ -61,18 +49,16 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
 #if defined(HAS_CUDA)
     CudaGLBuffer::registerHostBuffer(outputData.data(), outputData.size());
 
-    cudaBufferNormalSphericals.copyToHostAsync(normals, numProxies * sizeof(uint32_t));
-    cudaBufferDepths.copyToHostAsync(depths, numProxies * sizeof(uint32_t));
+    cudaBufferNormalSphericalDepth.copyToHostAsync(normalSphericalDepth, numProxies * sizeof(uint32_t));
     cudaBufferMetadatas.copyToHostAsync(metadatas, numProxies * sizeof(uint32_t));
 
-    cudaBufferNormalSphericals.synchronize();
+    cudaBufferNormalSphericalDepth.synchronize();
     CudaGLBuffer::unregisterHostBuffer(outputData.data());
 
     if (applyDeltaEncoding) {
         // Apply delta encoding
         for (int i = numProxies - 1; i > 0; i--) {
-            normals[i] -= normals[i - 1];
-            depths[i] -= depths[i - 1];
+            normalSphericalDepth[i] -= normalSphericalDepth[i - 1];
             metadatas[i] -= metadatas[i - 1];
         }
     }
@@ -82,24 +68,12 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
     normalSphericalsBuffer.bind();
     ptr = normalSphericalsBuffer.mapToCPU(GL_MAP_READ_BIT);
     if (ptr) {
-        std::memcpy(normals, ptr, numProxies * sizeof(uint32_t));
+        std::memcpy(normalSphericalDepth, ptr, numProxies * sizeof(uint32_t));
         normalSphericalsBuffer.unmapFromCPU();
     }
     else {
         spdlog::warn("Failed to map normalSphericalsBuffer. Copying using getData");
         normalSphericalsBuffer.getData(outputData.data() + bufferOffset);
-    }
-    bufferOffset += numProxies * sizeof(uint);
-
-    depthsBuffer.bind();
-    ptr = depthsBuffer.mapToCPU(GL_MAP_READ_BIT);
-    if (ptr) {
-        std::memcpy(depths, ptr, numProxies * sizeof(uint32_t));
-        depthsBuffer.unmapFromCPU();
-    }
-    else {
-        spdlog::warn("Failed to map depthsBuffer. Copying using getData");
-        depthsBuffer.getData(outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(uint32_t);
 
@@ -113,7 +87,7 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
         spdlog::warn("Failed to map metadatasBuffer. Copying using getData");
         metadatasBuffer.getData(outputData.data() + bufferOffset);
     }
-    bufferOffset += numProxies * sizeof(uint);
+    bufferOffset += numProxies * sizeof(uint32_t);
 #endif
 
     // Resize output
@@ -129,10 +103,7 @@ size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDelta
     uint32_t newNumProxies = *reinterpret_cast<const uint32_t*>(inputData.data());
     bufferOffset += sizeof(uint32_t);
 
-    uint32_t* normals = reinterpret_cast<uint32_t*>(inputData.data() + bufferOffset);
-    bufferOffset += newNumProxies * sizeof(uint32_t);
-
-    uint32_t* depths = reinterpret_cast<uint32_t*>(inputData.data() + bufferOffset);
+    uint32_t* normalSphericalDepth = reinterpret_cast<uint32_t*>(inputData.data() + bufferOffset);
     bufferOffset += newNumProxies * sizeof(uint32_t);
 
     uint32_t* metadatas = reinterpret_cast<uint32_t*>(inputData.data() + bufferOffset);
@@ -141,32 +112,20 @@ size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDelta
     if (applyDeltaEncoding) {
         // Decode delta encoding
         for (int i = 1; i < newNumProxies; ++i) {
-            normals[i] += normals[i - 1];
-            depths[i] += depths[i - 1];
+            normalSphericalDepth[i] += normalSphericalDepth[i - 1];
             metadatas[i] += metadatas[i - 1];
         }
     }
 
-    normalSphericalsBuffer.bind();
-    ptr = normalSphericalsBuffer.mapToCPU(GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+    normalSphericalDepthBuffer.bind();
+    ptr = normalSphericalDepthBuffer.mapToCPU(GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
     if (ptr) {
-        std::memcpy(ptr, normals, newNumProxies * sizeof(uint32_t));
-        normalSphericalsBuffer.unmapFromCPU();
+        std::memcpy(ptr, normalSphericalDepth, newNumProxies * sizeof(uint32_t));
+        normalSphericalDepthBuffer.unmapFromCPU();
     }
     else {
-        spdlog::warn("Failed to map normalSphericalsBuffer. Copying using setData");
-        normalSphericalsBuffer.setData(newNumProxies, reinterpret_cast<char*>(normals));
-    }
-
-    depthsBuffer.bind();
-    ptr = depthsBuffer.mapToCPU(GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-    if (ptr) {
-        std::memcpy(ptr, depths, newNumProxies * sizeof(uint32_t));
-        depthsBuffer.unmapFromCPU();
-    }
-    else {
-        spdlog::warn("Failed to map depthsBuffer. Copying using setData");
-        depthsBuffer.setData(newNumProxies, reinterpret_cast<char*>(depths));
+        spdlog::warn("Failed to map normalSphericalDepthBuffer. Copying using setData");
+        normalSphericalDepthBuffer.setData(newNumProxies, reinterpret_cast<char*>(normalSphericalDepth));
     }
 
     metadatasBuffer.bind();
