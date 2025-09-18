@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
     PerspectiveCamera camera = PerspectiveCamera(windowSize);
     camera.setViewMatrix(remoteCamera.getViewMatrix());
 
-    BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
+    BC4DepthStreamer bc4DepthStreamerRT({
         .width = windowSize.x,
         .height = windowSize.y,
         .internalFormat = GL_R32F,

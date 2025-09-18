@@ -34,7 +34,7 @@ DeferredRenderer::DeferredRenderer(const Config& config)
 {}
 
 void DeferredRenderer::setScreenShaderUniforms(const Shader& screenShader) {
-    // Set FrameRenderTarget texture uniforms
+    // Set texture uniforms
     screenShader.bind();
     screenShader.setTexture("screenColor", outputRT.colorTexture, 0);
     screenShader.setTexture("screenDepth", outputRT.depthStencilTexture, 1);

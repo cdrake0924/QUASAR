@@ -57,7 +57,7 @@ uniform float far;
 uniform vec2 gBufferSize;
 uniform uint currNumProxies;
 uniform vec4 textureExtent;
-uniform float expandUVAmount = 0.05;
+uniform float expandUVAmount = 0.025;
 
 #define VERTICES_IN_A_QUAD  4u
 #define INDICES_IN_A_QUAD   6u

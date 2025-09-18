@@ -5,7 +5,7 @@
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
 #include <Renderers/ForwardRenderer.h>
-#include <Renderers/DeferredRenderer.h>
+#include <Renderers/DepthPeelingRenderer.h>
 #include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     ForwardRenderer renderer(config);
     config.width = remoteWindowSize.x;
     config.height = remoteWindowSize.y;
-    DeferredRenderer remoteRenderer(config);
+    DepthPeelingRenderer remoteRenderer(config);
 
     // "Remote" scene
     Scene remoteScene;
@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
         .magFilter = GL_NEAREST,
     });
 
-    BC4DepthStreamer bc4DepthStreamerRT = BC4DepthStreamer({
+    BC4DepthStreamer bc4DepthStreamerRT({
         .width = remoteWindowSize.x,
         .height = remoteWindowSize.y,
         .internalFormat = GL_R32F,
@@ -553,7 +553,7 @@ int main(int argc, char** argv) {
             // Render remoteScene
             remoteRenderer.drawObjects(remoteScene, remoteCamera);
 
-            // Copy rendered result to video render target
+            // Copy rendered result to video render targets
             tonemapper.enableTonemapping(false);
             tonemapper.drawToRenderTarget(remoteRenderer, renderTarget);
             showDepthEffect.drawToRenderTarget(remoteRenderer, bc4DepthStreamerRT);

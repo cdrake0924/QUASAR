@@ -58,10 +58,10 @@ void DepthPeelingRenderer::endRendering() {
 }
 
 void DepthPeelingRenderer::setScreenShaderUniforms(const Shader& screenShader) {
-    // Set FrameRenderTarget texture uniforms
+    // Set texture uniforms
     screenShader.bind();
     screenShader.setTexture("screenColor", outputRT.colorTexture, 0);
-    screenShader.setTexture("screenDepth", outputRT.depthStencilTexture, 1);
+    screenShader.setTexture("screenDepth", peelingLayers[0].depthStencilTexture, 1);
     screenShader.setTexture("screenNormals", gBuffer.normalsTexture, 2);
     screenShader.setTexture("screenPositions", gBuffer.positionTexture, 3);
     screenShader.setTexture("idTexture", gBuffer.idTexture, 4);

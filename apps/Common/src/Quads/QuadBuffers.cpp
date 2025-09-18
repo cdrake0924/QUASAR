@@ -54,14 +54,6 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
 
     cudaBufferNormalSphericalDepth.synchronize();
     CudaGLBuffer::unregisterHostBuffer(outputData.data());
-
-    if (applyDeltaEncoding) {
-        // Apply delta encoding
-        for (int i = numProxies - 1; i > 0; i--) {
-            normalSphericalDepth[i] -= normalSphericalDepth[i - 1];
-            metadatas[i] -= metadatas[i - 1];
-        }
-    }
 #else
     void* ptr;
 
@@ -90,6 +82,14 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
     bufferOffset += numProxies * sizeof(uint32_t);
 #endif
 
+    if (applyDeltaEncoding) {
+        // Apply delta encoding
+        for (int i = numProxies - 1; i > 0; i--) {
+            normalSphericalDepth[i] -= normalSphericalDepth[i - 1];
+            metadatas[i] -= metadatas[i - 1];
+        }
+    }
+
     // Resize output
     outputData.resize(bufferOffset);
     return bufferOffset;
@@ -115,7 +115,7 @@ size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDelta
 
     if (applyDeltaEncoding) {
         // Decode delta encoding
-        for (int i = 1; i < newNumProxies; ++i) {
+        for (int i = 1; i < newNumProxies; i++) {
             normalSphericalDepth[i] += normalSphericalDepth[i - 1];
             metadatas[i] += metadatas[i - 1];
         }

@@ -4,7 +4,7 @@
 #include <SceneLoader.h>
 #include <Windowing/GLFWWindow.h>
 #include <GUI/ImGuiManager.h>
-#include <Renderers/DeferredRenderer.h>
+#include <Renderers/DepthPeelingRenderer.h>
 #include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowDepthEffect.h>
 
@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
     config.guiManager = guiManager;
 
     OpenGLApp app(config);
-    DeferredRenderer renderer(config);
+    DepthPeelingRenderer renderer(config);
 
     Scene scene;
     PerspectiveCamera camera(windowSize);

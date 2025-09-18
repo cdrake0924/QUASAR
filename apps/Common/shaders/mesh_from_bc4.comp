@@ -51,7 +51,7 @@ uniform bool unlinearizeDepth;
 #define INDICES_IN_A_QUAD   6u
 
 float UnLinearizeDepth(float depth) {
-    depth *= far;
+    depth *= (far - near);
     depth = max(depth, near);
     float z = (depth * (far + near) - 2.0 * near * far) / (depth * (far - near));
     return z * 0.5 + 0.5;

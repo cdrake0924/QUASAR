@@ -20,8 +20,23 @@ Texture::Texture(const TextureDataCreateParams& params)
     , alignment(params.alignment)
     , multiSampled(params.multiSampled)
     , numSamples(params.numSamples)
+    , target(!params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE)
 {
-    target = !params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE;
+    glGenTextures(1, &ID);
+
+    if (format == GL_RED) {
+        channels = 1;
+    }
+    else if (format == GL_RG) {
+        channels = 2;
+    }
+    else if (format == GL_RGB) {
+        channels = 3;
+    }
+    else if (format == GL_RGBA) {
+        channels = 4;
+    }
+
     loadFromData(params.data, true);
 
     if (params.hasBorder) {
@@ -38,8 +53,9 @@ Texture::Texture(const TextureFileCreateParams& params)
     , alignment(params.alignment)
     , multiSampled(params.multiSampled)
     , numSamples(params.numSamples)
+    , target(!params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE)
 {
-    target = !params.multiSampled ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE;
+    glGenTextures(1, &ID);
     loadFromFile(params.path, params.flipVertically, params.gammaCorrected);
 }
 
@@ -48,23 +64,6 @@ Texture::~Texture() {
 }
 
 void Texture::loadFromData(const void* data, bool resize) {
-    if (ID == 0) {
-        glGenTextures(1, &ID);
-    }
-
-    if (format == GL_RED) {
-        channels = 1;
-    }
-    else if (format == GL_RG) {
-        channels = 2;
-    }
-    else if (format == GL_RGB) {
-        channels = 3;
-    }
-    else if (format == GL_RGBA) {
-        channels = 4;
-    }
-
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
     glBindTexture(target, ID);
 
