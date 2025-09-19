@@ -41,7 +41,8 @@ public:
         double totalCreateVertIndTimeMs = 0.0;
         double totalGenDepthTimeMs = 0.0;
         double totalCompressTimeMs = 0.0;
-        QuadSet::Sizes totalSizes;
+        double frameSize = 0.0;
+        QuadSet::Sizes proxySizes;
     } stats;
 
     QuadStreamStreamer(

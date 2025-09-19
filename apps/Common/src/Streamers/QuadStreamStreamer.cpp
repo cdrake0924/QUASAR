@@ -215,16 +215,18 @@ void QuadStreamStreamer::generateFrame(bool showNormals, bool showDepth) {
             stats.totalGenDepthTimeMs += depthMeshToUse.stats.genDepthTime;
         }
 
-        stats.totalSizes.numQuads += referenceFrames[view].getTotalNumQuads();
-        stats.totalSizes.numDepthOffsets += referenceFrames[view].getTotalNumDepthOffsets();
+        stats.proxySizes.numQuads += referenceFrames[view].getTotalNumQuads();
+        stats.proxySizes.numDepthOffsets += referenceFrames[view].getTotalNumDepthOffsets();
         // QS has data structures that are 103 bits
         // We approximate their data size by multiplying by 103/sizeof(our quad data struct)
-        stats.totalSizes.quadsSize += referenceFrames[view].getTotalQuadsSize() * (103.0 / (8 * sizeof(QuadMapDataPacked)));
-        stats.totalSizes.depthOffsetsSize += referenceFrames[view].getTotalDepthOffsetsSize();
+        stats.proxySizes.quadsSize += referenceFrames[view].getTotalQuadsSize() * (103.0 / (8 * sizeof(QuadMapDataPacked)));
+        stats.proxySizes.depthOffsetsSize += referenceFrames[view].getTotalDepthOffsetsSize();
         spdlog::debug("Reference frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
             referenceFrames[view].getTotalNumQuads(), referenceFrames[view].getTotalQuadsSize() * (103.0 / (8 * sizeof(QuadMapDataPacked))) / BYTES_PER_MEGABYTE,
             referenceFrames[view].getTotalNumDepthOffsets(), referenceFrames[view].getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
     }
+
+    stats.frameSize = stats.proxySizes.quadsSize + stats.proxySizes.depthOffsetsSize;
 }
 
 size_t QuadStreamStreamer::writeToFiles(const Path& outputPath) {

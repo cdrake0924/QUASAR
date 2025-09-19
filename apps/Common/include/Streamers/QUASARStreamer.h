@@ -71,7 +71,8 @@ public:
         double totalCreateVertIndTimeMs = 0.0;
         double totalGenDepthTimeMs = 0.0;
         double totalCompressTimeMs = 0.0;
-        QuadSet::Sizes totalSizes;
+        double frameSize = 0.0;
+        QuadSet::Sizes proxySizes;
     } stats;
 
     QUASARStreamer(
@@ -95,7 +96,7 @@ public:
     void setViewSphereDiameter(float viewSphereDiameter);
 
     void generateFrame(bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
-    void sendProxies(pose_id_t poseID, bool createResidualFrame);
+    void sendFrame(pose_id_t poseID, bool createResidualFrame);
 
     size_t writeToFiles(const Path& outputPath);
     size_t writeToMemory(pose_id_t poseID, bool writeResidualFrame, std::vector<char>& outputData);

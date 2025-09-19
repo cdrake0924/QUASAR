@@ -447,19 +447,19 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
         }
 
         if (!(createResidualFrame && layer == 0)) {
-            stats.totalSizes.numQuads += referenceFrames[layer].getTotalNumQuads();
-            stats.totalSizes.numDepthOffsets += referenceFrames[layer].getTotalNumDepthOffsets();
-            stats.totalSizes.quadsSize += referenceFrames[layer].getTotalQuadsSize();
-            stats.totalSizes.depthOffsetsSize += referenceFrames[layer].getTotalDepthOffsetsSize();
+            stats.proxySizes.numQuads += referenceFrames[layer].getTotalNumQuads();
+            stats.proxySizes.numDepthOffsets += referenceFrames[layer].getTotalNumDepthOffsets();
+            stats.proxySizes.quadsSize += referenceFrames[layer].getTotalQuadsSize();
+            stats.proxySizes.depthOffsetsSize += referenceFrames[layer].getTotalDepthOffsetsSize();
             spdlog::debug("Reference frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
                           referenceFrames[layer].getTotalNumQuads(), referenceFrames[layer].getTotalQuadsSize() / BYTES_PER_MEGABYTE,
                           referenceFrames[layer].getTotalNumDepthOffsets(), referenceFrames[layer].getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
         }
         else {
-            stats.totalSizes.numQuads += residualFrame.getTotalNumQuads();
-            stats.totalSizes.numDepthOffsets += residualFrame.getTotalNumDepthOffsets();
-            stats.totalSizes.quadsSize += residualFrame.getTotalQuadsSize();
-            stats.totalSizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
+            stats.proxySizes.numQuads += residualFrame.getTotalNumQuads();
+            stats.proxySizes.numDepthOffsets += residualFrame.getTotalNumDepthOffsets();
+            stats.proxySizes.quadsSize += residualFrame.getTotalQuadsSize();
+            stats.proxySizes.depthOffsetsSize += residualFrame.getTotalDepthOffsetsSize();
             spdlog::debug("Residual frame generated with {} quads ({:.3f} MB), {} depth offsets ({:.3f} MB)",
                           residualFrame.getTotalNumQuads(), residualFrame.getTotalQuadsSize() / BYTES_PER_MEGABYTE,
                           residualFrame.getTotalNumDepthOffsets(), residualFrame.getTotalDepthOffsetsSize() / BYTES_PER_MEGABYTE);
@@ -515,12 +515,12 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
     );
 }
 
-void QUASARStreamer::sendProxies(pose_id_t poseID, bool createResidualFrame) {
+void QUASARStreamer::sendFrame(pose_id_t poseID, bool createResidualFrame) {
+    stats.frameSize = writeToMemory(poseID, createResidualFrame, compressedData);
     if (!videoURL.empty() && !proxiesURL.empty()) {
         // Send atlas frame
         videoAtlasStreamerRT.sendFrame(poseID);
         // Send proxies
-        writeToMemory(poseID, createResidualFrame, compressedData);
         send(compressedData);
     }
 }

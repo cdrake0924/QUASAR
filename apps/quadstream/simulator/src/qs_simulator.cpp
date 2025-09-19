@@ -240,11 +240,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quads: %ld (%.3f MB)",
-                               quadstream.stats.totalSizes.numQuads,
-                               quadstream.stats.totalSizes.quadsSize / BYTES_PER_MEGABYTE);
+                               quadstream.stats.proxySizes.numQuads,
+                               quadstream.stats.proxySizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %ld (%.3f MB)",
-                               quadstream.stats.totalSizes.numDepthOffsets,
-                               quadstream.stats.totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quadstream.stats.proxySizes.numDepthOffsets,
+                               quadstream.stats.proxySizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -572,9 +572,8 @@ int main(int argc, char** argv) {
             spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadstream.stats.totalCreateVertIndTimeMs);
             spdlog::info("Compress Time: {:.3f}ms", quadstream.stats.totalCompressTimeMs);
             if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadstream.stats.totalGenDepthTimeMs);
-            spdlog::info("Frame Size: {:.3f}MB", (quadstream.stats.totalSizes.quadsSize +
-                                                  quadstream.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
-            spdlog::info("Num Proxies: {}Proxies", quadstream.stats.totalSizes.numQuads);
+            spdlog::info("Frame Size: {:.3f}MB", quadstream.stats.frameSize / BYTES_PER_MEGABYTE);
+            spdlog::info("Num Proxies: {}Proxies", quadstream.stats.proxySizes.numQuads);
 
             preventCopyingLocalPose = false;
             sendRemoteFrame = false;

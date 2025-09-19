@@ -77,10 +77,6 @@ QuadMesh::BufferSizes QuadMesh::getBufferSizes() const {
 }
 
 void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize, bool isFullFrame) {
-    if (quadSet.getNumProxies() == 0) {
-        return;
-    }
-
     double startTime = timeutils::getTimeMicros();
 
     if (isFullFrame) {
@@ -121,10 +117,6 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
 }
 
 void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera) {
-    if (quadSet.getNumProxies() == 0) {
-        return;
-    }
-
     double startTime = timeutils::getTimeMicros();
 
     vertexBuffer.bind();

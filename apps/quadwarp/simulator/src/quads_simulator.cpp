@@ -230,11 +230,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quads: %ld (%.3f MB)",
-                               quadwarp.stats.totalSizes.numQuads,
-                               quadwarp.stats.totalSizes.quadsSize / BYTES_PER_MEGABYTE);
+                               quadwarp.stats.proxySizes.numQuads,
+                               quadwarp.stats.proxySizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %ld (%.3f MB)",
-                               quadwarp.stats.totalSizes.numDepthOffsets,
-                               quadwarp.stats.totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quadwarp.stats.proxySizes.numDepthOffsets,
+                               quadwarp.stats.proxySizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -543,6 +543,7 @@ int main(int argc, char** argv) {
             }
 
             quadwarp.generateFrame(sendResidualFrame, showNormals, showDepth);
+            quadwarp.sendFrame(-1, sendResidualFrame);
 
             spdlog::info("======================================================");
             spdlog::info("Rendering Time: {:.3f}ms", quadwarp.stats.totalRenderTimeMs);
@@ -555,9 +556,8 @@ int main(int argc, char** argv) {
             spdlog::info("  Create Vert/Ind Time: {:.3f}ms", quadwarp.stats.totalCreateVertIndTimeMs);
             spdlog::info("Compress Time: {:.3f}ms", quadwarp.stats.totalCompressTimeMs);
             if (showDepth) spdlog::info("Gen Depth Time: {:.3f}ms", quadwarp.stats.totalGenDepthTimeMs);
-            spdlog::info("Frame Size: {:.3f}MB", (quadwarp.stats.totalSizes.quadsSize +
-                                                  quadwarp.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
-            spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.totalSizes.numQuads);
+            spdlog::info("Frame Size: {:.3f}MB", quadwarp.stats.frameSize / BYTES_PER_MEGABYTE);
+            spdlog::info("Num Proxies: {}Proxies", quadwarp.stats.proxySizes.numQuads);
 
             preventCopyingLocalPose = false;
             sendReferenceFrame = false;

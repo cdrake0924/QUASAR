@@ -250,11 +250,11 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,0,0,1), "Draw Calls: %d", renderStats.drawCalls);
 
             ImGui::TextColored(ImVec4(0,1,1,1), "Total Quads: %ld (%.3f MB)",
-                               quasar.stats.totalSizes.numQuads,
-                               quasar.stats.totalSizes.quadsSize / BYTES_PER_MEGABYTE);
+                               quasar.stats.proxySizes.numQuads,
+                               quasar.stats.proxySizes.quadsSize / BYTES_PER_MEGABYTE);
             ImGui::TextColored(ImVec4(1,0,1,1), "Total Depth Offsets: %ld (%.3f MB)",
-                               quasar.stats.totalSizes.numDepthOffsets,
-                               quasar.stats.totalSizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
+                               quasar.stats.proxySizes.numDepthOffsets,
+                               quasar.stats.proxySizes.depthOffsetsSize / BYTES_PER_MEGABYTE);
 
             ImGui::Separator();
 
@@ -605,6 +605,7 @@ int main(int argc, char** argv) {
             }
 
             quasar.generateFrame(sendResidualFrame, showNormals, showDepth);
+            quasar.sendFrame(-1, sendResidualFrame);
 
             std::string frameType = sendReferenceFrame ? "Reference Frame" : "Residual Frame";
             spdlog::info("======================================================");
@@ -618,9 +619,8 @@ int main(int argc, char** argv) {
             spdlog::info("  Create Vert/Ind Time ({}): {:.3f}ms", frameType, quasar.stats.totalCreateVertIndTimeMs);
             spdlog::info("Compress Time ({}): {:.3f}ms", frameType, quasar.stats.totalCompressTimeMs);
             if (showDepth) spdlog::info("Gen Depth Time ({}): {:.3f}ms", frameType, quasar.stats.totalGenDepthTimeMs);
-            spdlog::info("Frame Size: {:.3f}MB", (quasar.stats.totalSizes.quadsSize +
-                                                  quasar.stats.totalSizes.depthOffsetsSize) / BYTES_PER_MEGABYTE);
-            spdlog::info("Num Proxies: {}Proxies", quasar.stats.totalSizes.numQuads);
+            spdlog::info("Frame Size: {:.3f}MB", quasar.stats.frameSize / BYTES_PER_MEGABYTE);
+            spdlog::info("Num Proxies: {}Proxies", quasar.stats.proxySizes.numQuads);
 
             preventCopyingLocalPose = false;
             sendReferenceFrame = false;
