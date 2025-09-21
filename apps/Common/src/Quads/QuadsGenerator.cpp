@@ -5,7 +5,11 @@
 
 #define MAX_PROXY_SIZE (2 << 10)
 
-#define THREADS_PER_LOCALGROUP 2 // 2x2 = 4 threads per pixel
+#ifndef __ANDROID__
+#define THREADS_PER_LOCALGROUP 32
+#else
+#define THREADS_PER_LOCALGROUP 16
+#endif
 
 using namespace quasar;
 
