@@ -337,6 +337,16 @@ void QuadsStreamer::sendFrame(pose_id_t poseID, bool createResidualFrame) {
     }
 }
 
+void QuadsStreamer::writeTexturesToFiles(const Path& outputPath) {
+    // Save color
+    Path colorFileName = (outputPath / "color").withExtension(".jpg");
+    videoAtlasStreamerRT.writeColorAsJPG(colorFileName);
+
+    // Save alpha
+    Path alphaFileName = (outputPath / "alpha").withExtension(".png");
+    alphaAtlasRT.writeAlphaAsPNG(alphaFileName);
+}
+
 size_t QuadsStreamer::writeToFiles(const Path& outputPath) {
     // Save camera data
     Pose cameraPose;
@@ -350,13 +360,7 @@ size_t QuadsStreamer::writeToFiles(const Path& outputPath) {
     cameraPose.setViewMatrix(remoteCameraPrev.getViewMatrix());
     cameraPose.writeToFile(cameraFileNamePrev);
 
-    // Save color
-    Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    videoAtlasStreamerRT.writeColorAsJPG(colorFileName);
-
-    // Save alpha
-    Path alphaFileName = (outputPath / "alpha").withExtension(".png");
-    alphaAtlasRT.writeAlphaAsPNG(alphaFileName);
+    writeTexturesToFiles(outputPath);
 
     // Save proxies
     size_t totalOutputSize = referenceFrame.writeToFiles(outputPath) + residualFrame.writeToFiles(outputPath);

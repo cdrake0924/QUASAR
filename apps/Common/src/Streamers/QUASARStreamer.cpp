@@ -530,6 +530,16 @@ void QUASARStreamer::sendFrame(pose_id_t poseID, bool createResidualFrame) {
     }
 }
 
+void QUASARStreamer::writeTexturesToFiles(const Path& outputPath) {
+    // Save color
+    Path colorFileName = (outputPath / "color").withExtension(".jpg");
+    videoAtlasStreamerRT.writeColorAsJPG(colorFileName);
+
+    // Save alpha
+    Path alphaFileName = (outputPath / "alpha").withExtension(".png");
+    alphaAtlasRT.writeAlphaAsPNG(alphaFileName);
+}
+
 size_t QUASARStreamer::writeToFiles(const Path& outputPath) {
     // Save camera data
     Pose cameraPose;
@@ -551,13 +561,7 @@ size_t QUASARStreamer::writeToFiles(const Path& outputPath) {
     };
     FileIO::writeToBinaryFile(outputPath / "metadata.bin", &params, sizeof(params));
 
-    // Save color
-    Path colorFileName = (outputPath / "color").withExtension(".jpg");
-    videoAtlasStreamerRT.writeColorAsJPG(colorFileName);
-
-    // Save alpha
-    Path alphaFileName = (outputPath / "alpha").withExtension(".png");
-    alphaAtlasRT.writeAlphaAsPNG(alphaFileName);
+    writeTexturesToFiles(outputPath);
 
     // Save proxies
     size_t totalOutputSize = 0;

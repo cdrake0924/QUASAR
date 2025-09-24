@@ -173,6 +173,7 @@ int main(int argc, char** argv) {
         static bool showRecordWindow = false;
         static int recordingFormatIndex = 0;
         static char recordingDirBase[256] = "recordings";
+        static bool saveAsSeparate = true;
 
         static bool showSkyBox = true;
 
@@ -427,8 +428,18 @@ int main(int argc, char** argv) {
             ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 300), ImGuiCond_FirstUseEver);
             ImGui::Begin("Mesh Capture", &showMeshCaptureWindow);
 
+            ImGui::Checkbox("Save as Separate Files", &saveAsSeparate);
             if (ImGui::Button("Save Proxies")) {
-                spdlog::info("Saved {} bytes to {}", quadwarp.writeToFiles(outputPath), outputPath.str());
+                if (!saveAsSeparate) {
+                    std::vector<char> compressedData;
+                    spdlog::info("Saved {} bytes to {}", quadwarp.writeToMemory(-1, sendResidualFrame, compressedData), outputPath.absolutePathStr());
+                    Path filename = (outputPath / "frame").appendToName(".bin");
+                    FileIO::writeToBinaryFile(filename, compressedData.data(), compressedData.size());
+                    quadwarp.writeTexturesToFiles(outputPath);
+                }
+                else {
+                    spdlog::info("Saved {} bytes to {}", quadwarp.writeToFiles(outputPath), outputPath.absolutePathStr());
+                }
             }
 
             ImGui::End();
