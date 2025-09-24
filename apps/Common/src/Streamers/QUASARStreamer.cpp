@@ -100,6 +100,7 @@ QUASARStreamer::QUASARStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
+    , alphaCodec(alphaAtlasRT.width, alphaAtlasRT.height)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture, residualFrameRT_noTone.alphaTexture)
     , wireframeMaterial({ .baseColor = colors[0] })
@@ -579,7 +580,7 @@ size_t QUASARStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, 
 
     // Save alpha data
     alphaAtlasRT.writeAlphaToMemory(alphaData);
-    // TODO: Compress alpha data
+    alphaCodec.compress(alphaData);
 
     // Save geometry data
     // Save visible layer

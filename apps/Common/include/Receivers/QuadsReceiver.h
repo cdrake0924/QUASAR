@@ -9,6 +9,7 @@
 #include <Quads/QuadMesh.h>
 #include <Networking/DataReceiverTCP.h>
 #include <Receivers/VideoTexture.h>
+#include <Codec/AlphaCodec.h>
 
 namespace quasar {
 
@@ -130,6 +131,8 @@ private:
     std::shared_ptr<Frame> frameInUse;
     std::shared_ptr<Frame> framePending;
     std::shared_ptr<Frame> frameFree;
+
+    AlphaCodec alphaCodec;
 
     bool waitUntilReferenceFrame = false;
 

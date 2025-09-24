@@ -32,6 +32,7 @@ QuadsReceiver::QuadsReceiver(QuadSet& quadSet, const std::string& videoURL, cons
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE
     })
+    , alphaCodec(alphaAtlasTexture.width, alphaAtlasTexture.height)
     , referenceFrameMesh(quadSet, videoAtlasTexture, alphaAtlasTexture, glm::vec4(0.0f, 0.0f, 0.5f, 1.0f))
     // We can use less vertices and indicies for the mask since it will be sparse
     , residualFrameMesh(quadSet, videoAtlasTexture, alphaAtlasTexture, glm::vec4(0.5f, 0.0f, 1.0f, 1.0f))
@@ -214,8 +215,8 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
 
     // Read alpha data
     std::memcpy(frame->alphaData.data(), ptr, header.alphaSize);
+    alphaCodec.compress(frame->alphaData);
     ptr += header.alphaSize;
-    // TODO: Decompress alpha data
 
     // Read geometry data
     if (header.frameType == QuadFrame::FrameType::REFERENCE) {

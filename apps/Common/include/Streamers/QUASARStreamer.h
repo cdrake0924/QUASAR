@@ -10,6 +10,7 @@
 #include <Streamers/VideoStreamer.h>
 #include <PostProcessing/Tonemapper.h>
 #include <PostProcessing/ShowNormalsEffect.h>
+#include <Codec/AlphaCodec.h>
 
 namespace quasar {
 
@@ -137,6 +138,8 @@ private:
     std::vector<unsigned char> alphaData;
     std::vector<std::vector<char>> geometryMetadatas;
     std::vector<char> compressedData;
+
+    AlphaCodec alphaCodec;
 
     QuadMaterial wireframeMaterial;
     QuadMaterial maskWireframeMaterial;

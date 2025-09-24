@@ -36,6 +36,7 @@ QUASARReceiver::QUASARReceiver(QuadSet& quadSet, uint maxLayers, const std::stri
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
+    , alphaCodec(alphaAtlasTexture.width, alphaAtlasTexture.height)
     , residualFrameMesh(quadSet, videoAtlasTexture, alphaAtlasTexture)
     , bufferPool(quadSet.getSize(), maxLayers)
     , DataReceiverTCP(proxiesURL)
@@ -268,8 +269,8 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
 
     // Read alpha data
     std::memcpy(frame->bufferPool.alphaData.data(), ptr, header.alphaSize);
+    alphaCodec.decompress(frame->bufferPool.alphaData);
     ptr += header.alphaSize;
-    // TODO: Decompress alpha data
 
     // Read geometry data
     const char* layerPtr = ptr;

@@ -94,6 +94,7 @@ QuadsStreamer::QuadsStreamer(
         .minFilter = GL_NEAREST,
         .magFilter = GL_NEAREST,
     })
+    , alphaCodec(alphaAtlasRT.width, alphaAtlasRT.height)
     , residualFrameMesh(quadSet, residualFrameRT_noTone.colorTexture, residualFrameRT_noTone.alphaTexture)
     , depthMesh(quadSet.getSize(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
     , wireframeMaterial({ .baseColor = colors[0] })
@@ -373,7 +374,7 @@ size_t QuadsStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, s
 
     // Save alpha atlas
     alphaAtlasRT.writeAlphaToMemory(alphaData);
-    // TODO: Compress alpha data
+    alphaCodec.compress(alphaData);
 
     // Save geometry data
     if (!writeResidualFrame) {
