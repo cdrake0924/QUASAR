@@ -215,6 +215,8 @@ QUASARStreamer::QUASARStreamer(
 
     setViewSphereDiameter(viewSphereDiameter);
 
+    alphaData.resize(alphaAtlasRT.width * alphaAtlasRT.height);
+
     if (!videoURL.empty() && !proxiesURL.empty()) {
         spdlog::info("Created QUASARStreamer that sends to URL: {}", proxiesURL);
     }
@@ -259,7 +261,9 @@ void QUASARStreamer::setViewSphereDiameter(float viewSphereDiameter) {
 
 void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, bool showDepth) {
     // Reset stats
+    Stats prevStats = stats;
     stats = { 0 };
+    stats.frameSize = prevStats.frameSize; // Keep previous frame size
 
     int currMeshIndex  = meshIndex % 2;
     int prevMeshIndex  = (meshIndex + 1) % 2;
@@ -573,6 +577,10 @@ size_t QUASARStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, 
     cameraPose.setViewMatrix(remoteCamera.getViewMatrix());
     cameraPose.writeToMemory(cameraData);
 
+    // Save alpha data
+    alphaAtlasRT.writeAlphaToMemory(alphaData);
+    // TODO: Compress alpha data
+
     // Save geometry data
     // Save visible layer
     if (!writeResidualFrame) {
@@ -594,19 +602,21 @@ size_t QUASARStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, 
     QUASARReceiver::Header header{
         .poseID = poseID,
         .frameType = !writeResidualFrame ? QuadFrame::FrameType::REFERENCE : QuadFrame::FrameType::RESIDUAL,
-        .cameraSize = static_cast<uint32_t>(cameraData.size()),
         .params {
             .numLayers = static_cast<uint32_t>(geometryMetadatas.size()),
             .viewSphereDiameter = viewSphereDiameter,
             .wideFOV = remoteCameraWideFOV.getFovyDegrees(),
         },
+        .cameraSize = static_cast<uint32_t>(cameraData.size()),
+        .alphaSize = static_cast<uint32_t>(alphaData.size()),
         .geometrySize = geometrySize,
     };
 
     spdlog::debug("Writing camera size: {}", header.cameraSize);
+    spdlog::debug("Writing alpha size: {}", header.alphaSize);
     spdlog::debug("Writing geometry size: {}", header.geometrySize);
 
-    outputData.resize(sizeof(header) + cameraData.size() + geometrySize);
+    outputData.resize(header.getSize());
     char* ptr = outputData.data();
 
     // Write header
@@ -616,6 +626,10 @@ size_t QUASARStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, 
     // Write camera data
     std::memcpy(ptr, cameraData.data(), cameraData.size());
     ptr += cameraData.size();
+
+    // Write alpha data
+    std::memcpy(ptr, alphaData.data(), alphaData.size());
+    ptr += alphaData.size();
 
     // Write geometry data
     for (const auto& layerData : geometryMetadatas) {

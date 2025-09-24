@@ -185,9 +185,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
     ptr += sizeof(Header);
 
     // Sanity check
-    size_t expectedSize = sizeof(Header) +
-                          header.cameraSize +
-                          header.geometrySize;
+    size_t expectedSize = header.getSize();
     if (inputData.size() < expectedSize) {
         throw std::runtime_error("Input data size " +
                                   std::to_string(inputData.size()) +
@@ -207,11 +205,17 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
     frame->frameType = header.frameType;
 
     spdlog::debug("Loading camera size: {}", header.cameraSize);
+    spdlog::debug("Loading alpha size: {}", header.alphaSize);
     spdlog::debug("Loading geometry size: {}", header.geometrySize);
 
     // Read camera data
     frame->cameraPose.loadFromMemory(ptr, header.cameraSize);
     ptr += header.cameraSize;
+
+    // Read alpha data
+    std::memcpy(frame->alphaData.data(), ptr, header.alphaSize);
+    ptr += header.alphaSize;
+    // TODO: Decompress alpha data
 
     // Read geometry data
     if (header.frameType == QuadFrame::FrameType::REFERENCE) {
@@ -252,6 +256,10 @@ QuadFrame::FrameType QuadsReceiver::reconstructFrame(std::shared_ptr<Frame> fram
 
     spdlog::debug("Reconstructing {} Frame...", frame->frameType == QuadFrame::FrameType::REFERENCE ? "Reference" : "Residual");
     frame->cameraPose.copyPoseToCamera(remoteCamera);
+
+    // Update alpha texture
+    alphaAtlasTexture.bind();
+    alphaAtlasTexture.loadFromData(frame->alphaData.data());
 
     const glm::vec2& gBufferSize = quadSet.getSize();
     double startTime = timeutils::getTimeMicros();

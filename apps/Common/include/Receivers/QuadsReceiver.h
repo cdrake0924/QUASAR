@@ -18,7 +18,10 @@ public:
         pose_id_t poseID;
         QuadFrame::FrameType frameType;
         uint32_t cameraSize;
+        uint32_t alphaSize;
         uint32_t geometrySize;
+
+        size_t getSize() const { return sizeof(Header) + cameraSize + alphaSize + geometrySize; }
     };
 
     struct Stats {
@@ -65,6 +68,7 @@ private:
 
         Pose cameraPose;
 
+        std::vector<unsigned char> alphaData;
         std::vector<char> uncompressedQuads, uncompressedOffsets;
         std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
@@ -79,6 +83,8 @@ private:
 
             uncompressedQuadsRevealed.resize(quadsBytes / 4); // Residual frame usually has less quads
             uncompressedOffsetsRevealed.resize(offsetsBytes);
+
+            alphaData.resize(2 * gBufferSize.x * gBufferSize.y);
         }
         ~Frame() = default;
 

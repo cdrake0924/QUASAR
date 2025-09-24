@@ -141,6 +141,8 @@ QuadsStreamer::QuadsStreamer(
     depthNode.visible = false;
     depthNode.primitiveType = GL_POINTS;
 
+    alphaData.resize(alphaAtlasRT.width * alphaAtlasRT.height);
+
     if (!videoURL.empty() && !proxiesURL.empty()) {
         spdlog::info("Created QuadsStreamer that sends to URL: {}", proxiesURL);
     }
@@ -169,7 +171,9 @@ void QuadsStreamer::addMeshesToScene(Scene& localScene) {
 
 void QuadsStreamer::generateFrame(bool createResidualFrame, bool showNormals, bool showDepth) {
     // Reset stats
+    Stats prevStats = stats;
     stats = { 0 };
+    stats.frameSize = prevStats.frameSize; // Keep previous frame size
 
     int currMeshIndex  = meshIndex % 2;
     int prevMeshIndex  = (meshIndex + 1) % 2;
@@ -367,6 +371,10 @@ size_t QuadsStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, s
     cameraPose.setViewMatrix(remoteCamera.getViewMatrix());
     cameraPose.writeToMemory(cameraData);
 
+    // Save alpha atlas
+    alphaAtlasRT.writeAlphaToMemory(alphaData);
+    // TODO: Compress alpha data
+
     // Save geometry data
     if (!writeResidualFrame) {
         referenceFrame.writeToMemory(geometryData);
@@ -379,13 +387,15 @@ size_t QuadsStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, s
         .poseID = poseID,
         .frameType = !writeResidualFrame ? QuadFrame::FrameType::REFERENCE : QuadFrame::FrameType::RESIDUAL,
         .cameraSize = static_cast<uint32_t>(cameraData.size()),
+        .alphaSize = static_cast<uint32_t>(alphaData.size()),
         .geometrySize = static_cast<uint32_t>(geometryData.size())
     };
 
     spdlog::debug("Writing camera size: {}", header.cameraSize);
+    spdlog::debug("Writing alpha size: {}", header.alphaSize);
     spdlog::debug("Writing geometry size: {}", header.geometrySize);
 
-    outputData.resize(sizeof(header) + cameraData.size() + geometryData.size());
+    outputData.resize(header.getSize());
     char* ptr = outputData.data();
 
     // Write header
@@ -395,6 +405,10 @@ size_t QuadsStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, s
     // Write camera data
     std::memcpy(ptr, cameraData.data(), cameraData.size());
     ptr += cameraData.size();
+
+    // Write alpha data
+    std::memcpy(ptr, alphaData.data(), alphaData.size());
+    ptr += alphaData.size();
 
     // Write geometry data
     std::memcpy(ptr, geometryData.data(), geometryData.size());

@@ -134,6 +134,7 @@ private:
     std::vector<FrameRenderTarget> frameRTsHidLayer_noTone;
 
     std::vector<char> cameraData;
+    std::vector<unsigned char> alphaData;
     std::vector<std::vector<char>> geometryMetadatas;
     std::vector<char> compressedData;
 

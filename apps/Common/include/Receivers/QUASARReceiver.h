@@ -24,9 +24,12 @@ public:
     struct Header {
         pose_id_t poseID;
         QuadFrame::FrameType frameType;
-        uint32_t cameraSize;
         Params params;
+        uint32_t cameraSize;
+        uint32_t alphaSize;
         uint32_t geometrySize;
+
+        size_t getSize() const { return sizeof(Header) + cameraSize + alphaSize + geometrySize; }
     };
 
     struct Stats {
@@ -78,6 +81,7 @@ private:
     QuadMesh residualFrameMesh;
 
     struct BufferPool {
+        std::vector<unsigned char> alphaData;
         std::vector<std::vector<char>> uncompressedQuads, uncompressedOffsets;
         std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 
@@ -97,6 +101,8 @@ private:
 
             uncompressedQuadsRevealed.resize(quadsBytes / 4); // Residual frame usually has less quads
             uncompressedOffsetsRevealed.resize(offsetsBytes);
+
+            alphaData.resize(2 * gBufferSize.x * 3 * gBufferSize.y);
         }
     };
 
@@ -113,7 +119,7 @@ private:
         ~Frame() = default;
 
         size_t decompressReferenceHiddenLayersWideFOV(std::unique_ptr<BS::thread_pool<>>& threadPool,
-                                         std::vector<ReferenceFrame>& referenceFrames) {
+                                                      std::vector<ReferenceFrame>& referenceFrames) {
             std::vector<std::future<size_t>> futures;
             for (int layer = 0; layer < referenceFrames.size(); layer++) {
                 futures.emplace_back(threadPool->submit_task([&, layer]() {
@@ -130,7 +136,7 @@ private:
         }
 
         size_t decompressResidualFrame(std::unique_ptr<BS::thread_pool<>>& threadPool,
-                                      ResidualFrame& residualFrame) {
+                                       ResidualFrame& residualFrame) {
             std::vector<std::future<size_t>> futures;
             futures.emplace_back(threadPool->submit_task([&]() {
                 return residualFrame.decompressUpdatedDepthOffsets(bufferPool.uncompressedOffsets[0]);

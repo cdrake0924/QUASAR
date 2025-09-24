@@ -110,6 +110,7 @@ private:
     FrameRenderTarget residualFrameRT_noTone;
 
     std::vector<char> cameraData;
+    std::vector<unsigned char> alphaData;
     std::vector<char> geometryData;
     std::vector<char> compressedData;
 
