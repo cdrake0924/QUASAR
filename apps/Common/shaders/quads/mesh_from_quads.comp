@@ -85,17 +85,17 @@ vec3 lineLineIntersection(vec3 p0, vec3 p1, vec3 p2, vec3 p3) {
 QuadMapData loadQuadMap(uint index) {
     QuadMapDataPacked quadMapDataPacked;
     quadMapDataPacked.normalSphericalDepth = normalSphericalDepthInput[index];
-    quadMapDataPacked.metadata = metadatasInput[index];
+    quadMapDataPacked.metadata             = metadatasInput[index];
 
     QuadMapData quadMapData;
     quadMapData.normal = unpackSphericalToNormal((quadMapDataPacked.normalSphericalDepth >> 16) & 0xFFFFu);
-    quadMapData.depth = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
+    quadMapData.depth  = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
 
     quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
     quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
 
     uint flattenedAndSize = quadMapDataPacked.metadata & 0xFFu;
-    quadMapData.size = (flattenedAndSize >> 1) & 0x7Fu;
+    quadMapData.size      = (flattenedAndSize >> 1) & 0x7Fu;
     quadMapData.flattened = (flattenedAndSize & 1u) != 0u;
 
     return quadMapData;
@@ -114,7 +114,7 @@ Plane quadMapDataToPlane(in QuadMapData quadMapData) {
     Plane proxyPlane;
 
     uint halfSize = 1u << (quadMapData.size - 1u); // 2^size / 2
-    vec2 proxyPlaneUV =(vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
+    vec2 proxyPlaneUV = (vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
     float proxyPlaneDepth = quadMapData.depth;
     proxyPlane.normal = quadMapData.normal;
 

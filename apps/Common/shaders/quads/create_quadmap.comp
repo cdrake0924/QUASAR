@@ -311,13 +311,13 @@ void storeQuadMap(in ivec2 pixelCoord, in QuadMapData quadMapData) {
 
     uint flattenedAndSize = ((quadMapData.size & 0x7Fu) << 1) | (quadMapData.flattened ? 1u : 0u);
     quadMapDataPacked.metadata = ((quadMapData.offset.x & 0xFFFu) << 20) |
-                                                ((quadMapData.offset.y & 0xFFFu) << 8) |
-                                                    (flattenedAndSize & 0xFFu);
+                                 ((quadMapData.offset.y & 0xFFFu) << 8)  |
+                                 (flattenedAndSize & 0xFFu);
 
     uint index = uint(pixelCoord.y) * uint(quadMapSize.x) + uint(pixelCoord.x);
     normalSphericalDepthOutput[index] = ((packNormalToSpherical(quadMapData.normal) & 0xFFFFu) << 16) |
                                         (packDepthUNORM16(quadMapData.depth) & 0xFFFFu);
-    metadatasOutput[index] = quadMapDataPacked.metadata;
+    metadatasOutput[index]            = quadMapDataPacked.metadata;
 }
 
 void storeDepthOffsets(in ivec2 pixelCoord, in vec4 depthOffsets) {

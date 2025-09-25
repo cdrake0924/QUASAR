@@ -31,11 +31,11 @@ QuadMapData loadInputQuadMap(ivec2 pixelCoord) {
 
     QuadMapDataPacked quadMapDataPacked;
     quadMapDataPacked.normalSphericalDepth = normalSphericalDepthInput[index];
-    quadMapDataPacked.metadata = metadatasInput[index];
+    quadMapDataPacked.metadata             = metadatasInput[index];
 
     QuadMapData quadMapData;
     quadMapData.normal = unpackSphericalToNormal((quadMapDataPacked.normalSphericalDepth >> 16) & 0xFFFFu);
-    quadMapData.depth = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
+    quadMapData.depth  = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
 
     quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
     quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
@@ -56,7 +56,7 @@ void storeOutputQuadMap(in uint index, in QuadMapData quadMapData) {
                                  (flattenedAndSize & 0xFFu);
     normalSphericalDepthOutput[index] = ((packNormalToSpherical(quadMapData.normal) & 0xFFFFu) << 16) |
                                         (packDepthUNORM16(quadMapData.depth) & 0xFFFFu);
-    metadatasOutput[index] = quadMapDataPacked.metadata;
+    metadatasOutput[index]            = quadMapDataPacked.metadata;
 }
 
 void main() {

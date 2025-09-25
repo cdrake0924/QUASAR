@@ -92,11 +92,11 @@ QuadMapData loadInputQuadMap(ivec2 pixelCoord) {
 
     QuadMapDataPacked quadMapDataPacked;
     quadMapDataPacked.normalSphericalDepth = normalSphericalDepthInput[index];
-    quadMapDataPacked.metadata = metadatasInput[index];
+    quadMapDataPacked.metadata             = metadatasInput[index];
 
     QuadMapData quadMapData;
     quadMapData.normal = unpackSphericalToNormal((quadMapDataPacked.normalSphericalDepth >> 16) & 0xFFFFu);
-    quadMapData.depth = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
+    quadMapData.depth  = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
 
     quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
     quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
@@ -119,7 +119,7 @@ void storeQuadMap(in ivec2 pixelCoord, in QuadMapData quadMapData) {
     uint index = uint(pixelCoord.y) * uint(outputQuadMapSize.x) + uint(pixelCoord.x);
     normalSphericalDepthOutput[index] = ((packNormalToSpherical(quadMapData.normal) & 0xFFFFu) << 16) |
                                         (packDepthUNORM16(quadMapData.depth) & 0xFFFFu);
-    metadatasOutput[index] = quadMapDataPacked.metadata;
+    metadatasOutput[index]            = quadMapDataPacked.metadata;
 }
 
 void ignoreInputQuadMapData(in ivec2 pixelCoord) {
@@ -135,7 +135,7 @@ Plane quadMapDataToPlane(in QuadMapData quadMapData) {
     Plane proxyPlane;
 
     uint halfSize = 1u << (quadMapData.size - 1u); // 2^size / 2
-    vec2 proxyPlaneUV =(vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
+    vec2 proxyPlaneUV = (vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
     float proxyPlaneDepth = quadMapData.depth;
     proxyPlane.normal = quadMapData.normal;
 
@@ -267,7 +267,7 @@ void recalcDepthOffsets(
     inout int numBelowThreshold, inout int total
 ) {
     uint halfSize = 1u << (quadMapData.size - 1u); // 2^size / 2
-    vec2 proxyPlaneUV =(vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
+    vec2 proxyPlaneUV = (vec2(quadMapData.offset) + float(halfSize) * vec2(0.5)) / gBufferSize;
     vec2 proxyPlanePixelCoords = vec2(proxyPlaneUV * gBufferSize);
 
     uint size = 1 << quadMapData.size;
