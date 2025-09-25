@@ -8,6 +8,8 @@
 #include <Networking/DataStreamerTCP.h>
 #include <Streamers/VideoStreamer.h>
 #include <PostProcessing/Tonemapper.h>
+
+#include <UI/FrameRateWindow.h>
 #include <PostProcessing/ShowNormalsEffect.h>
 #include <Codec/AlphaCodec.h>
 

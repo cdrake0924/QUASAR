@@ -136,8 +136,8 @@ int main(int argc, char** argv) {
 
     RenderStats renderStats;
     pose_id_t prevPoseID;
+    FrameRateWindow frameRateWindow;
     guiManager->onRender([&](double now, double dt) {
-        static bool showFPS = true;
         static bool showUI = true;
         static bool showFramePreviewWindow = false;
         static bool showLayerPreviews = false;
@@ -146,7 +146,6 @@ int main(int argc, char** argv) {
 
         ImGui::NewFrame();
 
-        ImGuiWindowFlags flags = 0;
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Exit", "ESC")) {
@@ -155,7 +154,7 @@ int main(int argc, char** argv) {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-            ImGui::MenuItem("FPS", 0, &showFPS);
+            ImGui::MenuItem("FPS", 0, &frameRateWindow.visible);
             ImGui::MenuItem("UI", 0, &showUI);
             ImGui::MenuItem("Frame Previews", 0, &showFramePreviewWindow);
             ImGui::MenuItem("Layer Previews", 0, &showLayerPreviews);
@@ -163,13 +162,7 @@ int main(int argc, char** argv) {
         }
         ImGui::EndMainMenuBar();
 
-        if (showFPS) {
-            ImGui::SetNextWindowPos(ImVec2(10, 40), ImGuiCond_FirstUseEver);
-            flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
-            ImGui::Begin("", 0, flags);
-            ImGui::Text("%.1f FPS (%.3f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
+        frameRateWindow.draw(now, dt);
 
         if (showUI) {
             ImGui::SetNextWindowSize(ImVec2(600, 500), ImGuiCond_FirstUseEver);
@@ -204,11 +197,11 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            glm::vec3 position = camera.getPosition();
+            const glm::vec3& position = camera.getPosition();
             if (ImGui::DragFloat3("Camera Position", (float*)&position, 0.01f)) {
                 camera.setPosition(position);
             }
-            glm::vec3 rotation = camera.getRotationEuler();
+            const glm::vec3& rotation = camera.getRotationEuler();
             if (ImGui::DragFloat3("Camera Rotation", (float*)&rotation, 0.1f)) {
                 camera.setRotationEuler(rotation);
             }
@@ -308,29 +301,27 @@ int main(int argc, char** argv) {
         }
 
         if (showFramePreviewWindow) {
-            flags = 0;
-            ImGui::Begin("Reference Frame", 0, flags);
+            ImGui::Begin("Reference Frame", 0);
             ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
-            ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
+            ImGui::Begin("Residual Frame (changed geometry)", 0);
             ImGui::Image((void*)(intptr_t)(quasar.residualFrameMaskRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
-            ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
+            ImGui::Begin("Residual Frame (revealed geometry)", 0);
             ImGui::Image((void*)(intptr_t)(quasar.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
 
         if (showLayerPreviews) {
-            flags = ImGuiWindowFlags_AlwaysAutoResize;
             for (int layer = 0; layer < maxLayers; layer++) {
                 int viewIdx = maxLayers - layer - 1;
                 if (showLayers[viewIdx]) {
-                    ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, flags);
+                    ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, ImGuiWindowFlags_AlwaysAutoResize);
                     if (viewIdx == 0) {
                         ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture.ID),
                                      ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));

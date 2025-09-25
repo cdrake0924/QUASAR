@@ -11,6 +11,10 @@
 #include <PostProcessing/ShowPositionsEffect.h>
 #include <PostProcessing/ShowIDsEffect.h>
 
+#include <UI/FrameRateWindow.h>
+#include <UI/FrameCaptureWindow.h>
+#include <UI/RecordWindow.h>
+
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
@@ -101,37 +105,29 @@ int main(int argc, char** argv) {
 
     float exposure = 1.0f;
     int shaderIndex = 0;
-    bool recording = false;
 
     bool runAnimations = cameraPathFileIn;
     float animationInterval = (MILLISECONDS_IN_SECOND / 30.0f);
+    int animationFramerates[] = {1, 5, 10, 24, 30, 60};
+    const char* animationFramerateLabels[] = {"1 FPS", "5 FPS", "10 FPS", "24 FPS", "30 FPS", "60 FPS"};
+    int animationFramerateIndex = 4;
+
     double totalTime = 0.0;
     double totalDT = 0.0;
-    double lastRenderTime = -INFINITY;
-    bool updateClient = !saveImages;
 
     RenderStats renderStats;
+    FrameRateWindow frameRateWindow;
+    FrameCaptureWindow frameCaptureWindow(recorder, glm::uvec2(430, 270), outputPath);
+    RecordWindow recordWindow(recorder, glm::uvec2(550, 270), outputPath);
     guiManager->onRender([&](double now, double dt) {
-        static bool showFPS = true;
         static bool showUI = !saveImages;
         static bool showLayerPreviews = false;
-        static bool showFrameCaptureWindow = false;
-        static char fileNameBase[256] = "screenshot";
-        static bool writeToHDR = false;
-        static bool showRecordWindow = false;
-        static int recordingFormatIndex = 0;
-        static char recordingDirBase[256] = "recordings";
         static bool showAnimationsWindow = false;
-
-        static int allowedFramerates[] = {1, 5, 10, 24, 30, 60};
-        static const char* framerateLabels[] = {"1 FPS", "5 FPS", "10 FPS", "24 FPS", "30 FPS", "60 FPS"};
-        static int currentFramerateIndex = 4;
 
         static bool showSkyBox = true;
 
         ImGui::NewFrame();
 
-        ImGuiWindowFlags flags = 0;
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Exit", "ESC")) {
@@ -140,10 +136,10 @@ int main(int argc, char** argv) {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-            ImGui::MenuItem("FPS", 0, &showFPS);
+            ImGui::MenuItem("FPS", 0, &frameRateWindow.visible);
             ImGui::MenuItem("UI", 0, &showUI);
-            ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
-            ImGui::MenuItem("Record", 0, &showRecordWindow);
+            ImGui::MenuItem("Frame Capture", 0, &frameCaptureWindow.visible);
+            ImGui::MenuItem("Record", 0, &recordWindow.visible);
             ImGui::MenuItem("Layer Previews", 0, &showLayerPreviews);
             ImGui::EndMenu();
         }
@@ -153,13 +149,7 @@ int main(int argc, char** argv) {
         }
         ImGui::EndMainMenuBar();
 
-        if (showFPS) {
-            ImGui::SetNextWindowPos(ImVec2(10, 40), ImGuiCond_FirstUseEver);
-            flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
-            ImGui::Begin("", 0, flags);
-            ImGui::Text("%.1f FPS (%.3f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
+        frameRateWindow.draw(now, dt);
 
         if (showUI) {
             ImGui::SetNextWindowSize(ImVec2(600, 500), ImGuiCond_FirstUseEver);
@@ -186,11 +176,11 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            glm::vec3 position = camera.getPosition();
+            const glm::vec3& position = camera.getPosition();
             if (ImGui::DragFloat3("Camera Position", (float*)&position, 0.01f)) {
                 camera.setPosition(position);
             }
-            glm::vec3 rotation = camera.getRotationEuler();
+            const glm::vec3& rotation = camera.getRotationEuler();
             if (ImGui::DragFloat3("Camera Rotation", (float*)&rotation, 0.1f)) {
                 camera.setRotationEuler(rotation);
             }
@@ -247,98 +237,23 @@ int main(int argc, char** argv) {
             ImGui::End();
         }
 
-        if (showFrameCaptureWindow) {
-            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 90), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Frame Capture", &showFrameCaptureWindow);
-
-            ImGui::Text("Base File Name:");
-            ImGui::InputText("##base file name", fileNameBase, IM_ARRAYSIZE(fileNameBase));
-            std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
-            Path basePath = outputPath / fileNameBase;
-
-            ImGui::Checkbox("Save as HDR", &writeToHDR);
-
-            ImGui::Separator();
-
-            if (ImGui::Button("Capture Current Frame")) {
-                Path mainPath = basePath.appendToName("." + time);
-                recorder.saveScreenshotToFile(mainPath, writeToHDR);
-
-                for (int view = 1; view < renderer.maxLayers; view++) {
-                    Path viewPath = basePath.appendToName(".view" + std::to_string(view + 1) + "." + time);
-                    if (writeToHDR) {
-                        renderer.peelingLayers[view].writeColorAsHDR(viewPath.withExtension(".hdr"));
-                    }
-                    else {
-                        renderer.peelingLayers[view].writeColorAsPNG(viewPath.withExtension(".png"));
-                    }
-                }
-            }
-
-            ImGui::End();
-        }
-
-        if (showRecordWindow) {
-            ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 300), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Record", &showRecordWindow);
-
-            if (recording) {
-                ImGui::TextColored(ImVec4(1,0,0,1), "Recording in progress...");
-            }
-
-            ImGui::Text("Output Directory:");
-            ImGui::InputText("##output directory", recordingDirBase, IM_ARRAYSIZE(recordingDirBase));
-
-            ImGui::Text("FPS:");
-            if (ImGui::InputInt("##fps", &recorder.targetFrameRate)) {
-                recorder.setTargetFrameRate(recorder.targetFrameRate);
-            }
-
-            ImGui::Text("Format:");
-            if (ImGui::Combo("##format", &recordingFormatIndex, recorder.getFormatCStrArray(), recorder.getFormatCount())) {
-                Recorder::OutputFormat selectedFormat = Recorder::OutputFormat::MP4;
-                switch (recordingFormatIndex) {
-                    case 0: selectedFormat = Recorder::OutputFormat::MP4; break;
-                    case 1: selectedFormat = Recorder::OutputFormat::PNG; break;
-                    case 2: selectedFormat = Recorder::OutputFormat::JPG; break;
-                    default: break;
-                }
-                recorder.setFormat(selectedFormat);
-            }
-
-            if (ImGui::Button("Start")) {
-                recording = true;
-                std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
-                Path recordingDir = (outputPath / recordingDirBase).appendToName("." + time);
-                recorder.setOutputPath(recordingDir);
-                recorder.start();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Stop")) {
-                recorder.stop();
-                recording = false;
-            }
-
-            ImGui::End();
-        }
+        frameCaptureWindow.draw(now, dt);
+        recordWindow.draw(now, dt);
 
         if (showLayerPreviews) {
-            flags = ImGuiWindowFlags_AlwaysAutoResize;
             const int texturePreviewSize = (windowSize.x * 2/3) / renderer.maxLayers;
             for (int i = 0; i < renderer.maxLayers; i++) {
                 int layerIdx = renderer.maxLayers - i - 1;
 
                 ImGui::SetNextWindowPos(ImVec2(windowSize.x - (i + 1) * texturePreviewSize - 30, 40), ImGuiCond_FirstUseEver);
-                ImGui::Begin(("Layer " + std::to_string(layerIdx) + " Color").c_str(), 0, flags);
+                ImGui::Begin(("Layer " + std::to_string(layerIdx) + " Color").c_str(), 0, ImGuiWindowFlags_AlwaysAutoResize);
                 ImGui::Image((void*)(intptr_t)(renderer.peelingLayers[layerIdx].colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
                 ImGui::End();
             }
         }
 
         if (showAnimationsWindow) {
-            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(430, 270), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 90), ImGuiCond_FirstUseEver);
             ImGui::Begin("Animations", &showAnimationsWindow);
 
@@ -347,9 +262,9 @@ int main(int argc, char** argv) {
             ImGui::Separator();
 
             ImGui::Text("Animation Framerate:");
-            int animationFramerate = allowedFramerates[currentFramerateIndex];
-            if (ImGui::Combo("", &currentFramerateIndex, framerateLabels, IM_ARRAYSIZE(framerateLabels))) {
-                animationFramerate = allowedFramerates[currentFramerateIndex];
+            int animationFramerate = animationFramerates[animationFramerateIndex];
+            if (ImGui::Combo("", &animationFramerateIndex, animationFramerateLabels, IM_ARRAYSIZE(animationFramerateLabels))) {
+                animationFramerate = animationFramerates[animationFramerateIndex];
                 animationInterval = MILLISECONDS_IN_SECOND / static_cast<float>(animationFramerate);
             }
 
@@ -373,6 +288,8 @@ int main(int argc, char** argv) {
         camera.updateProjectionMatrix();
     });
 
+    double lastRenderTime = -INFINITY;
+    bool updateClient = !saveImages;
     app.onRender([&](double now, double dt) {
         // Handle mouse input
         if (!(ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantCaptureMouse)) {
@@ -478,7 +395,7 @@ int main(int argc, char** argv) {
                 window->close();
             }
         }
-        else if (recording) {
+        else if (recordWindow.isRecording()) {
             recorder.captureFrame(camera);
         }
     });

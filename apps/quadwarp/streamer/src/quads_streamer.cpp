@@ -8,6 +8,8 @@
 #include <Renderers/DeferredRenderer.h>
 #include <PostProcessing/Tonemapper.h>
 
+#include <UI/FrameRateWindow.h>
+
 #include <Streamers/QuadsStreamer.h>
 #include <Receivers/PoseReceiver.h>
 
@@ -120,14 +122,13 @@ int main(int argc, char** argv) {
 
     RenderStats renderStats;
     pose_id_t prevPoseID;
+    FrameRateWindow frameRateWindow;
     guiManager->onRender([&](double now, double dt) {
-        static bool showFPS = true;
         static bool showUI = true;
         static bool showFramePreviewWindow = false;
 
         ImGui::NewFrame();
 
-        ImGuiWindowFlags flags = 0;
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Exit", "ESC")) {
@@ -136,20 +137,14 @@ int main(int argc, char** argv) {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-            ImGui::MenuItem("FPS", 0, &showFPS);
+            ImGui::MenuItem("FPS", 0, &frameRateWindow.visible);
             ImGui::MenuItem("UI", 0, &showUI);
             ImGui::MenuItem("Frame Previews", 0, &showFramePreviewWindow);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
 
-        if (showFPS) {
-            ImGui::SetNextWindowPos(ImVec2(10, 40), ImGuiCond_FirstUseEver);
-            flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
-            ImGui::Begin("", 0, flags);
-            ImGui::Text("%.1f FPS (%.3f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
+        frameRateWindow.draw(now, dt);
 
         if (showUI) {
             ImGui::SetNextWindowSize(ImVec2(600, 500), ImGuiCond_FirstUseEver);
@@ -248,18 +243,17 @@ int main(int argc, char** argv) {
         }
 
         if (showFramePreviewWindow) {
-            flags = 0;
-            ImGui::Begin("Reference Frame", 0, flags);
+            ImGui::Begin("Reference Frame", 0);
             ImGui::Image((void*)(intptr_t)(quadwarp.referenceFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
-            ImGui::Begin("Residual Frame (changed geometry)", 0, flags);
+            ImGui::Begin("Residual Frame (changed geometry)", 0);
             ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameMaskRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
 
-            ImGui::Begin("Residual Frame (revealed geometry)", 0, flags);
+            ImGui::Begin("Residual Frame (revealed geometry)", 0);
             ImGui::Image((void*)(intptr_t)(quadwarp.residualFrameRT.colorTexture),
                          ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();

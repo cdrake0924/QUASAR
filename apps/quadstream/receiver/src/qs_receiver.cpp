@@ -7,6 +7,9 @@
 #include <Renderers/ForwardRenderer.h>
 #include <PostProcessing/Tonemapper.h>
 
+#include <UI/FrameRateWindow.h>
+#include <UI/FrameCaptureWindow.h>
+
 #include <Recorder.h>
 #include <CameraAnimator.h>
 
@@ -39,6 +42,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<int> maxAdditionalViewsIn(parser, "maxViews", "Max views", {'l', "num-views"}, 8);
     args::Flag disableWideFov(parser, "disable-wide-fov", "Disable wide fov view", {'W', "disable-wide-fov"});
     args::ValueFlag<std::string> dataPathIn(parser, "data-path", "Path to data files", {'D', "data-path"}, "../simulator/");
+    args::ValueFlag<std::string> outputPathIn(parser, "output-path", "Directory to save outputs", {'o', "output-path"}, ".");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -66,7 +70,8 @@ int main(int argc, char** argv) {
 
     config.enableVSync = !args::get(novsync);
 
-    Path dataPath = Path(args::get(dataPathIn)); dataPath.mkdirRecursive();
+    Path dataPath = Path(args::get(dataPathIn));
+    Path outputPath = Path(args::get(outputPathIn)); outputPath.mkdirRecursive();
 
     auto window = std::make_shared<GLFWWindow>(config);
     auto guiManager = std::make_shared<ImGuiManager>(window);
@@ -128,16 +133,13 @@ int main(int argc, char** argv) {
     bool showWireframe = false;
 
     RenderStats renderStats;
+    FrameRateWindow frameRateWindow;
+    FrameCaptureWindow frameCaptureWindow(recorder, glm::uvec2(430, 270), outputPath);
     guiManager->onRender([&](double now, double dt) {
-        static bool showFPS = true;
         static bool showUI = true;
-        static bool showFrameCaptureWindow = false;
-        static bool writeToHDR = false;
-        static char fileNameBase[256] = "screenshot";
 
         ImGui::NewFrame();
 
-        ImGuiWindowFlags flags = 0;
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Exit", "ESC")) {
@@ -146,23 +148,17 @@ int main(int argc, char** argv) {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-            ImGui::MenuItem("FPS", 0, &showFPS);
+            ImGui::MenuItem("FPS", 0, &frameRateWindow.visible);
             ImGui::MenuItem("UI", 0, &showUI);
-            ImGui::MenuItem("Frame Capture", 0, &showFrameCaptureWindow);
+            ImGui::MenuItem("Frame Capture", 0, &frameCaptureWindow.visible);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
 
-        if (showFPS) {
-            ImGui::SetNextWindowPos(ImVec2(10, 40), ImGuiCond_FirstUseEver);
-            flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
-            ImGui::Begin("", 0, flags);
-            ImGui::Text("%.1f FPS (%.3f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
+        frameRateWindow.draw(now, dt);
 
         if (showUI) {
-            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(430, 270), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowPos(ImVec2(10, 90), ImGuiCond_FirstUseEver);
             ImGui::Begin(config.title.c_str(), &showUI);
             ImGui::Text("OpenGL Version: %s", glGetString(GL_VERSION));
@@ -193,11 +189,11 @@ int main(int argc, char** argv) {
 
             ImGui::Separator();
 
-            glm::vec3 position = camera.getPosition();
+            const glm::vec3& position = camera.getPosition();
             if (ImGui::DragFloat3("Camera Position", (float*)&position, 0.01f)) {
                 camera.setPosition(position);
             }
-            glm::vec3 rotation = camera.getRotationEuler();
+            const glm::vec3& rotation = camera.getRotationEuler();
             if (ImGui::DragFloat3("Camera Rotation", (float*)&rotation, 0.1f)) {
                 camera.setRotationEuler(rotation);
             }
@@ -234,26 +230,7 @@ int main(int argc, char** argv) {
             ImGui::End();
         }
 
-        if (showFrameCaptureWindow) {
-            ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.4, 90), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Frame Capture", &showFrameCaptureWindow);
-
-            ImGui::Text("Base File Name:");
-            ImGui::InputText("##base file name", fileNameBase, IM_ARRAYSIZE(fileNameBase));
-            std::string time = std::to_string(static_cast<int>(window->getTime() * 1000.0f));
-            Path filename = (dataPath / fileNameBase).appendToName("." + time);
-
-            ImGui::Checkbox("Save as HDR", &writeToHDR);
-
-            ImGui::Separator();
-
-            if (ImGui::Button("Capture Current Frame")) {
-                recorder.saveScreenshotToFile(filename, writeToHDR);
-            }
-
-            ImGui::End();
-        }
+        frameCaptureWindow.draw(now, dt);
     });
 
     app.onResize([&](uint width, uint height) {
