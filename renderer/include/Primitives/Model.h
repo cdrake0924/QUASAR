@@ -33,13 +33,10 @@ public:
 
     std::string rootDirectory;
 
-    bool flipTextures = false;
-    bool gammaCorrected = false;
-    float IBL = 1.0;
+    bool gammaCorrected;
+    float IBL;
 
     const LitMaterial* material;
-
-    bool isGLTF = false;
 
     Model(const ModelCreateParams& params);
     ~Model();
@@ -56,8 +53,11 @@ public:
     Node* findNodeByName(const std::string& name);
 
 private:
+    bool flipTextures;
+    bool isGLTF = false;
+
     const aiScene* scene;
-    std::unordered_map<std::string, Texture*> texturesLoaded;
+    std::unordered_map<std::string, Texture*> texturesCache;
 
     void loadFromFile(const ModelCreateParams& params);
     void processNode(aiNode* aiNode, const aiScene* scene, Node* node, const LitMaterial* material);

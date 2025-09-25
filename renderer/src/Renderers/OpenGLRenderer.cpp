@@ -202,7 +202,7 @@ RenderStats OpenGLRenderer::drawScene(Scene& scene, const Camera& camera, uint32
 }
 
 RenderStats OpenGLRenderer::drawLightsImpl(Scene& scene, const Camera& camera) {
-    // Dont clear color or depth bit here, since we want this to draw over
+    // Don't clear color or depth bit here, since we want this to draw over
 
     RenderStats stats;
     for (auto& pointLight : scene.pointLights) {
@@ -239,7 +239,7 @@ RenderStats OpenGLRenderer::drawLights(Scene& scene, const Camera& camera) {
 }
 
 RenderStats OpenGLRenderer::drawSkyBoxImpl(Scene& scene, const Camera& camera) {
-    // Dont clear color or depth bit here, since we want this to draw over
+    // Don't clear color or depth bit here, since we want this to draw over
 
     RenderStats stats;
 

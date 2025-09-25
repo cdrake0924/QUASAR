@@ -1,6 +1,7 @@
 layout(location = 0) out vec4 FragColor;
-layout(location = 1) out vec4 FragNormal;
-layout(location = 2) out uvec4 FragIDs;
+layout(location = 1) out float FragAlpha;
+layout(location = 2) out vec4 FragNormal;
+layout(location = 3) out uvec4 FragIDs;
 
 in VertexData {
     flat uint DrawID;
@@ -12,6 +13,8 @@ in VertexData {
 uniform struct Material {
     vec4 baseColor;
     vec4 baseColorFactor;
+
+    int alphaMode;
 
     bool hasBaseColorMap; // use color map
     bool hasAlphaMap; // use alpha map
@@ -32,9 +35,9 @@ void main() {
     }
 
     float alpha = 1.0;
-    if (material.hasAlphaMap) {
+    if (material.alphaMode == ALPHA_BLEND && material.hasAlphaMap) {
         alpha = texture(material.alphaMap, uv).r;
-        if (alpha == 0.0) { // HACK: This means its most likely an expanded edge, so show anyways
+        if (alpha == 0.0) { // HACK: This is most likely an expanded edge, so show anyways
             alpha = 1.0;
         }
     }

@@ -126,9 +126,13 @@ QuadFrame::FrameType QUASARReceiver::recvData() {
         waitUntilReferenceFrame = true;
     }
     else if (!waitUntilReferenceFrame || (waitUntilReferenceFrame && frame->frameType == QuadFrame::FrameType::REFERENCE)) {
-        // Update texture
+        // Update color texture
         videoAtlasTexture.bind();
         videoAtlasTexture.draw(frame->poseID);
+
+        // Update alpha texture
+        alphaAtlasTexture.bind();
+        alphaAtlasTexture.loadFromData(frame->bufferPool.alphaData.data());
 
         // Reconstruct meshes from frame
         frameType = reconstructFrame(frame);
@@ -343,10 +347,6 @@ QuadFrame::FrameType QUASARReceiver::reconstructFrame(std::shared_ptr<Frame> fra
     spdlog::debug("Reconstructing {} Frame...", frame->frameType == QuadFrame::FrameType::REFERENCE ? "Reference" : "Residual");
     frame->cameraPose.copyPoseToCamera(remoteCamera);
     frame->cameraPose.copyPoseToCamera(remoteCameraWideFOV, false);
-
-    // Update alpha texture
-    alphaAtlasTexture.bind();
-    alphaAtlasTexture.loadFromData(frame->bufferPool.alphaData.data());
 
     const glm::vec2& gBufferSize = quadSet.getSize();
     double startTime = timeutils::getTimeMicros();

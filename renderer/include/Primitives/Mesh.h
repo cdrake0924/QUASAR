@@ -52,9 +52,9 @@ public:
     Buffer vertexBuffer;
     Buffer indexBuffer;
     Buffer indirectBuffer;
-    bool indirectDraw = false;
+    bool indirectDraw;
 
-    float IBL = 1.0;
+    float IBL;
     const Material* material;
 
     Mesh();

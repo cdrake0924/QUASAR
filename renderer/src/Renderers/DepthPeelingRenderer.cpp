@@ -4,6 +4,7 @@ using namespace quasar;
 
 DepthPeelingRenderer::DepthPeelingRenderer(const Config& config, uint maxLayers, bool edp)
     : maxLayers(maxLayers)
+    , edp(edp)
     , DeferredRenderer(config)
     , compositeLayersShader({
         .vertexCodeData = SHADER_BUILTIN_POSTPROCESS_VERT,
@@ -14,7 +15,6 @@ DepthPeelingRenderer::DepthPeelingRenderer(const Config& config, uint maxLayers,
             "#define MAX_LAYERS " + std::to_string(maxLayers)
         }
     })
-    , edp(edp)
 {
     // Enable depth peeling in shaders
     LitMaterial::extraShaderDefines.push_back("#define DO_DEPTH_PEELING");
@@ -158,7 +158,7 @@ RenderStats DepthPeelingRenderer::drawObjects(Scene& scene, const Camera& camera
     // Draw lights for debugging
     stats += drawLights(scene, camera);
 
-    // Dont draw skybox here, it's drawn in drawScene
+    // Don't draw skybox here, it's drawn in drawScene
 
     // Composite layers
     stats += compositeLayers();
@@ -192,7 +192,7 @@ RenderStats DepthPeelingRenderer::drawObjectsNoLighting(Scene& scene, const Came
     // Draw lighting pass
     stats += lightingPass(scene, camera);
 
-    // Dont draw skybox here, it's drawn in drawScene
+    // Don't draw skybox here, it's drawn in drawScene
 
     // Composite layers
     stats += compositeLayers();
@@ -205,7 +205,10 @@ RenderStats DepthPeelingRenderer::compositeLayers() {
 
     compositeLayersShader.bind();
     for (int i = 0; i < maxLayers; i++) {
-        compositeLayersShader.setTexture("peelingLayers[" + std::to_string(i) + "]", peelingLayers[i].colorTexture, i);
+        compositeLayersShader.setTexture(
+            "peelingLayersColor[" + std::to_string(i) + "]", peelingLayers[i].colorTexture, i);
+        compositeLayersShader.setTexture(
+            "peelingLayersAlpha[" + std::to_string(i) + "]", peelingLayers[i].alphaTexture, i + maxLayers);
     }
 
     outputRT.bind();

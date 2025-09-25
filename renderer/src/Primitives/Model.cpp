@@ -31,7 +31,7 @@ Model::~Model() {
         delete mesh;
     }
 
-    for (auto& texture : texturesLoaded) {
+    for (auto& texture : texturesCache) {
         delete texture.second;
     }
 }
@@ -415,8 +415,8 @@ Texture* Model::loadMaterialTexture(aiMaterial const* aiMat, aiString aiTextureP
     std::replace(texturePath.begin(), texturePath.end(), '\\', '/');
 
     // If we've loaded this texture already, return the already loaded texture
-    if (texturesLoaded.count(texturePath) > 0) {
-        return texturesLoaded[texturePath];
+    if (texturesCache.count(texturePath) > 0) {
+        return texturesCache[texturePath];
     }
 
     shouldGammaCorrect &= gammaCorrected;
@@ -460,8 +460,8 @@ Texture* Model::loadMaterialTexture(aiMaterial const* aiMat, aiString aiTextureP
             });
 
             FileIO::freeImage(data);
-            texturesLoaded[texturePath] = texture;
-            return texturesLoaded[texturePath];
+            texturesCache[texturePath] = texture;
+            return texturesCache[texturePath];
         }
 
         return nullptr;
@@ -476,8 +476,8 @@ Texture* Model::loadMaterialTexture(aiMaterial const* aiMat, aiString aiTextureP
             .gammaCorrected = shouldGammaCorrect,
             .path = texturePath,
         });
-        texturesLoaded[texturePath] = texture;
-        return texturesLoaded[texturePath];
+        texturesCache[texturePath] = texture;
+        return texturesCache[texturePath];
     }
 }
 

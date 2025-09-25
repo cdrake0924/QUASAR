@@ -99,9 +99,13 @@ QuadFrame::FrameType QuadsReceiver::recvData() {
         waitUntilReferenceFrame = true;
     }
     else if (!waitUntilReferenceFrame || (waitUntilReferenceFrame && frame->frameType == QuadFrame::FrameType::REFERENCE)) {
-        // Update texture
+        // Update color texture
         videoAtlasTexture.bind();
         videoAtlasTexture.draw(frame->poseID);
+
+        // Update alpha texture
+        alphaAtlasTexture.bind();
+        alphaAtlasTexture.loadFromData(frame->alphaData.data());
 
         // Reconstruct meshes from frame
         frameType = reconstructFrame(frame);
@@ -257,10 +261,6 @@ QuadFrame::FrameType QuadsReceiver::reconstructFrame(std::shared_ptr<Frame> fram
 
     spdlog::debug("Reconstructing {} Frame...", frame->frameType == QuadFrame::FrameType::REFERENCE ? "Reference" : "Residual");
     frame->cameraPose.copyPoseToCamera(remoteCamera);
-
-    // Update alpha texture
-    alphaAtlasTexture.bind();
-    alphaAtlasTexture.loadFromData(frame->alphaData.data());
 
     const glm::vec2& gBufferSize = quadSet.getSize();
     double startTime = timeutils::getTimeMicros();

@@ -70,7 +70,11 @@ public:
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         }
         if (clearMask & (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)) {
+#ifdef GL_CORE
             glClearDepth(1.0f);
+#else
+            glClearDepthf(1.0f);
+#endif
             glClearStencil(0);
         }
         glClear(clearMask);

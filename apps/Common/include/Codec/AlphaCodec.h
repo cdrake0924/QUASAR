@@ -7,6 +7,11 @@ namespace quasar {
 
 class AlphaCodec {
 public:
+    struct Stats {
+        double compressTimeMs = 0.0;
+        double decompressTimeMs = 0.0;
+    } stats;
+
     AlphaCodec(uint width, uint height)
         : width(width)
         , height(height)
@@ -14,11 +19,17 @@ public:
     ~AlphaCodec() = default;
 
     size_t compress(std::vector<unsigned char>& uncompressedData) {
-        return uncompressedData.size();
+        double startTime = timeutils::getTimeMicros();
+        size_t res = uncompressedData.size();
+        stats.compressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        return res;
     }
 
     size_t decompress(std::vector<unsigned char>& compressedData) {
-        return compressedData.size();
+        double startTime = timeutils::getTimeMicros();
+        size_t res = compressedData.size();
+        stats.decompressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        return res;
     }
 
 private:
