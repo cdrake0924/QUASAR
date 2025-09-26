@@ -45,10 +45,11 @@ public:
 
     void getData(void* data) const;
     template<typename T>
-    std::vector<T> getData() const;
+    void getData(std::vector<T>& data) const;
 
     void setData(size_t numElems, const void* data);
-    void setData(const std::vector<char>& data);
+    template<typename T>
+    void setData(const std::vector<T>& data);
 
 #ifdef GL_CORE
     void setSubData(size_t offset, size_t numElems, const void* data);

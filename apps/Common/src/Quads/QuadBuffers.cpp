@@ -65,15 +65,15 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
 #else
     void* ptr;
 
-    normalSphericalsBuffer.bind();
-    ptr = normalSphericalsBuffer.mapToCPU(GL_MAP_READ_BIT);
+    normalSphericalDepthBuffer.bind();
+    ptr = normalSphericalDepthBuffer.mapToCPU(GL_MAP_READ_BIT);
     if (ptr) {
         std::memcpy(normalSphericalDepth, ptr, numProxies * sizeof(uint32_t));
-        normalSphericalsBuffer.unmapFromCPU();
+        normalSphericalDepthBuffer.unmapFromCPU();
     }
     else {
-        spdlog::warn("Failed to map normalSphericalsBuffer. Copying using getData");
-        normalSphericalsBuffer.getData(outputData.data() + bufferOffset);
+        spdlog::warn("Failed to map normalSphericalDepthBuffer. Copying using getData");
+        normalSphericalDepthBuffer.getData(outputData.data() + bufferOffset);
     }
     bufferOffset += numProxies * sizeof(uint32_t);
 

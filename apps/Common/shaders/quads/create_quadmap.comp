@@ -52,11 +52,13 @@ float normalizeDepth(float depth) {
 }
 
 float sampleDepth(sampler2D depthMap, ivec2 sampleCoord) {
-    return texelFetch(depthMap, sampleCoord, 0).r;
+    float depth = texelFetch(depthMap, sampleCoord, 0).r;
+    return unpackDepthUNORM16(packDepthUNORM16(depth)); // Quantize
 }
 
 vec3 sampleNormal(sampler2D normalsMap, ivec2 sampleCoord) {
-    return normalize(texelFetch(normalsMap, sampleCoord, 0).xyz);
+    vec3 normal = normalize(texelFetch(normalsMap, sampleCoord, 0).xyz);
+    return unpackSphericalToNormal(packNormalToSpherical(normal)); // Quantize
 }
 
 vec3 normalToView(mat4 view, vec3 normalWorld) {

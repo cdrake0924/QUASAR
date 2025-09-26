@@ -179,27 +179,26 @@ void Buffer::getData(void* data) const {
 #ifdef GL_CORE
     getSubData(0, numElems, data);
 #else
-    void* mappedBuffer = glMapBufferRange(target, 0, numElems * dataSize, GL_MAP_READ_BIT);
-    if (mappedBuffer) {
-        std::memcpy(data, mappedBuffer, numElems * dataSize);
-        glUnmapBuffer(target);
+    void* ptr = mapToCPU(GL_MAP_READ_BIT);
+    if (ptr) {
+        std::memcpy(data, ptr, numElems * dataSize);
+        unmapFromCPU();
     }
     else {
-        spdlog::error("Could not map buffer data.");
+        spdlog::error("Failed to map buffer to CPU.");
     }
 #endif
 }
 
 template<typename T>
-std::vector<T> Buffer::getData() const {
+void Buffer::getData(std::vector<T>& data) const {
     static_assert(std::is_trivially_copyable<T>::value, "Buffer data must be trivially copyable.");
     if (sizeof(T) != dataSize) {
         spdlog::error("Data size mismatch. Requested type has size {}, but buffer holds size {}.", sizeof(T), dataSize);
-        return {};
+        return;
     }
-    std::vector<T> data(numElems);
+    data.resize(numElems);
     getData(static_cast<void*>(data.data()));
-    return data;
 }
 
 void Buffer::setData(size_t numElems, const void* data) {
@@ -207,8 +206,14 @@ void Buffer::setData(size_t numElems, const void* data) {
     glBufferData(target, numElems * dataSize, data, usage);
 }
 
-void Buffer::setData(const std::vector<char>& data) {
-    setData(data.size() / dataSize, data.data());
+template<typename T>
+void Buffer::setData(const std::vector<T>& data) {
+    static_assert(std::is_trivially_copyable<T>::value, "Buffer data must be trivially copyable.");
+    if (sizeof(T) != dataSize) {
+        spdlog::error("Data size mismatch. Requested type has size {}, but buffer holds size {}.", sizeof(T), dataSize);
+        return;
+    }
+    setData(data.size(), data.data());
 }
 
 #ifdef GL_CORE

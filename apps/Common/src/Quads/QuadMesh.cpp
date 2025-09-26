@@ -136,15 +136,23 @@ void QuadMesh::appendQuads(const QuadSet& quadSet, const glm::vec2& gBufferSize,
 void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gBufferSize, const PerspectiveCamera& remoteCamera) {
     double startTime = timeutils::getTimeMicros();
 
-    vertexBuffer.bind();
-    vertexBuffer.smartResize(currNumProxies * NUM_SUB_QUADS * VERTICES_IN_A_QUAD, false);
-
+    // Resize buffers if more space is needed
+    size_t newNumVertices = currNumProxies * NUM_SUB_QUADS * VERTICES_IN_A_QUAD;
+    if (vertexBuffer.getSize() < newNumVertices) {
+        vertexBuffer.bind();
+        vertexBuffer.smartResize(newNumVertices, false);
+    }
     size_t numProxiesOpaque = currNumProxies - currNumProxiesTransparent;
-    indexBuffer.bind();
-    indexBuffer.smartResize(numProxiesOpaque * NUM_SUB_QUADS * INDICES_IN_A_QUAD, false);
-
-    indexBufferTransparent.bind();
-    indexBufferTransparent.smartResize(currNumProxiesTransparent * NUM_SUB_QUADS * INDICES_IN_A_QUAD, false);
+    size_t newNumIndices = numProxiesOpaque * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
+    if (indexBuffer.getSize() < newNumIndices) {
+        indexBuffer.bind();
+        indexBuffer.smartResize(newNumIndices, false);
+    }
+    size_t newNumIndicesTransparent = currNumProxiesTransparent * NUM_SUB_QUADS * INDICES_IN_A_QUAD;
+    if (indexBufferTransparent.getSize() < newNumIndicesTransparent) {
+        indexBufferTransparent.bind();
+        indexBufferTransparent.smartResize(newNumIndicesTransparent, false);
+    }
 
     createQuadMeshShader.bind();
     {
@@ -180,8 +188,9 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
     }
     createQuadMeshShader.dispatch((quadSet.getSize().x + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP,
                                   (quadSet.getSize().y + THREADS_PER_LOCALGROUP - 1) / THREADS_PER_LOCALGROUP, 1);
-    createQuadMeshShader.memoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT |
-                                       GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
+    createQuadMeshShader.memoryBarrier(
+        GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT |
+        GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
 
     stats.createMeshTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 }
@@ -190,12 +199,14 @@ RenderStats QuadMesh::draw(GLenum primitiveType) {
     RenderStats stats;
 
     glBindVertexArray(vertexArrayBuffer);
+    // Draw opaque proxies first
     if (indexBuffer.getSize() > 0) {
         indirectBuffer.bind();
         indexBuffer.bind();
         glDrawElementsIndirect(primitiveType, GL_UNSIGNED_INT, 0);
         indexBuffer.unbind();
     }
+    // Draw transparent proxies after opaque ones
     if (indexBufferTransparent.getSize() > 0) {
         indirectBufferTransparent.bind();
         indexBufferTransparent.bind();
