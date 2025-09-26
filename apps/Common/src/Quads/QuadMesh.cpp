@@ -151,6 +151,7 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
         createQuadMeshShader.setVec2("gBufferSize", gBufferSize);
         createQuadMeshShader.setUint("currNumProxies", currNumProxies);
         createQuadMeshShader.setVec4("textureExtent", textureExtent);
+        createQuadMeshShader.setFloat("expandQuadAmount", expandQuadAmount);
     }
     {
         createQuadMeshShader.setMat4("view", remoteCamera.getViewMatrix());
@@ -165,8 +166,8 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
 
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 1, vertexBuffer);
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 2, indexBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, indirectBuffer);
-        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, indexBufferTransparent);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 3, indexBufferTransparent);
+        createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 4, indirectBuffer);
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 5, indirectBufferTransparent);
 
         createQuadMeshShader.setBuffer(GL_SHADER_STORAGE_BUFFER, 6, currentQuadBuffers.normalSphericalDepthBuffer);

@@ -22,17 +22,17 @@ layout(std430, binding = 2) buffer IndexBuffer {
     uint indices[];
 };
 
-layout(std430, binding = 3) buffer IndirectCommandBuffer {
+layout(std430, binding = 3) buffer IndexBufferTransparent {
+    uint indicesTransparent[];
+};
+
+layout(std430, binding = 4) buffer IndirectCommandBuffer {
     uint count;
     uint instanceCount;
     uint firstIndex;
     uint baseVertex;
     uint baseInstance;
 } indirectCommandBuffer;
-
-layout(std430, binding = 4) buffer IndexBufferTransparent {
-    uint indicesTransparent[];
-};
 
 layout(std430, binding = 5) buffer IndirectCommandBufferTransparent {
     uint count;
@@ -72,7 +72,7 @@ uniform float far;
 uniform vec2 gBufferSize;
 uniform uint currNumProxies;
 uniform vec4 textureExtent;
-uniform float expandUVAmount = 0.025;
+uniform float expandQuadAmount;
 
 #define VERTICES_IN_A_QUAD  4u
 #define INDICES_IN_A_QUAD   6u
@@ -81,7 +81,7 @@ uniform float expandUVAmount = 0.025;
 vec3 lineLineIntersection(vec3 p0, vec3 p1, vec3 p2, vec3 p3) {
     vec3 d1 = p1 - p0;
     vec3 d2 = p3 - p2;
-    vec3 r = p2 - p0;
+    vec3 r  = p2 - p0;
 
     vec3 d1xd2 = cross(d1, d2);
     vec3 rxd2 = cross(r, d2);
@@ -141,10 +141,10 @@ Plane quadMapDataToPlane(in QuadMapData quadMapData) {
 }
 
 void createSurfel(in Quad2D surfelPixelCoords, in vec4 depthOffsets, in Plane proxyPlane, out Quad surfel, out Quad2D surfelUVs) {
-    surfelUVs.bottomLeft  = (surfelPixelCoords.bottomLeft  + vec2(-expandUVAmount, -expandUVAmount)) / gBufferSize;
-    surfelUVs.bottomRight = (surfelPixelCoords.bottomRight + vec2(+expandUVAmount, -expandUVAmount)) / gBufferSize;
-    surfelUVs.topLeft     = (surfelPixelCoords.topLeft     + vec2(-expandUVAmount, +expandUVAmount)) / gBufferSize;
-    surfelUVs.topRight    = (surfelPixelCoords.topRight    + vec2(+expandUVAmount, +expandUVAmount)) / gBufferSize;
+    surfelUVs.bottomLeft  = (surfelPixelCoords.bottomLeft  + vec2(-expandQuadAmount, -expandQuadAmount)) / gBufferSize;
+    surfelUVs.bottomRight = (surfelPixelCoords.bottomRight + vec2(+expandQuadAmount, -expandQuadAmount)) / gBufferSize;
+    surfelUVs.topLeft     = (surfelPixelCoords.topLeft     + vec2(-expandQuadAmount, +expandQuadAmount)) / gBufferSize;
+    surfelUVs.topRight    = (surfelPixelCoords.topRight    + vec2(+expandQuadAmount, +expandQuadAmount)) / gBufferSize;
 
     Quad2D surfelNDCs;
     surfelNDCs.bottomLeft  = surfelUVs.bottomLeft  * 2.0 - 1.0;
@@ -338,6 +338,10 @@ void main() {
     QuadMapData quadMapData = loadQuadMap(quadMapIndex);
     storeSurfelsFromQuadMap(quadMapData);
 
-    atomicExchange(indirectCommandBuffer.count, numIndices);
-    atomicExchange(indirectCommandBufferTransparent.count, numIndicesTransparent);
+    if (!quadMapData.hasAlpha) {
+        atomicExchange(indirectCommandBuffer.count, numIndices);
+    }
+    else {
+        atomicExchange(indirectCommandBufferTransparent.count, numIndicesTransparent);
+    }
 }

@@ -119,39 +119,53 @@ size_t Buffer::getSize() const {
 }
 
 void Buffer::resize(size_t newNumElems, bool copy) {
-    if (newNumElems == numElems) {
+    if (newNumElems == numElems && newNumElems == capacity) {
         return;
     }
 
     std::vector<char> data;
-    if (copy) {
-        data.resize(numElems * dataSize);
+    size_t elemsToCopy = 0;
+    if (copy && numElems > 0) {
+        elemsToCopy = std::min(numElems, newNumElems);
+        data.resize(elemsToCopy * dataSize);
         getData(data.data());
     }
 
     glBufferData(target, newNumElems * dataSize, nullptr, usage);
 
-    if (copy) {
-        size_t elemsToCopy = std::min(numElems, newNumElems);
+    if (copy && elemsToCopy > 0) {
         glBufferSubData(target, 0, elemsToCopy * dataSize, data.data());
     }
 
     numElems = newNumElems;
+    capacity = newNumElems;
 }
+
 
 void Buffer::smartResize(size_t newNumElems, bool copy) {
     if (newNumElems == numElems) {
         return;
     }
 
-    if (newNumElems > numElems) {
-        size_t targetNumElems = std::max(numElems + numElems / 2, newNumElems); // grow by 1.5x
-        targetNumElems = std::min(targetNumElems, maxElems == 0 ? targetNumElems : maxElems);
-        resize(targetNumElems, copy);
+    if (newNumElems > capacity) {
+        // Grow: round up to next power of two
+        size_t targetCapacity = nextPowerOfTwo(newNumElems);
+        if (maxElems > 0) {
+            targetCapacity = std::min(targetCapacity, maxElems);
+        }
+        resize(targetCapacity, copy);
     }
-    else if (newNumElems <= numElems / 4) {
-        size_t targetNumElems = std::max(numElems / 2, newNumElems);
-        resize(targetNumElems, copy);
+    else if (newNumElems <= capacity / 4) {
+        // Shrink: to half the current capacity
+        size_t targetCapacity = capacity / 2;
+        if (maxElems > 0) {
+            targetCapacity = std::min(targetCapacity, maxElems);
+        }
+        resize(targetCapacity, copy);
+    }
+    else {
+        // No reallocation, just update logical size
+        numElems = newNumElems;
     }
 }
 

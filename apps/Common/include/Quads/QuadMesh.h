@@ -32,6 +32,7 @@ public:
     } stats;
 
     uint32_t maxProxies;
+    float expandQuadAmount = 0.025f;
 
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, Texture& alphaTexture, uint maxProxies = MAX_PROXIES_PER_MESH);
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, Texture& alphaTexture, const glm::vec4& textureExtent, uint maxProxies = MAX_PROXIES_PER_MESH);
