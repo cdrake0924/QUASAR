@@ -12,8 +12,9 @@ namespace quasar {
 class QuadsGenerator {
 public:
     struct BufferSizes {
-        uint numProxies;
-        uint numDepthOffsets;
+        uint32_t numProxies;
+        uint32_t numProxiesTransparent;
+        uint32_t numDepthOffsets;
     };
 
     struct Stats {

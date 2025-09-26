@@ -4,7 +4,7 @@
 
 using namespace quasar;
 
-QuadBuffers::QuadBuffers(size_t maxProxies)
+QuadBuffers::QuadBuffers(uint32_t maxProxies)
     : maxProxies(maxProxies)
     , numProxies(maxProxies)
     , normalSphericalDepthBuffer({
@@ -27,17 +27,25 @@ QuadBuffers::QuadBuffers(size_t maxProxies)
 #endif
 {}
 
-void QuadBuffers::resize(size_t newNumProxies) {
+void QuadBuffers::resize(uint32_t newNumProxies, uint32_t newNumProxiesTransparent) {
     numProxies = newNumProxies;
-    spdlog::debug("Resized QuadBuffers to {} proxies", newNumProxies);
+    numProxiesTransparent = newNumProxiesTransparent;
+    spdlog::debug("Resized QuadBuffers to {} proxies ({} transparent)", newNumProxies, newNumProxiesTransparent);
 }
 
 #ifdef GL_CORE
 size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDeltaEncoding) {
-    outputData.resize(sizeof(uint32_t) + maxProxies * sizeof(QuadMapDataPacked));
+    size_t outputSize = 2 * sizeof(uint32_t) + numProxies * sizeof(QuadMapDataPacked);
+    if (outputData.size() != outputSize) {
+        outputData.resize(outputSize);
+    }
+
     size_t bufferOffset = 0;
 
     std::memcpy(outputData.data(), &numProxies, sizeof(uint32_t));
+    bufferOffset += sizeof(uint32_t);
+
+    std::memcpy(outputData.data() + bufferOffset, &numProxiesTransparent, sizeof(uint32_t));
     bufferOffset += sizeof(uint32_t);
 
     uint32_t* normalSphericalDepth = reinterpret_cast<uint32_t*>(outputData.data() + bufferOffset);
@@ -90,14 +98,12 @@ size_t QuadBuffers::writeToMemory(std::vector<char>& outputData, bool applyDelta
         }
     }
 
-    // Resize output
-    outputData.resize(bufferOffset);
     return bufferOffset;
 }
 #endif
 
 size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDeltaEncoding) {
-    if (inputData.size() < sizeof(uint32_t)) {
+    if (inputData.size() < 2 * sizeof(uint32_t)) {
         return 0;
     }
 
@@ -105,6 +111,9 @@ size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDelta
     void* ptr;
 
     uint32_t newNumProxies = *reinterpret_cast<const uint32_t*>(inputData.data());
+    bufferOffset += sizeof(uint32_t);
+
+    uint32_t newNumProxiesTransparent = *reinterpret_cast<const uint32_t*>(inputData.data() + bufferOffset);
     bufferOffset += sizeof(uint32_t);
 
     uint32_t* normalSphericalDepth = reinterpret_cast<uint32_t*>(inputData.data() + bufferOffset);
@@ -144,6 +153,6 @@ size_t QuadBuffers::loadFromMemory(std::vector<char>& inputData, bool applyDelta
     }
 
     // Set new number of proxies
-    resize(newNumProxies);
+    resize(newNumProxies, newNumProxiesTransparent);
     return bufferOffset;
 }

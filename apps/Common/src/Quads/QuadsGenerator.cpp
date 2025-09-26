@@ -261,7 +261,7 @@ void QuadsGenerator::createProxies(
     gatherOutputQuads(gBufferSize);
 
     QuadsGenerator::BufferSizes bufferSizes = getBufferSizes();
-    quadSet.setNumProxies(bufferSizes.numProxies);
+    quadSet.setNumProxies(bufferSizes.numProxies, bufferSizes.numProxiesTransparent);
 }
 
 void QuadsGenerator::createProxiesFromRT(

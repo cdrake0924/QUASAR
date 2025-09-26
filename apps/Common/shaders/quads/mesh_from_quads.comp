@@ -11,6 +11,7 @@ struct Vertex {
 layout(std430, binding = 0) buffer MeshBufferSizes {
     uint numVertices;
     uint numIndices;
+    uint numIndicesTransparent;
 };
 
 layout(std430, binding = 1) buffer VertexBuffer {
@@ -29,19 +30,31 @@ layout(std430, binding = 3) buffer IndirectCommandBuffer {
     uint baseInstance;
 } indirectCommandBuffer;
 
-layout(std430, binding = 4) readonly buffer normalSphericalDepthBufferInput {
+layout(std430, binding = 4) buffer IndexBufferTransparent {
+    uint indicesTransparent[];
+};
+
+layout(std430, binding = 5) buffer IndirectCommandBufferTransparent {
+    uint count;
+    uint instanceCount;
+    uint firstIndex;
+    uint baseVertex;
+    uint baseInstance;
+} indirectCommandBufferTransparent;
+
+layout(std430, binding = 6) readonly buffer normalSphericalDepthBufferInput {
     uint normalSphericalDepthInput[];
 };
 
-layout(std430, binding = 5) readonly buffer MetadatasBufferInput {
+layout(std430, binding = 7) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 6) readonly buffer QuadCreatedFlags {
+layout(std430, binding = 8) readonly buffer QuadCreatedFlags {
     int quadCreatedFlags[];
 };
 
-layout(std430, binding = 7) readonly buffer QuadIndexMap {
+layout(std430, binding = 9) readonly buffer QuadIndexMap {
     uint quadIndexMap[];
 };
 
@@ -202,7 +215,6 @@ void storeSurfel(in Quad quad, in Quad2D uvsSrc, in QuadMapData quadMapData) {
             bl -- br
 
     ************************/
-
     uint vertexIdxBase = atomicAdd(numVertices, VERTICES_IN_A_QUAD);
 
     uint vertexIdxTopLeft = vertexIdxBase + 0u;
@@ -224,15 +236,28 @@ void storeSurfel(in Quad quad, in Quad2D uvsSrc, in QuadMapData quadMapData) {
     vertices[vertexIdxTopRight].texCoord3D    = uvqs.topRight;
     vertices[vertexIdxTopLeft].texCoord3D     = uvqs.topLeft;
 
-    uint indexIdxBase = atomicAdd(numIndices, INDICES_IN_A_QUAD);
+    if (!quadMapData.hasAlpha) {
+        uint indexIdxBase = atomicAdd(numIndices, INDICES_IN_A_QUAD);
 
-    indices[indexIdxBase + 0u] = vertexIdxBottomLeft;
-    indices[indexIdxBase + 1u] = vertexIdxBottomRight;
-    indices[indexIdxBase + 2u] = vertexIdxTopRight;
+        indices[indexIdxBase + 0u] = vertexIdxBottomLeft;
+        indices[indexIdxBase + 1u] = vertexIdxBottomRight;
+        indices[indexIdxBase + 2u] = vertexIdxTopRight;
 
-    indices[indexIdxBase + 3u] = vertexIdxTopRight;
-    indices[indexIdxBase + 4u] = vertexIdxTopLeft;
-    indices[indexIdxBase + 5u] = vertexIdxBottomLeft;
+        indices[indexIdxBase + 3u] = vertexIdxTopRight;
+        indices[indexIdxBase + 4u] = vertexIdxTopLeft;
+        indices[indexIdxBase + 5u] = vertexIdxBottomLeft;
+    }
+    else {
+        uint indexIdxBase = atomicAdd(numIndicesTransparent, INDICES_IN_A_QUAD);
+
+        indicesTransparent[indexIdxBase + 0u] = vertexIdxBottomLeft;
+        indicesTransparent[indexIdxBase + 1u] = vertexIdxBottomRight;
+        indicesTransparent[indexIdxBase + 2u] = vertexIdxTopRight;
+
+        indicesTransparent[indexIdxBase + 3u] = vertexIdxTopRight;
+        indicesTransparent[indexIdxBase + 4u] = vertexIdxTopLeft;
+        indicesTransparent[indexIdxBase + 5u] = vertexIdxBottomLeft;
+    }
 }
 
 void storeSurfelsFromQuadMap(QuadMapData quadMapData) {
@@ -294,7 +319,9 @@ void main() {
         // Reset mesh buffers
         atomicExchange(numVertices, 0u);
         atomicExchange(numIndices, 0u);
+        atomicExchange(numIndicesTransparent, 0u);
         atomicExchange(indirectCommandBuffer.count, 0u);
+        atomicExchange(indirectCommandBufferTransparent.count, 0u);
     }
 
     uint quadMapIndex = loadQuadMapIndex(ivec2(quadIndexMapPixelCoord));
@@ -312,4 +339,5 @@ void main() {
     storeSurfelsFromQuadMap(quadMapData);
 
     atomicExchange(indirectCommandBuffer.count, numIndices);
+    atomicExchange(indirectCommandBufferTransparent.count, numIndicesTransparent);
 }

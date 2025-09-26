@@ -31,16 +31,17 @@ struct QuadMapDataPacked {
 
 class QuadBuffers {
 public:
-    size_t maxProxies;
-    size_t numProxies;
+    uint32_t maxProxies;
+    uint32_t numProxies;
+    uint32_t numProxiesTransparent;
 
     Buffer normalSphericalDepthBuffer;
     Buffer metadatasBuffer;
 
-    QuadBuffers(size_t maxProxies);
+    QuadBuffers(uint32_t maxProxies);
     ~QuadBuffers() = default;
 
-    void resize(size_t newNumProxies);
+    void resize(uint32_t newNumProxies, uint32_t newnumProxiesTransparent);
 
 #ifdef GL_CORE
     size_t writeToMemory(std::vector<char>& outputData, bool applyDeltaEncoding = true);

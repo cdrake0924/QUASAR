@@ -254,8 +254,8 @@ RenderStats Mesh::draw(GLenum primitiveType) {
 
     glBindVertexArray(vertexArrayBuffer);
     if (indirectDraw) {
-        indirectBuffer.bind();
         if (indexBuffer.getSize() > 0) {
+            indirectBuffer.bind();
             indexBuffer.bind();
             glDrawElementsIndirect(primitiveType, GL_UNSIGNED_INT, 0);
             indexBuffer.unbind();

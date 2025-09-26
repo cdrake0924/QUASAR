@@ -21,8 +21,9 @@ namespace quasar {
 class QuadMesh : public Mesh {
 public:
     struct BufferSizes {
-        uint numVertices;
-        uint numIndices;
+        uint32_t numVertices;
+        uint32_t numIndices;
+        uint32_t numIndicesTransparent;
     };
 
     struct Stats {
@@ -30,7 +31,7 @@ public:
         double createMeshTimeMs = 0.0;
     } stats;
 
-    uint maxProxies;
+    uint32_t maxProxies;
 
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, Texture& alphaTexture, uint maxProxies = MAX_PROXIES_PER_MESH);
     QuadMesh(const QuadSet& quadSet, Texture& colorTexture, Texture& alphaTexture, const glm::vec4& textureExtent, uint maxProxies = MAX_PROXIES_PER_MESH);
@@ -43,10 +44,13 @@ public:
 
     BufferSizes getBufferSizes() const;
 
+    RenderStats draw(GLenum primitiveType) override;
+
 private:
     glm::vec4 textureExtent;
 
-    uint currNumProxies = 0;
+    uint32_t currNumProxies;
+    uint32_t currNumProxiesTransparent;
 
     QuadBuffers currentQuadBuffers;
 
@@ -54,6 +58,9 @@ private:
 
     Buffer quadIndexMap;
     Buffer quadCreatedFlags;
+
+    Buffer indexBufferTransparent;
+    Buffer indirectBufferTransparent;
 
     ComputeShader appendQuadsShader;
     ComputeShader createQuadMeshShader;
