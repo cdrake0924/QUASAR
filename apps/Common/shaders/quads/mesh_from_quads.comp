@@ -45,6 +45,8 @@ layout(std430, binding = 7) readonly buffer QuadIndexMap {
     uint quadIndexMap[];
 };
 
+uniform sampler2D alphaTexture;
+
 layout(rgba16f, binding = 0) uniform readonly image2D depthOffsetsBuffer;
 
 uniform mat4 view;
@@ -94,9 +96,10 @@ QuadMapData loadQuadMap(uint index) {
     quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
     quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
 
-    uint flattenedAndSize = quadMapDataPacked.metadata & 0xFFu;
-    quadMapData.size      = (flattenedAndSize >> 1) & 0x7Fu;
-    quadMapData.flattened = (flattenedAndSize & 1u) != 0u;
+    uint sizeAlphaFlattened = quadMapDataPacked.metadata & 0xFFu;
+    quadMapData.size      = (sizeAlphaFlattened >> 2) & 0x7Fu;
+    quadMapData.hasAlpha  = (sizeAlphaFlattened & 2u) != 0u;
+    quadMapData.flattened = (sizeAlphaFlattened & 1u) != 0u;
 
     return quadMapData;
 }
@@ -232,7 +235,7 @@ void storeSurfel(in Quad quad, in Quad2D uvsSrc, in QuadMapData quadMapData) {
     indices[indexIdxBase + 5u] = vertexIdxBottomLeft;
 }
 
-void storeSurfelsFromQuadMap(in QuadMapData quadMapData) {
+void storeSurfelsFromQuadMap(QuadMapData quadMapData) {
     // Extract the plane normal and point from the quad map
     Plane proxyPlane = quadMapDataToPlane(quadMapData);
 

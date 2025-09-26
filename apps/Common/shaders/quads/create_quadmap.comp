@@ -306,13 +306,15 @@ void createSurfels(
     surfelView.topRight    = surfelViewTopRight;
 }
 
-void storeQuadMap(in ivec2 pixelCoord, in QuadMapData quadMapData) {
+void storeQuadMap(ivec2 pixelCoord, in QuadMapData quadMapData) {
     QuadMapDataPacked quadMapDataPacked;
 
-    uint flattenedAndSize = ((quadMapData.size & 0x7Fu) << 1) | (quadMapData.flattened ? 1u : 0u);
+    uint sizeAlphaFlattened = ((quadMapData.size & 0x7Fu)       << 2) |
+                              ((quadMapData.hasAlpha ? 1u : 0u) << 1) |
+                              (quadMapData.flattened ? 1u : 0u);
     quadMapDataPacked.metadata = ((quadMapData.offset.x & 0xFFFu) << 20) |
-                                 ((quadMapData.offset.y & 0xFFFu) << 8)  |
-                                 (flattenedAndSize & 0xFFu);
+                                 ((quadMapData.offset.y & 0xFFFu) <<  8) |
+                                 (sizeAlphaFlattened & 0xFFu);
 
     uint index = uint(pixelCoord.y) * uint(quadMapSize.x) + uint(pixelCoord.x);
     normalSphericalDepthOutput[index] = ((packNormalToSpherical(quadMapData.normal) & 0xFFFFu) << 16) |
@@ -385,11 +387,12 @@ void storeSurfelsInQuadMap(
     bool flattened = (numBelowThreshold >= total);
 
     QuadMapData quadMapData;
-    quadMapData.flattened = flattened;
-    quadMapData.depth = proxyPlaneDepth;
     quadMapData.normal = proxyPlaneNormal;
+    quadMapData.depth = proxyPlaneDepth;
     quadMapData.offset = uvec2(pixelCoord);
     quadMapData.size = 1; // 2x2 surfels, store as a power of 2
+    quadMapData.flattened = flattened;
+    quadMapData.hasAlpha = (imageLoad(colorMap, pixelCoord).a < 1.0);
     storeQuadMap(pixelCoord, quadMapData);
 
     // Store empty depth offsets if the proxy plane is flattened

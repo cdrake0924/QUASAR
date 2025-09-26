@@ -5,6 +5,7 @@ struct QuadMapData {
     float depth;
     uvec2 offset;
     uint size;
+    bool hasAlpha;
     bool flattened;
 };
 

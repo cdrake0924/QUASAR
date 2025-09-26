@@ -67,8 +67,15 @@ QuadsGenerator::QuadsGenerator(QuadSet& quadSet)
 QuadsGenerator::BufferSizes QuadsGenerator::getBufferSizes() {
     BufferSizes bufferSizes;
     sizesBuffer.bind();
-    sizesBuffer.getData(&bufferSizes);
-    sizesBuffer.unbind();
+    void* ptr = sizesBuffer.mapToCPU(GL_MAP_READ_BIT);
+    if (ptr) {
+        std::memcpy(&bufferSizes, ptr, sizeof(BufferSizes));
+        sizesBuffer.unmapFromCPU();
+    }
+    else {
+        spdlog::warn("Failed to map sizesBuffer. Copying using getData");
+        sizesBuffer.getData(&bufferSizes);
+    }
     return bufferSizes;
 }
 
