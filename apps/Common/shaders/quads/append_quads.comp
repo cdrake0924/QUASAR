@@ -2,16 +2,16 @@
 
 layout(local_size_x = THREADS_PER_LOCALGROUP, local_size_y = 1, local_size_z = 1) in;
 
-layout(std430, binding = 0) readonly buffer normalSphericalDepthBufferInput {
-    uint normalSphericalDepthInput[];
+layout(std430, binding = 0) readonly buffer normalAndDepthBufferInput {
+    uint normalAndDepthInput[];
 };
 
 layout(std430, binding = 1) readonly buffer MetadatasBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 2) writeonly buffer normalSphericalDepthBufferOutput {
-    uint normalSphericalDepthOutput[];
+layout(std430, binding = 2) writeonly buffer normalAndDepthBufferOutput {
+    uint normalAndDepthOutput[];
 };
 
 layout(std430, binding = 3) writeonly buffer MetadatasBufferOutput {
@@ -37,12 +37,12 @@ void quadIndexStore(ivec2 pixelCoords, uint index) {
 
 QuadMapData loadInputQuadMap(uint index) {
     QuadMapDataPacked quadMapDataPacked;
-    quadMapDataPacked.normalSphericalDepth = normalSphericalDepthInput[index];
-    quadMapDataPacked.metadata             = metadatasInput[index];
+    quadMapDataPacked.normalAndDepth = normalAndDepthInput[index];
+    quadMapDataPacked.metadata       = metadatasInput[index];
 
     QuadMapData quadMapData;
-    quadMapData.normal = unpackSphericalToNormal((quadMapDataPacked.normalSphericalDepth >> 16) & 0xFFFFu);
-    quadMapData.depth  = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
+    quadMapData.normal = unpackOctahedralToNormal((quadMapDataPacked.normalAndDepth >> 16) & 0xFFFFu);
+    quadMapData.depth  = unpackDepthUNORM16(quadMapDataPacked.normalAndDepth & 0xFFFFu);
 
     quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
     quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
@@ -84,7 +84,7 @@ void main() {
         }
 
         // Append the quad map data
-        normalSphericalDepthOutput[quadIndex] = normalSphericalDepthInput[inputQuadIndex];
+        normalAndDepthOutput[quadIndex] = normalAndDepthInput[inputQuadIndex];
         metadatasOutput[quadIndex] = metadatasInput[inputQuadIndex];
     }
 }

@@ -8,16 +8,16 @@ layout(std430, binding = 0) buffer QuadBufferSizes {
     uint numDepthOffsets;
 };
 
-layout(std430, binding = 1) readonly buffer normalSphericalDepthBufferInput {
-    uint normalSphericalDepthInput[];
+layout(std430, binding = 1) readonly buffer normalAndDepthBufferInput {
+    uint normalAndDepthInput[];
 };
 
 layout(std430, binding = 2) readonly buffer MetadataBufferInput {
     uint metadatasInput[];
 };
 
-layout(std430, binding = 3) writeonly buffer normalSphericalDepthBufferOutput {
-    uint normalSphericalDepthOutput[];
+layout(std430, binding = 3) writeonly buffer normalAndDepthBufferOutput {
+    uint normalAndDepthOutput[];
 };
 
 layout(std430, binding = 4) writeonly buffer MetadataBufferOutput {
@@ -31,12 +31,12 @@ QuadMapData loadInputQuadMap(ivec2 pixelCoord) {
     uint index = uint(pixelCoord.y) * uint(quadMapSize.x) + uint(pixelCoord.x);
 
     QuadMapDataPacked quadMapDataPacked;
-    quadMapDataPacked.normalSphericalDepth = normalSphericalDepthInput[index];
-    quadMapDataPacked.metadata             = metadatasInput[index];
+    quadMapDataPacked.normalAndDepth = normalAndDepthInput[index];
+    quadMapDataPacked.metadata       = metadatasInput[index];
 
     QuadMapData quadMapData;
-    quadMapData.normal = unpackSphericalToNormal((quadMapDataPacked.normalSphericalDepth >> 16) & 0xFFFFu);
-    quadMapData.depth  = unpackDepthUNORM16(quadMapDataPacked.normalSphericalDepth & 0xFFFFu);
+    quadMapData.normal = unpackOctahedralToNormal((quadMapDataPacked.normalAndDepth >> 16) & 0xFFFFu);
+    quadMapData.depth  = unpackDepthUNORM16(quadMapDataPacked.normalAndDepth & 0xFFFFu);
 
     quadMapData.offset.x = (quadMapDataPacked.metadata >> 20) & 0xFFFu;
     quadMapData.offset.y = (quadMapDataPacked.metadata >> 8) & 0xFFFu;
@@ -58,9 +58,9 @@ void storeOutputQuadMap(uint index, in QuadMapData quadMapData) {
     quadMapDataPacked.metadata = ((quadMapData.offset.x & 0xFFFu) << 20) |
                                  ((quadMapData.offset.y & 0xFFFu) <<  8) |
                                  (sizeAlphaFlattened & 0xFFu);
-    normalSphericalDepthOutput[index] = ((packNormalToSpherical(quadMapData.normal) & 0xFFFFu) << 16) |
-                                        (packDepthUNORM16(quadMapData.depth) & 0xFFFFu);
-    metadatasOutput[index]            = quadMapDataPacked.metadata;
+    normalAndDepthOutput[index] = ((packNormalToOctahedral(quadMapData.normal) & 0xFFFFu) << 16) |
+                                  (packDepthUNORM16(quadMapData.depth) & 0xFFFFu);
+    metadatasOutput[index]      = quadMapDataPacked.metadata;
 }
 
 void main() {

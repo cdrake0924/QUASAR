@@ -25,8 +25,8 @@ layout(std430, binding = 0) writeonly buffer QuadBufferSizes {
     uint numDepthOffsets;
 };
 
-layout(std430, binding = 1) writeonly buffer normalSphericalDepthBufferOutput {
-    uint normalSphericalDepthOutput[];
+layout(std430, binding = 1) writeonly buffer normalAndDepthBufferOutput {
+    uint normalAndDepthOutput[];
 };
 
 layout(std430, binding = 2) writeonly buffer MetadatasBufferOutput {
@@ -58,7 +58,7 @@ float sampleDepth(sampler2D depthMap, ivec2 sampleCoord) {
 
 vec3 sampleNormal(sampler2D normalsMap, ivec2 sampleCoord) {
     vec3 normal = normalize(texelFetch(normalsMap, sampleCoord, 0).xyz);
-    return unpackSphericalToNormal(packNormalToSpherical(normal)); // Quantize
+    return unpackOctahedralToNormal(packNormalToOctahedral(normal)); // Quantize
 }
 
 vec3 normalToView(mat4 view, vec3 normalWorld) {
@@ -178,8 +178,8 @@ void createSurfels(
     out MultiQuad surfelView,
     in MultiQuad2D surfelNDCs,
     in MultiQuad surfelViewNearPlane, in MultiQuad pixelCoordsView,
-    in MultiQuad pixelNormalsView, in MultiQuad1D pixelDepths
-) {
+    in MultiQuad pixelNormalsView, in MultiQuad1D pixelDepths)
+{
     // Create planes for each pixel
     Plane planeBottomLeft  = Plane(pixelNormalsView.bottomLeft, pixelCoordsView.bottomLeft);
     Plane planeBottom      = Plane(pixelNormalsView.bottom, pixelCoordsView.bottom);
@@ -319,9 +319,9 @@ void storeQuadMap(ivec2 pixelCoord, in QuadMapData quadMapData) {
                                  (sizeAlphaFlattened & 0xFFu);
 
     uint index = uint(pixelCoord.y) * uint(quadMapSize.x) + uint(pixelCoord.x);
-    normalSphericalDepthOutput[index] = ((packNormalToSpherical(quadMapData.normal) & 0xFFFFu) << 16) |
-                                        (packDepthUNORM16(quadMapData.depth) & 0xFFFFu);
-    metadatasOutput[index]            = quadMapDataPacked.metadata;
+    normalAndDepthOutput[index] = ((packNormalToOctahedral(quadMapData.normal) & 0xFFFFu) << 16) |
+                                  (packDepthUNORM16(quadMapData.depth) & 0xFFFFu);
+    metadatasOutput[index]      = quadMapDataPacked.metadata;
 }
 
 void storeDepthOffsets(in ivec2 pixelCoord, in vec4 depthOffsets) {
@@ -332,8 +332,8 @@ void storeSurfelsInQuadMap(
     in ivec2 pixelCoord,
     in vec2 quadCenterPixelCoord,
     in vec3 proxyPlaneNormal,
-    in Quad surfelBottomLeft, in Quad surfelBottomRight, in Quad surfelTopLeft, in Quad surfelTopRight
-) {
+    in Quad surfelBottomLeft, in Quad surfelBottomRight, in Quad surfelTopLeft, in Quad surfelTopRight)
+{
     vec3 proxyPlanePt = (surfelBottomLeft.bottomLeft  + surfelBottomLeft.bottomRight  + surfelBottomLeft.topLeft  + surfelBottomLeft.topRight  +
                          surfelBottomRight.bottomLeft + surfelBottomRight.bottomRight + surfelBottomRight.topLeft + surfelBottomRight.topRight +
                          surfelTopLeft.bottomLeft     + surfelTopLeft.bottomRight     + surfelTopLeft.topLeft     + surfelTopLeft.topRight     +
