@@ -241,13 +241,11 @@ int main(int argc, char** argv) {
         recordWindow.draw(now, dt);
 
         if (showLayerPreviews) {
-            const int texturePreviewSize = (windowSize.x * 2/3) / renderer.maxLayers;
-            for (int i = 0; i < renderer.maxLayers; i++) {
-                int layerIdx = renderer.maxLayers - i - 1;
-
-                ImGui::SetNextWindowPos(ImVec2(windowSize.x - (i + 1) * texturePreviewSize - 30, 40), ImGuiCond_FirstUseEver);
-                ImGui::Begin(("Layer " + std::to_string(layerIdx) + " Color").c_str(), 0, ImGuiWindowFlags_AlwaysAutoResize);
-                ImGui::Image((void*)(intptr_t)(renderer.peelingLayers[layerIdx].colorTexture.ID), ImVec2(texturePreviewSize, texturePreviewSize), ImVec2(0, 1), ImVec2(1, 0));
+            for (int layer = 0; layer < renderer.maxLayers; layer++) {
+                int layerIdx = renderer.maxLayers - layer - 1;
+                ImGui::Begin(("Layer " + std::to_string(layerIdx)).c_str(), 0, ImGuiWindowFlags_AlwaysAutoResize);
+                ImGui::Image((void*)(intptr_t)(renderer.peelingLayers[layerIdx].colorTexture.ID),
+                                ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
                 ImGui::End();
             }
         }

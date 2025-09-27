@@ -336,13 +336,11 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
         */
         auto oldParams = quadsGenerator->params;
         if (layer == maxLayers - 1) {
-            quadsGenerator->params.depthThreshold = 1e-3f;
             quadsGenerator->params.flattenThreshold = 0.5f;
             quadsGenerator->params.proxySimilarityThreshold = 5.0f;
             quadsGenerator->params.maxIterForceMerge = 4;
         }
         else if (layer > 0) {
-            quadsGenerator->params.depthThreshold = 1e-3f;
             quadsGenerator->params.maxIterForceMerge = 4;
         }
         quadsGenerator->params.expandEdges = false;

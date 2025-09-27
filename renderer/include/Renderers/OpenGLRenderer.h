@@ -40,9 +40,9 @@ public:
     RenderStats updateDirLightShadow(Scene& scene, const Camera& camera);
     RenderStats updatePointLightShadows(Scene& scene, const Camera& camera);
 
-    virtual RenderStats drawScene(Scene& scene, const Camera& camera, uint32_t clearMask);
+    virtual RenderStats drawSkyBox(Scene& scene, const Camera& camera, uint32_t clearMask = 0);
+    virtual RenderStats drawScene(Scene& scene, const Camera& camera, uint32_t clearMask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     virtual RenderStats drawLights(Scene& scene, const Camera& camera);
-    virtual RenderStats drawSkyBox(Scene& scene, const Camera& camera);
     virtual RenderStats drawObjects(Scene& scene, const Camera& camera, uint32_t clearMask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     virtual RenderStats drawObjectsNoLighting(Scene& scene, const Camera& camera, uint32_t clearMask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -55,9 +55,9 @@ protected:
 
     Buffer pointLightsUBO;
 
+    RenderStats drawSkyBoxImpl(Scene& scene, const Camera& camera, uint32_t clearMask);
     RenderStats drawSceneImpl(Scene& scene, const Camera& camera, uint32_t clearMask);
     RenderStats drawLightsImpl(Scene& scene, const Camera& camera);
-    RenderStats drawSkyBoxImpl(Scene& scene, const Camera& camera);
 
     virtual RenderStats drawNode(Scene& scene, const Camera& camera, Node* node, const glm::mat4& parentTransform,
                                  bool frustumCull = true, const Material* overrideMaterial = nullptr, const Texture* prevIDMap = nullptr);

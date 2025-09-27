@@ -181,11 +181,6 @@ RenderStats OpenGLRenderer::updatePointLightShadows(Scene& scene, const Camera& 
 }
 
 RenderStats OpenGLRenderer::drawSceneImpl(Scene& scene, const Camera& camera, uint32_t clearMask) {
-    if (clearMask != 0) {
-        glClearColor(scene.backgroundColor.x, scene.backgroundColor.y, scene.backgroundColor.z, scene.backgroundColor.w);
-        glClear(clearMask);
-    }
-
     RenderStats stats;
     for (auto& child : scene.rootNode.children) {
         stats += drawNode(scene, camera, child, glm::mat4(1.0f), true);
@@ -196,6 +191,11 @@ RenderStats OpenGLRenderer::drawSceneImpl(Scene& scene, const Camera& camera, ui
 
 RenderStats OpenGLRenderer::drawScene(Scene& scene, const Camera& camera, uint32_t clearMask) {
     beginRendering();
+    if (clearMask != 0) {
+        glClearColor(scene.backgroundColor.x, scene.backgroundColor.y, scene.backgroundColor.z, scene.backgroundColor.w);
+        glClear(clearMask);
+    }
+
     RenderStats stats = drawSceneImpl(scene, camera, clearMask);
     endRendering();
     return stats;
@@ -238,9 +238,7 @@ RenderStats OpenGLRenderer::drawLights(Scene& scene, const Camera& camera) {
     return stats;
 }
 
-RenderStats OpenGLRenderer::drawSkyBoxImpl(Scene& scene, const Camera& camera) {
-    // Don't clear color or depth bit here, since we want this to draw over
-
+RenderStats OpenGLRenderer::drawSkyBoxImpl(Scene& scene, const Camera& camera, uint32_t clearMask) {
     RenderStats stats;
 
     if (scene.envCubeMap == nullptr) {
@@ -248,23 +246,30 @@ RenderStats OpenGLRenderer::drawSkyBoxImpl(Scene& scene, const Camera& camera) {
     }
 
     // Disable writing to the depth buffer
-    glDepthFunc(GL_LEQUAL);
-    glDepthMask(GL_FALSE);
+    pipeline.depthState.depthFunc = GL_LEQUAL;
+    pipeline.writeMaskState.depth = false;
+    pipeline.apply();
 
     skyboxShader.bind();
     skyboxShader.setTexture("environmentMap", *scene.envCubeMap, 0);
     stats = scene.envCubeMap->draw(skyboxShader, camera);
 
-    // Restore depth func
-    glDepthFunc(GL_LESS);
-    glDepthMask(GL_TRUE);
+    // Restore depth state
+    pipeline.depthState.depthFunc = GL_LESS;
+    pipeline.writeMaskState.depth = true;
+    pipeline.apply();
 
     return stats;
 }
 
-RenderStats OpenGLRenderer::drawSkyBox(Scene& scene, const Camera& camera) {
+RenderStats OpenGLRenderer::drawSkyBox(Scene& scene, const Camera& camera, uint32_t clearMask) {
     beginRendering();
-    RenderStats stats = drawSkyBoxImpl(scene, camera);
+    if (clearMask != 0) {
+        glClearColor(scene.backgroundColor.x, scene.backgroundColor.y, scene.backgroundColor.z, scene.backgroundColor.w);
+        glClear(clearMask);
+    }
+
+    RenderStats stats = drawSkyBoxImpl(scene, camera, clearMask);
     endRendering();
     return stats;
 }
@@ -318,19 +323,19 @@ RenderStats OpenGLRenderer::drawNode(Scene& scene, const Camera& camera, Node* n
 #ifdef GL_CORE
             // Set polygon mode to wireframe if needed
             if (node->wireframe || node->primitiveType == GL_LINES) {
-                glEnable(GL_POLYGON_OFFSET_LINE); // to avoid z-fighting
-                glPolygonOffset(-1.0, -1.0); // adjust depth
+                glEnable(GL_POLYGON_OFFSET_LINE); // To avoid z-fighting
+                glPolygonOffset(-1.0, -1.0); // Adjust depth
                 glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                 glLineWidth(node->wireframeLineWidth);
             }
             if (node->primitiveType == GL_POINTS) {
-                glEnable(GL_POLYGON_OFFSET_POINT); // to avoid z-fighting
-                glPolygonOffset(-1.0, -1.0); // adjust depth
+                glEnable(GL_POLYGON_OFFSET_POINT); // To avoid z-fighting
+                glPolygonOffset(-1.0, -1.0); // Adjust depth
                 glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
                 glPointSize(node->pointSize);
             }
 #else
-            if (node->primitiveType == GL_LINES) {
+            if (node->wireframe || node->primitiveType == GL_LINES) {
                 glLineWidth(node->wireframeLineWidth);
                 glDepthRangef(0.0f, 0.999f);
             }
@@ -350,7 +355,7 @@ RenderStats OpenGLRenderer::drawNode(Scene& scene, const Camera& camera, Node* n
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             }
 #else
-            if (node->primitiveType == GL_LINES) {
+            if (node->wireframe || node->primitiveType == GL_LINES) {
                 glDepthRangef(0.0f, 1.0f);
             }
 #endif

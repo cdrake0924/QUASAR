@@ -219,7 +219,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
 
     // Read alpha data
     std::memcpy(frame->alphaData.data(), ptr, header.alphaSize);
-    alphaCodec.compress(frame->alphaData);
+    alphaCodec.decompress(frame->alphaData);
     ptr += header.alphaSize;
 
     // Read geometry data

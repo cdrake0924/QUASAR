@@ -423,15 +423,15 @@ int main(int argc, char** argv) {
 
         if (showLayerPreviews) {
             for (int layer = 0; layer < maxLayers; layer++) {
-                int viewIdx = maxLayers - layer - 1;
-                if (showLayers[viewIdx]) {
-                    ImGui::Begin(("View " + std::to_string(viewIdx)).c_str(), 0, ImGuiWindowFlags_AlwaysAutoResize);
-                    if (viewIdx == 0) {
+                int layerIdx = maxLayers - layer - 1;
+                if (showLayers[layerIdx]) {
+                    ImGui::Begin(("Layer " + std::to_string(layerIdx)).c_str(), 0, ImGuiWindowFlags_AlwaysAutoResize);
+                    if (layerIdx == 0) {
                         ImGui::Image((void*)(intptr_t)(quasar.referenceFrameRT.colorTexture.ID),
                                      ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
                     }
                     else {
-                        ImGui::Image((void*)(intptr_t)(quasar.frameRTsHidLayer[viewIdx-1].colorTexture.ID),
+                        ImGui::Image((void*)(intptr_t)(quasar.frameRTsHidLayer[layerIdx-1].colorTexture.ID),
                                      ImVec2(430, 270), ImVec2(0, 1), ImVec2(1, 0));
                     }
                     ImGui::End();
