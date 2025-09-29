@@ -59,7 +59,7 @@ private:
 
     mutable std::atomic<uint64_t> totalBytesRecv = 0;
 
-    int poseIDOffset = sizeof(pose_id_t) * 8;
+    const int poseIDOffset = sizeof(pose_id_t) * 8;
 
     std::atomic_bool videoReady = false;
     bool shouldTerminate = false;

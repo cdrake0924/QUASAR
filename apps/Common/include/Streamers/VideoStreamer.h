@@ -62,8 +62,6 @@ private:
     const int poseIDOffset = sizeof(pose_id_t) * 8;
     uint videoWidth, videoHeight;
 
-    RenderTarget* renderTargetCopy;
-
 #if defined(HAS_CUDA)
     CudaGLImage cudaGLImage;
     struct CudaBuffer {

@@ -21,19 +21,6 @@ VideoStreamer::VideoStreamer(
     , cudaGLImage(colorTexture)
 #endif
 {
-    renderTargetCopy = new RenderTarget({
-        .width = width,
-        .height = height,
-        .internalFormat = colorTexture.internalFormat,
-        .format = colorTexture.format,
-        .type = colorTexture.type,
-        .wrapS = colorTexture.wrapS,
-        .wrapT = colorTexture.wrapT,
-        .minFilter = colorTexture.minFilter,
-        .magFilter = colorTexture.magFilter,
-        .multiSampled = colorTexture.multiSampled,
-    });
-
     rgbaVideoFrameData.resize(videoWidth * videoHeight * 4);
 #if !defined(HAS_CUDA)
     openglFrameData.resize(width * height * 4);
@@ -45,13 +32,13 @@ VideoStreamer::VideoStreamer(
 
     gst_init(nullptr, nullptr);
 
-    GstRegistry *registry = gst_registry_get();
-    GList *factories = gst_registry_get_feature_list(registry, GST_TYPE_ELEMENT_FACTORY);
+    GstRegistry* registry = gst_registry_get();
+    GList* factories = gst_registry_get_feature_list(registry, GST_TYPE_ELEMENT_FACTORY);
     std::ostringstream codecs;
-    for (GList *l = factories; l != nullptr; l = l->next) {
-        GstElementFactory *factory = GST_ELEMENT_FACTORY(l->data);
-        const gchar *klass = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
-        const gchar *name  = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
+    for (GList* l = factories; l != nullptr; l = l->next) {
+        GstElementFactory* factory = GST_ELEMENT_FACTORY(l->data);
+        const gchar* klass = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
+        const gchar* name  = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
         if (klass && g_strrstr(klass, "Encoder")) {
             codecs << name << " ";
         }
@@ -61,23 +48,22 @@ VideoStreamer::VideoStreamer(
 
     auto [host, port] = networkutils::parseIPAddressAndPort(videoURL);
 
-    std::string encoderName;
+    std::string encoderParams;
     const int gopFrames = std::max(1, maxFrameRate); // 1 second GOP at worst case FPS
 #if defined(HAS_CUDA)
-    encoderName = "nvh264enc preset=4 rc-mode=cbr zerolatency=true "
-                  "bframes=0 gop-size=" + std::to_string(gopFrames);
+    encoderParams = "nvh264enc preset=4 rc-mode=cbr zerolatency=true "
+                    "bframes=0 gop-size=" + std::to_string(gopFrames);
 #else
-    encoderName = "x264enc speed-preset=veryfast tune=zerolatency byte-stream=true"
-                  "bframes=0 key-int-max=" + std::to_string(gopFrames);
+    encoderParams = "x264enc speed-preset=veryfast tune=zerolatency byte-stream=true "
+                    "bframes=0 key-int-max=" + std::to_string(gopFrames);
 #endif
 
     std::ostringstream oss;
     oss << "appsrc name=" << appSrcName << " is-live=true format=time "
-        << "caps=video/x-raw,format=RGBA,width=" << videoWidth
-        << ",height=" << videoHeight << " ! "
+        << "caps=video/x-raw,format=RGBA,width=" << videoWidth << ",height=" << videoHeight << " ! "
         << "queue leaky=downstream max-size-buffers=1 max-size-time=0 max-size-bytes=0 ! "
         << "videoconvert ! video/x-raw,format=" << format << " ! "
-        << encoderName << " bitrate=" << targetBitRateKbps << " ! "
+        << encoderParams << " bitrate=" << targetBitRateKbps << " ! "
         << "rtph264pay mtu=1200 config-interval=1 pt=96 name=" << payloaderName << " ! "
         << "udpsink host=" << host << " port=" << port
         << " sync=false async=false";
@@ -127,25 +113,17 @@ void VideoStreamer::stop() {
         gst_element_set_state(pipeline, GST_STATE_NULL);
         gst_object_unref(pipeline);
     }
-
-    delete renderTargetCopy;
 }
 
 void VideoStreamer::sendFrame(pose_id_t poseID) {
 #if defined(HAS_CUDA)
-    bind();
-    blit(*renderTargetCopy);
-    unbind();
-
     cudaGLImage.map();
     cudaArray_t cudaBuffer = cudaGLImage.getArrayMapped();
     cudaGLImage.unmap();
 
     cudaBufferQueue.enqueue({ poseID, cudaBuffer });
 #else
-    bind();
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, openglFrameData.data());
-    unbind();
+    readPixels(openglFrameData.data());
 
     cpuBufferQueue.enqueue({ poseID, openglFrameData });
 #endif
@@ -154,7 +132,7 @@ void VideoStreamer::sendFrame(pose_id_t poseID) {
 void VideoStreamer::packPoseIDIntoVideoFrame(pose_id_t poseID) {
     for (int i = 0; i < poseIDOffset; i++) {
         uint8_t value = (poseID & (1 << i)) ? 255 : 0;
-        for (int j = 0; j < videoHeight; ++j) {
+        for (int j = 0; j < videoHeight; j++) {
             int index = j * videoWidth * 4 + (videoWidth - 1 - i) * 4;
             rgbaVideoFrameData[index + 0] = value;
             rgbaVideoFrameData[index + 1] = value;
@@ -201,7 +179,7 @@ void VideoStreamer::encodeAndSendFrames() {
         pose_id_t poseIDToSend = cpuStruct.poseID;
         time_t startTransferTimeMs = timeutils::getTimeMicros();
 
-        for (int row = 0; row < height; ++row) {
+        for (int row = 0; row < height; row++) {
             std::memcpy(&rgbaVideoFrameData[row * videoWidth * 4],
                         &cpuStruct.data[row * width * 4],
                         width * 4);

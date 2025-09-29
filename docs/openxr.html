@@ -321,11 +321,11 @@
 
     <h2 id="install-dependencies">Install Dependencies</h2>
     <p>To download the OpenXR client code, clone the repository at <a href="https://github.com/quasar-gfx/QUASAR-client">https://github.com/quasar-gfx/QUASAR-client</a> using git:</p>
-    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">git clone https://github.com/quasar-gfx/QUASAR-client.git</span></span></code></pre></div>
+    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">git clone --recursive https://github.com/quasar-gfx/QUASAR-client.git</span></span></code></pre></div>
     <p>If you accidentally cloned the repository without <code>--recursive</code>, you can do:</p>
     <pre><code>git submodule update --init --recursive
 </code></pre>
-    <p><strong>Note:</strong> The repository code has been tested on Meta Quest 2/3/Pro.</p>
+    <p><strong>Note:</strong> This code has been tested on Meta Quest 2/3/Pro.</p>
 
     <h2 id="building">Building and Running</h2>
     <p>The following steps assume you have the latest <a href="https://developer.android.com/studio">Android Studio</a> installed on your computer:</p>
@@ -351,7 +351,7 @@
     <h3 id="atw-client">ATWClient</h3>
     <p>The ATW Client app allows the headset to act as a receiver for a stereo video stream from the server sent across a network. The headset will reproject each eye using a homography to warp the images along a plane.</p>
     <p>First, open <code>QuestClientApps/Apps/ATWClient/include/ATWClient.h</code> and change:</p>
-    <pre><code>std::string serverIP = "192.168.4.140";
+    <pre><code>std::string serverIP = "192.168.22.227";
 </code></pre>
     <p>to your <strong>server's</strong> IP address. Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
@@ -372,7 +372,7 @@ cd apps/atw/streamer
     <h3 id="meshwarp-client">MeshWarpClient</h3>
     <p>The MeshWarp Client app allows the headset to act as a receiver for a video and depth stream from the server sent across a network. The headset will reconstruct a mesh using the depth stream and texture map it with the video for reprojection.</p>
     <p>First, open <code>QuestClientApps/Apps/MeshWarpClient/include/MeshWarpClient.h</code> and change:</p>
-    <pre><code>std::string serverIP = "192.168.4.140";
+    <pre><code>std::string serverIP = "192.168.22.227";
 </code></pre>
     <p>to your <strong>server's</strong> IP address. Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
@@ -389,7 +389,7 @@ cd apps/meshwarp/streamer
     <h3 id="quads-client">QuadsClient</h3>
     <p>The Quads Client app allows the headset to act as a receiver for a video and quad proxy metadata stream from the server sent across a network. The headset will reconstruct a mesh with the quads from the metadata stream and texture map it with the video for reprojection.</p>
     <p>First, open <code>QuestClientApps/Apps/QuadsClient/include/QuadsClient.h</code> and change:</p>
-    <pre><code>std::string serverIP = "192.168.4.140";
+    <pre><code>std::string serverIP = "192.168.22.227";
 </code></pre>
     <p>to your <strong>server's</strong> IP address. Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
@@ -412,7 +412,7 @@ cd apps/quadwarp/streamer
     <h3 id="quasar-client">QUASARClient</h3>
     <p>The QUASAR Client app allows the headset to act as a receiver for a video and quad proxy metadata stream from the server sent across a network. The headset will reconstruct a layered mesh with the quads from the metadata stream and texture map it with the video for reprojection.</p>
     <p>First, open <code>QuestClientApps/Apps/QUASARClient/include/QUASARClient.h</code> and change:</p>
-    <pre><code>std::string serverIP = "192.168.4.140";
+    <pre><code>std::string serverIP = "192.168.22.227";
 </code></pre>
     <p>to your <strong>server's</strong> IP address. Then, on the <a href="https://github.com/quasar-gfx/QUASAR">QUASAR</a> repository, build and run:</p>
     <pre><code># in build directory
