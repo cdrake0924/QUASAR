@@ -23,7 +23,7 @@ float computeLuminance(vec3 color) {
 
 vec3 performTonemapping(vec3 color) {
     if (tonemap) {
-        color = tonemapExponential(color, exposure);
+        color = tonemapFilmic(color, exposure);
     }
     return color;
 }

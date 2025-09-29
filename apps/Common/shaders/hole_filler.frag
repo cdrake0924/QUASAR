@@ -72,7 +72,7 @@ void main() {
     }
 
     if (tonemap) {
-        color = tonemapExponential(color, exposure);
+        color = tonemapFilmic(color, exposure);
     }
 
     FragColor = vec4(color, 1.0);
