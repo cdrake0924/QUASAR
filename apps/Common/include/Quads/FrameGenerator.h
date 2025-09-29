@@ -8,7 +8,7 @@
 #include <Quads/QuadsGenerator.h>
 #include <Renderers/DeferredRenderer.h>
 #include <RenderTargets/FrameRenderTarget.h>
-#include <Codec/ZSTDCodec.h>
+#include <Codecs/ZSTDCodec.h>
 
 namespace quasar {
 

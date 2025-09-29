@@ -9,7 +9,7 @@
 #include <Quads/QuadMesh.h>
 #include <Networking/DataReceiverTCP.h>
 #include <Receivers/VideoTexture.h>
-#include <Codec/AlphaCodec.h>
+#include <Codecs/AlphaCodec.h>
 
 namespace quasar {
 
@@ -69,7 +69,7 @@ private:
 
         Pose cameraPose;
 
-        std::vector<unsigned char> alphaData;
+        std::vector<char> alphaData;
         std::vector<char> uncompressedQuads, uncompressedOffsets;
         std::vector<char> uncompressedQuadsRevealed, uncompressedOffsetsRevealed;
 

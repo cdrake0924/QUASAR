@@ -216,7 +216,7 @@ QUASARStreamer::QUASARStreamer(
 
     setViewSphereDiameter(viewSphereDiameter);
 
-    alphaData.resize(alphaAtlasRT.width * alphaAtlasRT.height);
+    alphaImageData.resize(alphaAtlasRT.width * alphaAtlasRT.height);
 
     if (!videoURL.empty() && !proxiesURL.empty()) {
         spdlog::info("Created QUASARStreamer that sends to URL: {}", proxiesURL);
@@ -572,8 +572,6 @@ size_t QUASARStreamer::writeToFiles(const Path& outputPath) {
         totalOutputSize += referenceFrames[layer].writeToFiles(outputPath, layer);
     }
     totalOutputSize += residualFrame.writeToFiles(outputPath);
-
-    spdlog::debug("Written output data size: {}", totalOutputSize);
     return totalOutputSize;
 }
 
@@ -586,8 +584,8 @@ size_t QUASARStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, 
     cameraPose.writeToMemory(cameraData);
 
     // Save alpha data
-    alphaAtlasRT.writeAlphaToMemory(alphaData);
-    alphaCodec.compress(alphaData);
+    alphaAtlasRT.writeAlphaToMemory(alphaImageData);
+    alphaCodec.compress(alphaImageData.data(), alphaData, alphaImageData.size());
 
     // Save geometry data
     // Save visible layer

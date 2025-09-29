@@ -218,8 +218,7 @@ QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inpu
     ptr += header.cameraSize;
 
     // Read alpha data
-    std::memcpy(frame->alphaData.data(), ptr, header.alphaSize);
-    alphaCodec.decompress(frame->alphaData);
+    alphaCodec.decompress(ptr, frame->alphaData, header.alphaSize);
     ptr += header.alphaSize;
 
     // Read geometry data

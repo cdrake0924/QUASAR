@@ -1,11 +1,11 @@
 #ifndef ALPHA_CODEC_H
 #define ALPHA_CODEC_H
 
-#include <Codec/Codec.h>
+#include <Codecs/Codec.h>
 
 namespace quasar {
 
-class AlphaCodec {
+class AlphaCodec : public Codec {
 public:
     struct Stats {
         double compressTimeMs = 0.0;
@@ -18,18 +18,24 @@ public:
     {}
     ~AlphaCodec() = default;
 
-    size_t compress(std::vector<unsigned char>& uncompressedData) {
+    size_t compress(const void* uncompressedData, std::vector<char>& compressedData, size_t numBytesUncompressed) {
         double startTime = timeutils::getTimeMicros();
-        size_t res = uncompressedData.size();
+
+        compressedData.resize(numBytesUncompressed);
+        std::memcpy(compressedData.data(), uncompressedData, numBytesUncompressed);
+
         stats.compressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-        return res;
+        return numBytesUncompressed;
     }
 
-    size_t decompress(std::vector<unsigned char>& compressedData) {
+    size_t decompress(const void* compressedData, std::vector<char>& decompressedData, size_t numBytesCompressed) {
         double startTime = timeutils::getTimeMicros();
-        size_t res = compressedData.size();
+
+        decompressedData.resize(numBytesCompressed);
+        std::memcpy(decompressedData.data(), compressedData, numBytesCompressed);
+
         stats.decompressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
-        return res;
+        return numBytesCompressed;
     }
 
 private:

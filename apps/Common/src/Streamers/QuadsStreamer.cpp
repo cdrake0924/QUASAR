@@ -142,7 +142,7 @@ QuadsStreamer::QuadsStreamer(
     depthNode.visible = false;
     depthNode.primitiveType = GL_POINTS;
 
-    alphaData.resize(alphaAtlasRT.width * alphaAtlasRT.height);
+    alphaImageData.resize(alphaAtlasRT.width * alphaAtlasRT.height);
 
     if (!videoURL.empty() && !proxiesURL.empty()) {
         spdlog::info("Created QuadsStreamer that sends to URL: {}", proxiesURL);
@@ -364,8 +364,6 @@ size_t QuadsStreamer::writeToFiles(const Path& outputPath) {
 
     // Save proxies
     size_t totalOutputSize = referenceFrame.writeToFiles(outputPath) + residualFrame.writeToFiles(outputPath);
-
-    spdlog::debug("Written output data size: {}", totalOutputSize);
     return totalOutputSize;
 }
 
@@ -377,8 +375,8 @@ size_t QuadsStreamer::writeToMemory(pose_id_t poseID, bool writeResidualFrame, s
     cameraPose.writeToMemory(cameraData);
 
     // Save alpha atlas
-    alphaAtlasRT.writeAlphaToMemory(alphaData);
-    alphaCodec.compress(alphaData);
+    alphaAtlasRT.writeAlphaToMemory(alphaImageData);
+    alphaCodec.compress(alphaImageData.data(), alphaData, alphaImageData.size());
 
     // Save geometry data
     if (!writeResidualFrame) {

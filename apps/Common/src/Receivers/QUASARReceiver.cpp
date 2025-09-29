@@ -272,8 +272,7 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
     ptr += header.cameraSize;
 
     // Read alpha data
-    std::memcpy(frame->bufferPool.alphaData.data(), ptr, header.alphaSize);
-    alphaCodec.decompress(frame->bufferPool.alphaData);
+    alphaCodec.decompress(ptr, frame->bufferPool.alphaData, header.alphaSize);
     ptr += header.alphaSize;
 
     // Read geometry data

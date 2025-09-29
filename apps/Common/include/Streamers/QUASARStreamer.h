@@ -12,7 +12,7 @@
 
 #include <UI/FrameRateWindow.h>
 #include <PostProcessing/ShowNormalsEffect.h>
-#include <Codec/AlphaCodec.h>
+#include <Codecs/AlphaCodec.h>
 
 namespace quasar {
 
@@ -137,8 +137,10 @@ private:
     FrameRenderTarget residualFrameRT_noTone;
     std::vector<FrameRenderTarget> frameRTsHidLayer_noTone;
 
+    std::vector<unsigned char> alphaImageData;
+
     std::vector<char> cameraData;
-    std::vector<unsigned char> alphaData;
+    std::vector<char> alphaData;
     std::vector<std::vector<char>> geometryMetadatas;
     std::vector<char> compressedData;
 

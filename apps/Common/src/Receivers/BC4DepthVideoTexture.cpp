@@ -43,7 +43,7 @@ void BC4DepthVideoTexture::onDataReceived(const std::vector<char>& compressedDat
     std::vector<char> decompressedData(expectedSize);
 
     // Decompress in one shot
-    size_t decompressedSize = codec.decompress(compressedData, decompressedData);
+    size_t decompressedSize = codec.decompress(compressedData.data(), decompressedData, compressedData.size());
 
     stats.decompressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
     stats.compressionRatio = static_cast<float>(decompressedSize) / compressedData.size();
