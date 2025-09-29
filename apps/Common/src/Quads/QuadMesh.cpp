@@ -198,26 +198,30 @@ void QuadMesh::createMeshFromProxies(const QuadSet& quadSet, const glm::vec2& gB
 RenderStats QuadMesh::draw(GLenum primitiveType) {
     RenderStats stats;
 
+    BufferSizes bufferSizes = getBufferSizes();
+
     glBindVertexArray(vertexArrayBuffer);
     // Draw opaque proxies first
-    if (indexBuffer.getSize() > 0) {
+    if ((drawState == DrawState::OPAQUE || drawState == DrawState::BOTH) && indexBuffer.getSize() > 0) {
         indirectBuffer.bind();
         indexBuffer.bind();
         glDrawElementsIndirect(primitiveType, GL_UNSIGNED_INT, 0);
         indexBuffer.unbind();
+
+        stats.trianglesDrawn = static_cast<uint>(bufferSizes.numIndices / 3);
     }
     // Draw transparent proxies after opaque ones
-    if (indexBufferTransparent.getSize() > 0) {
+    if ((drawState == DrawState::TRANSPARENT || drawState == DrawState::BOTH) && indexBufferTransparent.getSize() > 0) {
         indirectBufferTransparent.bind();
         indexBufferTransparent.bind();
         glDrawElementsIndirect(primitiveType, GL_UNSIGNED_INT, 0);
         indexBufferTransparent.unbind();
+
+        stats.trianglesDrawn = static_cast<uint>(bufferSizes.numIndicesTransparent / 3);
     }
     glBindVertexArray(0);
 
-    BufferSizes bufferSizes = getBufferSizes();
-    stats.trianglesDrawn = static_cast<uint>((bufferSizes.numIndices + bufferSizes.numIndicesTransparent) / 3);
-    stats.drawCalls = 2;
+    stats.drawCalls = 1;
 
     return stats;
 }

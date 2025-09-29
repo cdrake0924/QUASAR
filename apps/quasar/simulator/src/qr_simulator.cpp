@@ -591,8 +591,11 @@ int main(int argc, char** argv) {
 
         double startTime = window->getTime();
 
-        // Render all objects in scene
+        // Render generated meshes
+        quasar.setDrawState(QuadMesh::DrawState::OPAQUE); // draw opaque quads first
         renderStats = renderer.drawObjects(localScene, camera);
+        quasar.setDrawState(QuadMesh::DrawState::TRANSPARENT); // then draw transparent quads
+        renderStats += renderer.drawObjects(localScene, camera, 0);
 
         // Render to screen
         auto quadsGenerator = quasar.getQuadsGenerator();

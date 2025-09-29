@@ -101,6 +101,8 @@ public:
     void generateFrame(bool createResidualFrame = false, bool showNormals = false, bool showDepth = false);
     void sendFrame(pose_id_t poseID, bool createResidualFrame);
 
+    void setDrawState(QuadMesh::DrawState drawState);
+
     void writeTexturesToFiles(const Path& outputPath);
     size_t writeToFiles(const Path& outputPath);
     size_t writeToMemory(pose_id_t poseID, bool writeResidualFrame, std::vector<char>& outputData);

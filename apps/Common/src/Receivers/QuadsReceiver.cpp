@@ -177,8 +177,6 @@ QuadFrame::FrameType QuadsReceiver::loadFromFiles(const Path& dataPath) {
 }
 
 QuadFrame::FrameType QuadsReceiver::loadFromMemory(const std::vector<char>& inputData) {
-    stats = { 0 };
-
     double startTime = timeutils::getTimeMicros();
 
     spdlog::debug("Loading inputData of size {}", inputData.size());
@@ -314,7 +312,7 @@ QuadFrame::FrameType QuadsReceiver::reconstructFrame(std::shared_ptr<Frame> fram
 
         auto resMeshBufferSizes = residualFrameMesh.getBufferSizes();
         stats.totalTriangles += resMeshBufferSizes.numIndices / 3;
-        stats.sizes += sizesUpdated + sizesRevealed;
+        stats.sizes = sizesUpdated + sizesRevealed;
     }
 
     return frame->frameType;

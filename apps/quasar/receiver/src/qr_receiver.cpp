@@ -342,8 +342,11 @@ int main(int argc, char** argv) {
             camera.updateViewMatrix();
         }
 
-        // Render all objects in scene
+        // Render generated meshes
+        quasarReceiver.setDrawState(QuadMesh::DrawState::OPAQUE); // draw opaque quads first
         renderStats = renderer.drawObjects(scene, camera);
+        quasarReceiver.setDrawState(QuadMesh::DrawState::TRANSPARENT); // then draw transparent quads
+        renderStats += renderer.drawObjects(scene, camera, 0);
 
         // Render to screen
         tonemapper.drawToScreen(renderer);

@@ -60,11 +60,9 @@ public:
     PerspectiveCamera& getRemoteCamera() { return remoteCamera; }
     PerspectiveCamera& getRemoteCameraPrev() { return remoteCameraPrev; }
     PerspectiveCamera& getremoteCameraWideFOV() { return remoteCameraWideFOV; }
-    void copyPoseToCamera(PerspectiveCamera& camera) {
-        camera.setViewMatrix(remoteCamera.getViewMatrix());
-        camera.setProjectionMatrix(remoteCamera.getProjectionMatrix());
-    }
+    void copyPoseToCamera(PerspectiveCamera& camera);
 
+    void setDrawState(QuadMesh::DrawState drawState);
     void setViewSphereDiameter(float viewSphereDiameter) { this->viewSphereDiameter = viewSphereDiameter; }
 
     QuadFrame::FrameType loadFromFiles(const Path& dataPath);

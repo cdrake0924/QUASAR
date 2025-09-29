@@ -88,6 +88,18 @@ QUASARReceiver::QUASARReceiver(
     remoteCameraWideFOV.setViewMatrix(remoteCamera.getViewMatrix());
 }
 
+void QUASARReceiver::copyPoseToCamera(PerspectiveCamera& camera) {
+    camera.setViewMatrix(remoteCamera.getViewMatrix());
+    camera.setProjectionMatrix(remoteCamera.getProjectionMatrix());
+}
+
+void QUASARReceiver::setDrawState(QuadMesh::DrawState drawState) {
+    for (auto& mesh : meshes) {
+        mesh.setDrawState(drawState);
+    }
+    residualFrameMesh.setDrawState(drawState);
+}
+
 void QUASARReceiver::onDataReceived(const std::vector<char>& data) {
     loadFromMemory(data);
 }
@@ -226,8 +238,6 @@ QuadFrame::FrameType QUASARReceiver::loadFromFiles(const Path& dataPath) {
 }
 
 QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inputData) {
-    stats = { 0 };
-
     double startTime = timeutils::getTimeMicros();
 
     spdlog::debug("Loading inputData of size {}", inputData.size());
@@ -326,7 +336,7 @@ QuadFrame::FrameType QUASARReceiver::loadFromMemory(const std::vector<char>& inp
     else {
         frame->decompressResidualHiddenLayersWideFOV(threadPool, referenceFrames, residualFrame);
     }
-    stats.decompressTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+    stats.decompressTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
     // Signal that frame is ready
     {
@@ -355,18 +365,18 @@ QuadFrame::FrameType QUASARReceiver::reconstructFrame(std::shared_ptr<Frame> fra
         auto sizes = quadSet.loadFromMemory(bufferPool.uncompressedQuads[0], bufferPool.uncompressedOffsets[0]);
         referenceFrames[0].numQuads = sizes.numQuads;
         referenceFrames[0].numDepthOffsets = sizes.numDepthOffsets;
-        stats.transferTimeMs += quadSet.stats.transferTimeMs;
+        stats.transferTimeMs = quadSet.stats.transferTimeMs;
 
         // Using GPU buffers, reconstruct mesh using proxies
         const auto& cameraToUse = getCameraToUse(0);
         startTime = timeutils::getTimeMicros();
         meshes[0].appendQuads(quadSet, gBufferSize);
         meshes[0].createMeshFromProxies(quadSet, gBufferSize, cameraToUse);
-        stats.createMeshTimeMs += timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
+        stats.createMeshTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTime);
 
         auto meshBufferSizes = meshes[0].getBufferSizes();
-        stats.totalTriangles += meshBufferSizes.numIndices / 3;
-        stats.sizes += sizes;
+        stats.totalTriangles = meshBufferSizes.numIndices / 3;
+        stats.sizes = sizes;
 
         remoteCameraPrev.setProjectionMatrix(remoteCamera.getProjectionMatrix());
         remoteCameraPrev.setViewMatrix(remoteCamera.getViewMatrix());
@@ -401,7 +411,7 @@ QuadFrame::FrameType QUASARReceiver::reconstructFrame(std::shared_ptr<Frame> fra
 
         auto resMeshBufferSizes = residualFrameMesh.getBufferSizes();
         stats.totalTriangles += resMeshBufferSizes.numIndices / 3;
-        stats.sizes += sizesUpdated + sizesRevealed;
+        stats.sizes = sizesUpdated + sizesRevealed;
     }
 
     // Reconstruct hidden layers and wide FOV

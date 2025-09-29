@@ -425,7 +425,10 @@ int main(int argc, char** argv) {
         camera.updateViewMatrix();
 
         // Render generated meshes
+        quasar.setDrawState(QuadMesh::DrawState::OPAQUE); // draw opaque quads first
         renderStats = renderer.drawObjects(localScene, camera);
+        quasar.setDrawState(QuadMesh::DrawState::TRANSPARENT); // then draw transparent quads
+        renderStats += renderer.drawObjects(localScene, camera, 0);
 
         // Restore camera position
         camera.setPosition(camera.getPosition() - initialPosition);

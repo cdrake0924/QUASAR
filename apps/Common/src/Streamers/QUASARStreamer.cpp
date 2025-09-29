@@ -238,9 +238,19 @@ uint QUASARStreamer::getNumTriangles() const {
     return numTriangles;
 }
 
+void QUASARStreamer::setDrawState(QuadMesh::DrawState drawState) {
+    for (auto& mesh : referenceFrameMeshes) {
+        mesh.setDrawState(drawState);
+    }
+    residualFrameMesh.setDrawState(drawState);
+    for (auto& mesh : meshesHidLayer) {
+        mesh.setDrawState(drawState);
+    }
+}
+
 void QUASARStreamer::addMeshesToScene(Scene& localScene) {
     // Add in reverse order to have correct layering
-    for (int layer = (maxLayers-1) - 2; layer >= 0; layer--) {
+    for (int layer = (maxLayers-1) - 1; layer >= 0; layer--) {
         localScene.addChildNode(&nodesHidLayer[layer]);
         localScene.addChildNode(&wireframesHidLayer[layer]);
         localScene.addChildNode(&depthNodesHidLayer[layer]);
@@ -253,11 +263,6 @@ void QUASARStreamer::addMeshesToScene(Scene& localScene) {
     localScene.addChildNode(&residualFrameNode);
     localScene.addChildNode(&residualFrameWireframesLocal);
     localScene.addChildNode(&depthNode);
-
-    // Add wide fov node after all layers
-    localScene.addChildNode(&nodesHidLayer[(maxLayers-1) - 1]);
-    localScene.addChildNode(&wireframesHidLayer[(maxLayers-1) - 1]);
-    localScene.addChildNode(&depthNodesHidLayer[(maxLayers-1) - 1]);
 }
 
 void QUASARStreamer::setViewSphereDiameter(float viewSphereDiameter) {
@@ -316,6 +321,7 @@ void QUASARStreamer::generateFrame(bool createResidualFrame, bool showNormals, b
             remoteRenderer.pipeline.writeMaskState.disableColorWrites();
             wideFovNodes[currMeshIndex].visible = true;
             wideFovNodes[prevMeshIndex].visible = false;
+            setDrawState(QuadMesh::DrawState::BOTH);
             remoteRenderer.drawObjectsNoLighting(sceneWideFov, remoteCameraToUse);
 
             // Render remoteScene using stencil buffer as a mask
