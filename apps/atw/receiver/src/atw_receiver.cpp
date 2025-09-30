@@ -10,12 +10,10 @@
 #include <Path.h>
 #include <Recorder.h>
 #include <CameraAnimator.h>
-#include <shaders_common.h>
 
 #include <Receivers/VideoTexture.h>
 #include <Streamers/PoseStreamer.h>
-
-#define TEXTURE_PREVIEW_SIZE 500
+#include <shaders_common.h>
 
 using namespace quasar;
 
@@ -223,11 +221,11 @@ int main(int argc, char** argv) {
             ImGui::End();
         }
 
+        flags = ImGuiWindowFlags_AlwaysAutoResize;
         if (showVideoPreview) {
-            ImGui::SetNextWindowPos(ImVec2(windowSize.x - TEXTURE_PREVIEW_SIZE - 30, 40), ImGuiCond_FirstUseEver);
-            flags = ImGuiWindowFlags_AlwaysAutoResize;
+            ImGui::SetNextWindowPos(ImVec2(windowSize.x - windowSize.x / 4 - 60, 40), ImGuiCond_FirstUseEver);
             ImGui::Begin("Raw Video Texture", &showVideoPreview, flags);
-            ImGui::Image((void*)(intptr_t)videoTexture.ID, ImVec2(TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Image((void*)(intptr_t)videoTexture.ID, ImVec2(windowSize.x / 4, windowSize.y / 4), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }
 

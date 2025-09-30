@@ -57,40 +57,28 @@ private:
     std::string appSrcName = "oglsrc0";
     std::string payloaderName = "pay0";
 
-    mutable std::atomic<uint64_t> totalBytesSent = 0;
-
     const int poseIDOffset = sizeof(pose_id_t) * 8;
     uint videoWidth, videoHeight;
 
 #if defined(HAS_CUDA)
     CudaGLImage cudaGLImage;
-    struct CudaBuffer {
-        pose_id_t poseID;
-        cudaArray_t buffer;
-    };
-    moodycamel::ConcurrentQueue<CudaBuffer> cudaBufferQueue;
-#else
-    struct CPUBuffer {
-        pose_id_t poseID;
-        std::vector<uint8_t> data;
-    };
-    moodycamel::ConcurrentQueue<CPUBuffer> cpuBufferQueue;
-
-    std::vector<uint8_t> openglFrameData;
 #endif
 
-    std::vector<uint8_t> rgbaVideoFrameData;
+    struct VideoFrame {
+        pose_id_t poseID;
+        std::vector<uint8_t> buffer;
+    };
+    moodycamel::ConcurrentQueue<VideoFrame> videoFrameQueue;
 
     std::thread videoStreamerThread;
 
-    std::atomic_bool videoReady = false;
     std::atomic_bool shouldTerminate = false;
 
     GstElement* pipeline = nullptr;
     GstElement* appsrc = nullptr;
 
     void encodeAndSendFrames();
-    void packPoseIDIntoVideoFrame(pose_id_t poseID);
+    void packPoseIDIntoVideoFrame(pose_id_t poseID, uint8_t* data);
 };
 
 } // namespace quasar

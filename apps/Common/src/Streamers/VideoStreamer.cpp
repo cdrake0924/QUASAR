@@ -21,11 +21,6 @@ VideoStreamer::VideoStreamer(
     , cudaGLImage(colorTexture)
 #endif
 {
-    rgbaVideoFrameData.resize(videoWidth * videoHeight * 4);
-#if !defined(HAS_CUDA)
-    openglFrameData.resize(width * height * 4);
-#endif
-
     if (videoURL.empty()) {
         return;
     }
@@ -61,12 +56,11 @@ VideoStreamer::VideoStreamer(
     std::ostringstream oss;
     oss << "appsrc name=" << appSrcName << " is-live=true format=time "
         << "caps=video/x-raw,format=RGBA,width=" << videoWidth << ",height=" << videoHeight << " ! "
-        << "queue leaky=downstream max-size-buffers=1 max-size-time=0 max-size-bytes=0 ! "
+        << "queue leaky=downstream max-size-buffers=2 max-size-time=0 max-size-bytes=0 ! "
         << "videoconvert ! video/x-raw,format=" << format << " ! "
         << encoderParams << " bitrate=" << targetBitRateKbps << " ! "
-        << "rtph264pay mtu=1200 config-interval=1 pt=96 name=" << payloaderName << " ! "
-        << "udpsink host=" << host << " port=" << port
-        << " sync=false async=false";
+        << "rtph264pay config-interval=-1 pt=96 name=" << payloaderName << " ! "
+        << "udpsink host=" << host << " port=" << port;
     std::string pipelineStr = oss.str();
 
     GError* error = nullptr;
@@ -116,86 +110,69 @@ void VideoStreamer::stop() {
 }
 
 void VideoStreamer::sendFrame(pose_id_t poseID) {
+    VideoFrame videoFrame;
+    videoFrame.poseID = poseID;
+    videoFrame.buffer.resize(width * height * 4);
+
 #if defined(HAS_CUDA)
-    cudaGLImage.map();
-    cudaArray_t cudaBuffer = cudaGLImage.getArrayMapped();
-    cudaGLImage.unmap();
-
-    cudaBufferQueue.enqueue({ poseID, cudaBuffer });
+    cudaGLImage.copyArrayToHostAsync(
+        width * 4,
+        height,
+        width * 4,
+        videoFrame.buffer.data());
+    cudaGLImage.synchronize();
 #else
-    readPixels(openglFrameData.data());
-
-    cpuBufferQueue.enqueue({ poseID, openglFrameData });
+    readPixels(videoFrame.buffer.data());
 #endif
+
+    videoFrameQueue.enqueue(videoFrame);
 }
 
-void VideoStreamer::packPoseIDIntoVideoFrame(pose_id_t poseID) {
+void VideoStreamer::packPoseIDIntoVideoFrame(pose_id_t poseID, uint8_t* data) {
     for (int i = 0; i < poseIDOffset; i++) {
         uint8_t value = (poseID & (1 << i)) ? 255 : 0;
         for (int j = 0; j < videoHeight; j++) {
             int index = j * videoWidth * 4 + (videoWidth - 1 - i) * 4;
-            rgbaVideoFrameData[index + 0] = value;
-            rgbaVideoFrameData[index + 1] = value;
-            rgbaVideoFrameData[index + 2] = value;
-            rgbaVideoFrameData[index + 3] = 255;
+            data[index + 0] = value;
+            data[index + 1] = value;
+            data[index + 2] = value;
         }
     }
 }
 
 void VideoStreamer::encodeAndSendFrames() {
-    videoReady = true;
-
     time_t prevTime = timeutils::getTimeMicros();
 
     while (!shouldTerminate) {
         double frameIntervalSec = 1.0 / maxFrameRate;
         time_t frameStart = timeutils::getTimeMicros();
 
-#if defined(HAS_CUDA)
-        CudaBuffer cudaStruct;
-        if (!cudaBufferQueue.try_dequeue(cudaStruct)) {
+        time_t startTransferTimeMs = timeutils::getTimeMicros();
+        VideoFrame videoFrame;
+        if (!videoFrameQueue.try_dequeue(videoFrame)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             continue;
         }
 
-        pose_id_t poseIDToSend = cudaStruct.poseID;
-        cudaArray_t cudaBuffer = cudaStruct.buffer;
+        GstBuffer* buffer = gst_buffer_new_allocate(nullptr, videoWidth * videoHeight * 4, nullptr);
+        GstMapInfo map;
+        gst_buffer_map(buffer, &map, GST_MAP_WRITE);
 
-        time_t startTransferTimeMs = timeutils::getTimeMicros();
-
-        CHECK_CUDA_ERROR(cudaMemcpy2DFromArray(rgbaVideoFrameData.data(),
-                                               videoWidth * 4,
-                                               cudaBuffer,
-                                               0, 0,
-                                               width * 4, height,
-                                               cudaMemcpyDeviceToHost));
-#else
-        CPUBuffer cpuStruct;
-        if (!cpuBufferQueue.try_dequeue(cpuStruct)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            continue;
-        }
-
-        pose_id_t poseIDToSend = cpuStruct.poseID;
-        time_t startTransferTimeMs = timeutils::getTimeMicros();
-
+        // Copy RGBA data
         for (int row = 0; row < height; row++) {
-            std::memcpy(&rgbaVideoFrameData[row * videoWidth * 4],
-                        &cpuStruct.data[row * width * 4],
+            std::memcpy(&map.data[row * videoWidth * 4],
+                        &videoFrame.buffer[row * width * 4],
                         width * 4);
         }
-#endif
 
-        packPoseIDIntoVideoFrame(poseIDToSend);
+        // Pack pose ID into the right side of the frame
+        pose_id_t poseIDToSend = videoFrame.poseID;
+        packPoseIDIntoVideoFrame(poseIDToSend, map.data);
+
+        gst_buffer_unmap(buffer, &map);
         stats.transferTimeMs = timeutils::microsToMillis(timeutils::getTimeMicros() - startTransferTimeMs);
 
         time_t startEncode = timeutils::getTimeMicros();
-
-        GstBuffer* buffer = gst_buffer_new_allocate(nullptr, rgbaVideoFrameData.size(), nullptr);
-        GstMapInfo map;
-        gst_buffer_map(buffer, &map, GST_MAP_WRITE);
-        std::memcpy(map.data, rgbaVideoFrameData.data(), rgbaVideoFrameData.size());
-        gst_buffer_unmap(buffer, &map);
 
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), buffer);
         if (ret != GST_FLOW_OK) {

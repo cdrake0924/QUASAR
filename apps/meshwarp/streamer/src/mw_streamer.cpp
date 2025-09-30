@@ -91,8 +91,8 @@ int main(int argc, char** argv) {
     VideoStreamer videoStreamerColorRT({
         .width = windowSize.x,
         .height = windowSize.y,
-        .internalFormat = GL_SRGB8,
-        .format = GL_RGB,
+        .internalFormat = GL_SRGB8_ALPHA8,
+        .format = GL_RGBA,
         .type = GL_UNSIGNED_BYTE,
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,

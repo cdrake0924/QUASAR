@@ -78,13 +78,13 @@ VideoTexture::VideoTexture(
     GST_PLUGIN_STATIC_REGISTER(videoparsersbad);
 #endif
 
-    GstRegistry *registry = gst_registry_get();
-    GList *factories = gst_registry_get_feature_list(registry, GST_TYPE_ELEMENT_FACTORY);
+    GstRegistry* registry = gst_registry_get();
+    GList* factories = gst_registry_get_feature_list(registry, GST_TYPE_ELEMENT_FACTORY);
     std::ostringstream codecs;
-    for (GList *l = factories; l != nullptr; l = l->next) {
-        GstElementFactory *factory = GST_ELEMENT_FACTORY(l->data);
-        const gchar *klass = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
-        const gchar *name  = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
+    for (GList* l = factories; l != nullptr; l = l->next) {
+        GstElementFactory* factory = GST_ELEMENT_FACTORY(l->data);
+        const gchar* klass = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
+        const gchar* name  = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
         if (klass && g_strrstr(klass, "Decoder")) {
             codecs << name << " ";
         }
@@ -105,8 +105,8 @@ VideoTexture::VideoTexture(
     oss << "udpsrc name=" << udpSrcName
         << " address=" << host << " port=" << port << " "
         << "caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000\" ! "
-        << "rtpjitterbuffer latency=200 drop-on-latency=false ! "
-        << "rtph264depay ! h264parse config-interval=-1 ! "
+        << "rtpjitterbuffer latency=120 drop-on-latency=false ! "
+        << "rtph264depay ! h264parse ! "
         << decoderName << " ! " << "videoconvert ! video/x-raw,format=RGB ! "
         << "appsink name=" << appSinkName
         << " sync=false max-buffers=5 drop=false";

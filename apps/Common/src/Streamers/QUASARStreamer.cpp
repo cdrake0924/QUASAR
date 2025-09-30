@@ -81,8 +81,8 @@ QUASARStreamer::QUASARStreamer(
     , atlasVideoStreamerRT({
         .width = 2 * quadSet.getSize().x,
         .height = 3 * quadSet.getSize().y,
-        .internalFormat = GL_SRGB8,
-        .format = GL_RGB,
+        .internalFormat = GL_SRGB8_ALPHA8,
+        .format = GL_RGBA,
         .type = GL_UNSIGNED_BYTE,
         .wrapS = GL_CLAMP_TO_EDGE,
         .wrapT = GL_CLAMP_TO_EDGE,
