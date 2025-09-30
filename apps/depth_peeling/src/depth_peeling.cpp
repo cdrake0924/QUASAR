@@ -201,7 +201,7 @@ int main(int argc, char** argv) {
                 ImGui::TextColored(ImVec4(1,1,1,1), "Shadow Map:");
                 int halfWindowWidth = ImGui::GetWindowWidth() / 2;
                 ImGui::Image(
-                    (void*)(intptr_t)scene.directionalLight->shadowMapRenderTarget.depthBuffer,
+                    (void*)(intptr_t)scene.directionalLight->shadowMapRenderTarget.depthTexture,
                     ImVec2(halfWindowWidth, halfWindowWidth), ImVec2(0, 1), ImVec2(1, 0));
             }
 

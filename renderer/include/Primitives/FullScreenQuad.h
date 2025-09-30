@@ -3,10 +3,11 @@
 
 #include <vector>
 
-#include <Buffer.h>
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <spdlog/spdlog.h>
+
+#include <Buffer.h>
 
 namespace quasar {
 

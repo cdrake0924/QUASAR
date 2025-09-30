@@ -4,11 +4,8 @@
 #include <vector>
 
 #include <Buffer.h>
-#include <CubeMap.h>
+#include <Primitives/SkyBox.h>
 #include <Lights/Lights.h>
-#include <RenderTargets/RenderTarget.h>
-#include <Primitives/FullScreenQuad.h>
-#include <Shaders/Shader.h>
 
 namespace quasar {
 
@@ -20,7 +17,7 @@ public:
     };
 
     glm::vec4 backgroundColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    CubeMap* envCubeMap = nullptr;
+    SkyBox* envCubeMap = nullptr;
 
     AmbientLight* ambientLight = nullptr;
     DirectionalLight* directionalLight = nullptr;
@@ -28,10 +25,10 @@ public:
 
     Node rootNode;
 
-    Scene();
+    Scene() = default;
     ~Scene() = default;
 
-    void setEnvMap(CubeMap* envCubeMap);
+    void setEnvMap(SkyBox* envCubeMap);
     void setAmbientLight(AmbientLight* ambientLight);
     void setDirectionalLight(DirectionalLight* directionalLight);
 
@@ -44,41 +41,11 @@ public:
 
     Node* findNodeByName(const std::string& name);
 
-    void equirectToCubeMap(const CubeMap& envCubeMap, const Texture& hdrTexture);
-    void setupIBL(const CubeMap& envCubeMap);
-
     void clear();
 
     static const uint numTextures = 3;
 
 private:
-    bool hasPBREnvMap = false;
-
-    // Create an irradiance cubemap, and rescale capture FBO to irradiance scale
-    CubeMap irradianceCubeMap;
-
-    // Create a prefilter cubemap, and rescale capture FBO to prefilter scale
-    CubeMap prefilterCubeMap;
-
-    // Generate a 2D LUT from the BRDF equations used
-    Texture brdfLUT;
-    FullScreenQuad brdfFsQuad;
-
-    // Converts HDR equirectangular environment map to cubemap equivalent
-    Shader equirectToCubeMapShader;
-
-    // Solves diffuse integral by convolution to create an irradiance cubemap
-    Shader convolutionShader;
-
-    // Runs a quasi monte-carlo simulation on the environment lighting to create a prefilter cubemap
-    Shader prefilterShader;
-
-    // BRDF shader
-    Shader brdfShader;
-
-    RenderTarget captureRenderTarget;
-    Renderbuffer captureRenderBuffer;
-
     GPUPointLightBlock pointLightsData;
 
     int bindAmbientLight(const Material* material, int texIdx);

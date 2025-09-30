@@ -8,11 +8,11 @@ namespace quasar {
 class DirLightShadowRT : public RenderTargetBase {
 public:
     Texture colorTexture;
-    Texture depthBuffer;
+    Texture depthTexture;
 
     DirLightShadowRT(const RenderTargetCreateParams& params)
         : RenderTargetBase(params)
-        , depthBuffer({
+        , depthTexture({
             .width = width,
             .height = height,
             .internalFormat = GL_DEPTH_COMPONENT24,
@@ -29,7 +29,7 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
 
         framebuffer.bind();
-        framebuffer.attachTexture(depthBuffer, GL_DEPTH_ATTACHMENT);
+        framebuffer.attachTexture(depthTexture, GL_DEPTH_ATTACHMENT);
 
 #ifdef GL_CORE
         glDrawBuffer(GL_NONE);

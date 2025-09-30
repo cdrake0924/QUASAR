@@ -6,11 +6,13 @@
 
 `QUASAR` is a remote rendering system that represents scene views using pixel-aligned quads, enabling temporally consistent and bandwidth-adaptive streaming for high-quality, real-time visualization on thin clients.
 
-This repository provides baseline implementations of many common remote rendering systems, designed to support and accelerate research in the field. It includes a custom deferred rendering engine with support for PBR materials, dynamic lighting, and shadows, a scene loader compatible with GLTF, OBJ, and FBX formats, and multiple reprojection techniques including [ATW](https://developers.meta.com/horizon/blog/asynchronous-timewarp-examined/), [MeshWarp](https://dl.acm.org/doi/10.1145/253284.253292), [QuadStream](https://jozef.hladky.de/projects/QS/), and [QUASAR](https://github.com/quasar-gfx/QUASAR).
+This repository provides baseline implementations of components commonly used in remote rendering systems, designed to support and accelerate research in the field. It includes custom forward and deferred rendering engines with PBR materials, dynamic lighting, and shadows, along with a scene loader compatible with GLTF/GLB, OBJ, and FBX formats, and video and depth streaming from framebuffers.
 
-We also provide an OpenXR-based implementation for Meta Quest VR headsets, which can be found [here](https://github.com/quasar-gfx/QUASAR-client).
+The project also integrates several reprojection techniques, including [ATW](https://developers.meta.com/horizon/blog/asynchronous-timewarp-examined/), [MeshWarp](https://dl.acm.org/doi/10.1145/253284.253292), [QuadStream](https://jozef.hladky.de/projects/QS/), and [QUASAR](https://quasar-gfx.github.io/), all of which can run in real time, with most supporting WiFi streaming.
 
-**Note:** This codebase is a research prototype and is not fully optimized. Contributions are welcome!
+Additionally, an OpenXR-based client for Meta Quest VR headsets is available [here](https://github.com/quasar-gfx/QUASAR-client).
+
+**Note:** `QUASAR` is an active research prototype, so expect API changes, unoptimized code, bugs, and missing features. Contributions are welcome!
 
 ## Documentation
 
@@ -37,7 +39,7 @@ We also provide an OpenXR-based implementation for Meta Quest VR headsets, which
 - **[glm](https://github.com/g-truc/glm)**
 - **[GStreamer](https://gstreamer.freedesktop.org/)**
 - **[imgui](https://github.com/ocornut/imgui)**
-- **[jsmn](https://github.com/zserge/jsmn)**
+- **[json](https://github.com/nlohmann/json)**
 - **[lz4](https://github.com/lz4/lz4)**
 - **[spdlog](https://github.com/gabime/spdlog)**
 - **[stb](https://github.com/nothings/stb)**

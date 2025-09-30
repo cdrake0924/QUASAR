@@ -58,10 +58,6 @@ set(RENDERER_LIBS ${RENDERER_LIBS} assimp)
 add_subdirectory(${EXTERNAL_DIR}/stb/tnt)
 set(RENDERER_LIBS ${RENDERER_LIBS} stb)
 
-# jsmn
-add_subdirectory(${EXTERNAL_DIR}/jsmn/tnt)
-set(RENDERER_LIBS ${RENDERER_LIBS} jsmn)
-
 # lz4
 add_subdirectory(${EXTERNAL_DIR}/lz4/tnt)
 set(RENDERER_LIBS ${RENDERER_LIBS} lz4)
