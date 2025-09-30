@@ -224,7 +224,7 @@ int main(int argc, char** argv) {
         flags = ImGuiWindowFlags_AlwaysAutoResize;
         if (showVideoPreview) {
             ImGui::SetNextWindowPos(ImVec2(windowSize.x - windowSize.x / 4 - 60, 40), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Raw Video Texture", &showVideoPreview, flags);
+            ImGui::Begin("Video Texture", &showVideoPreview, flags);
             ImGui::Image((void*)(intptr_t)videoTexture.ID, ImVec2(windowSize.x / 4, windowSize.y / 4), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::End();
         }

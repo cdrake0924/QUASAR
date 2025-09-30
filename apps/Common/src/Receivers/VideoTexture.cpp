@@ -23,6 +23,8 @@ extern "C" {
     GST_PLUGIN_STATIC_DECLARE(rtp);
     GST_PLUGIN_STATIC_DECLARE(rtpmanager);
     GST_PLUGIN_STATIC_DECLARE(udp);
+    GST_PLUGIN_STATIC_DECLARE(srt);
+    GST_PLUGIN_STATIC_DECLARE(mpegtsdemux);
     GST_PLUGIN_STATIC_DECLARE(playback);
     GST_PLUGIN_STATIC_DECLARE(androidmedia);
     GST_PLUGIN_STATIC_DECLARE(videoparsersbad);
@@ -73,6 +75,8 @@ VideoTexture::VideoTexture(
     GST_PLUGIN_STATIC_REGISTER(rtp);
     GST_PLUGIN_STATIC_REGISTER(rtpmanager);
     GST_PLUGIN_STATIC_REGISTER(udp);
+    GST_PLUGIN_STATIC_REGISTER(srt);
+    GST_PLUGIN_STATIC_REGISTER(mpegtsdemux);
     GST_PLUGIN_STATIC_REGISTER(playback);
     GST_PLUGIN_STATIC_REGISTER(androidmedia);
     GST_PLUGIN_STATIC_REGISTER(videoparsersbad);
@@ -102,12 +106,12 @@ VideoTexture::VideoTexture(
 #endif
 
     std::ostringstream oss;
-    oss << "udpsrc name=" << udpSrcName
-        << " address=" << host << " port=" << port << " "
-        << "caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000\" ! "
-        << "rtpjitterbuffer latency=120 drop-on-latency=false ! "
-        << "rtph264depay ! h264parse ! "
-        << decoderName << " ! " << "videoconvert ! video/x-raw,format=RGB ! "
+    oss << "srtsrc name=" << srcName
+        << " uri=\"srt://" << host << ":" << port << "?mode=listener&latency=30\" ! "
+        << "tsdemux ! "
+        << "h264parse ! "
+        << decoderName << " ! "
+        << "videoconvert ! video/x-raw,format=RGB ! "
         << "appsink name=" << appSinkName
         << " sync=false max-buffers=5 drop=false";
     std::string pipelineStr = oss.str();
@@ -125,7 +129,7 @@ VideoTexture::VideoTexture(
     gst_app_sink_set_drop((GstAppSink*)appsink, true);
     gst_app_sink_set_max_buffers((GstAppSink*)appsink, 1);
 
-    GstElement* udpSrcElement = gst_bin_get_by_name(GST_BIN(pipeline), udpSrcName.c_str());
+    GstElement* udpSrcElement = gst_bin_get_by_name(GST_BIN(pipeline), srcName.c_str());
     GstPad* srcPad = gst_element_get_static_pad(udpSrcElement, "src");
     gst_pad_add_probe(srcPad, GST_PAD_PROBE_TYPE_BUFFER,
         [](GstPad*, GstPadProbeInfo* info, gpointer userData) -> GstPadProbeReturn {
@@ -154,7 +158,6 @@ VideoTexture::~VideoTexture() {
 
 void VideoTexture::stop() {
     shouldTerminate = true;
-    videoReady = false;
 
     if (pipeline)
         gst_element_set_state(pipeline, GST_STATE_NULL);
@@ -184,8 +187,6 @@ float VideoTexture::getFrameRate() {
 }
 
 void VideoTexture::receiveFrame() {
-    videoReady = true;
-
     time_t prevTime = timeutils::getTimeMicros();
     time_t lastBitrateCalcTime = 0;
 
@@ -298,7 +299,7 @@ bool VideoTexture::containsFrameWithPoseID(pose_id_t poseID) {
 
 pose_id_t VideoTexture::draw(pose_id_t poseID) {
     std::lock_guard<std::mutex> lock(m);
-    if (!videoReady || frames.empty()) {
+    if (frames.empty()) {
         return -1;
     }
 

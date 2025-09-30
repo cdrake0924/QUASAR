@@ -54,15 +54,14 @@ private:
     uint64_t framesReceived = 0;
     size_t maxQueueSize = 3;
 
-    std::string udpSrcName = "udpsrc0";
+    const int poseIDOffset = sizeof(pose_id_t) * 8;
+
+    std::atomic_bool shouldTerminate = false;
+
+    std::string srcName = "src0";
     std::string appSinkName = "appsink0";
 
     mutable std::atomic<uint64_t> totalBytesRecv = 0;
-
-    const int poseIDOffset = sizeof(pose_id_t) * 8;
-
-    std::atomic_bool videoReady = false;
-    bool shouldTerminate = false;
 
     std::thread videoReceiverThread;
     std::mutex m;

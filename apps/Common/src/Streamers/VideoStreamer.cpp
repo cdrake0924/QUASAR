@@ -56,11 +56,13 @@ VideoStreamer::VideoStreamer(
     std::ostringstream oss;
     oss << "appsrc name=" << appSrcName << " is-live=true format=time "
         << "caps=video/x-raw,format=RGBA,width=" << videoWidth << ",height=" << videoHeight << " ! "
-        << "queue leaky=downstream max-size-buffers=2 max-size-time=0 max-size-bytes=0 ! "
+        << "queue leaky=downstream max-size-buffers=1 max-size-time=0 max-size-bytes=0 ! "
         << "videoconvert ! video/x-raw,format=" << format << " ! "
         << encoderParams << " bitrate=" << targetBitRateKbps << " ! "
-        << "rtph264pay config-interval=-1 pt=96 name=" << payloaderName << " ! "
-        << "udpsink host=" << host << " port=" << port;
+        << "h264parse config-interval=-1 ! "
+        << "mpegtsmux alignment=7 ! "
+        << "srtsink uri=\"srt://" << host << ":" << port
+        << "?mode=caller&latency=30\"";
     std::string pipelineStr = oss.str();
 
     GError* error = nullptr;
