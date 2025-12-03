@@ -11,6 +11,7 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 FPS = 15
 FOURCC = cv2.VideoWriter_fourcc(*'XVID')
+BRIGHTNESS_THRESHOLD = 20 # Average pixel brightness for synchronization
 # -----------------------------------
 
 ctx = rs.context()
@@ -43,6 +44,9 @@ video_writer = cv2.VideoWriter(OUTPUT_FILENAME, FOURCC, FPS, (FRAME_WIDTH, FRAME
 print(f"Recording started. Saving to '{OUTPUT_FILENAME}' for {RECORDING_DURATION_SEC} seconds...")
 
 start_time = time.time()
+trigger_frame_index = -1
+trigger_frame_found = False
+frame_count = 0
 try:
     while (time.time() - start_time) < RECORDING_DURATION_SEC:
         # Get frames
@@ -53,11 +57,25 @@ try:
 
         # Convert images to numpy arrays
         color_image = np.asanyarray(color_frame.get_data())
+        avg_brightness = np.mean(color_image)
+        print(avg_brightness)
 
         # Write the frame to the video file
         video_writer.write(color_image)
 
-        # Optional: Display stream while recording
+        #trigger when brightness threshold changes
+        #shows the frame index where that is found
+        if not trigger_frame_found and avg_brightness > BRIGHTNESS_THRESHOLD:
+            trigger_frame_found = True
+            trigger_frame_index = frame_count
+            trigger_timestamp_ms = color_frame.get_timestamp()
+            print(f"\n✨ Trigger Detected! ✨")
+            print(f"Frame Index: {trigger_frame_index}")
+            print(f"Timestamp: {trigger_timestamp_ms / 1000.0:.3f} seconds")
+            print(f"Average Brightness: {avg_brightness:.2f}\n")
+        frame_count += 1
+        
+        #Display while recording for testing
         cv2.imshow('Recording Stream', color_image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
