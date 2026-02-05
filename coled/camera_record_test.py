@@ -5,84 +5,100 @@ import numpy as np
 import time
 
 # --- Configuration for Recording ---
-RECORDING_DURATION_SEC = 10  # Set the duration for recording in seconds
-OUTPUT_FILENAME = 'test_video.avi'
+RECORDING_DURATION_SEC = 10
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 FPS = 15
 FOURCC = cv2.VideoWriter_fourcc(*'XVID')
-BRIGHTNESS_THRESHOLD = 20 # Average pixel brightness for synchronization
+BRIGHTNESS_THRESHOLD = 20 
 # -----------------------------------
 
 ctx = rs.context()
 devices = ctx.query_devices()
 
-# 1. Check if the list of devices is empty
 if len(devices) == 0:
     print("Error: No Intel RealSense device connected.")
-    print("Please check USB connection and ensure the camera is powered on.")
     sys.exit(1)
 
-# 2. If devices are found, print their information
-print(f"Found {len(devices)} Intel RealSense device(s):")
-for device in devices:
-    print(f"  - Name: {device.get_info(rs.camera_info.name)}")
-    print(f"  - Serial Number: {device.get_info(rs.camera_info.serial_number)}")
-    print("---")
+pipelines = []
+video_writers = []
+device_names = []
 
-pipeline = rs.pipeline()
-config = rs.config()
+print(f"Initializing {len(devices)} device(s)...")
 
-# Configure color stream
-config.enable_stream(rs.stream.color, FRAME_WIDTH, FRAME_HEIGHT, rs.format.bgr8, FPS)
+for i, device in enumerate(devices):
+    sn = device.get_info(rs.camera_info.serial_number)
+    name = device.get_info(rs.camera_info.name)
+    device_names.append(sn)
+    
+    # 1. Create a unique pipeline and config for each device
+    pipe = rs.pipeline()
+    cfg = rs.config()
+    
+    # 2. Enable device by specific serial number
+    cfg.enable_device(sn)
+    cfg.enable_stream(rs.stream.color, FRAME_WIDTH, FRAME_HEIGHT, rs.format.bgr8, FPS)
+    
+    # 3. Start the pipeline
+    pipe.start(cfg)
+    pipelines.append(pipe)
+    
+    # 4. Create a unique video writer for each device
+    out_filename = f'cam_{sn}_{i}.avi'
+    writer = cv2.VideoWriter(out_filename, FOURCC, FPS, (FRAME_WIDTH, FRAME_HEIGHT))
+    video_writers.append(writer)
+    
+    print(f"  - Started: {name} (SN: {sn}) -> Saving to {out_filename}")
 
-# Start streaming
-profile = pipeline.start(config)
-
-# Initialize Video Writer
-video_writer = cv2.VideoWriter(OUTPUT_FILENAME, FOURCC, FPS, (FRAME_WIDTH, FRAME_HEIGHT))
-print(f"Recording started. Saving to '{OUTPUT_FILENAME}' for {RECORDING_DURATION_SEC} seconds...")
+print(f"\nRecording for {RECORDING_DURATION_SEC} seconds...")
 
 start_time = time.time()
-trigger_frame_index = -1
-trigger_frame_found = False
 frame_count = 0
+
 try:
     while (time.time() - start_time) < RECORDING_DURATION_SEC:
-        # Get frames
-        frames = pipeline.wait_for_frames()
-        color_frame = frames.get_color_frame()
-        if not color_frame:
-            continue
-
-        # Convert images to numpy arrays
-        color_image = np.asanyarray(color_frame.get_data())
-        avg_brightness = np.mean(color_image)
-        print(avg_brightness)
-
-        # Write the frame to the video file
-        video_writer.write(color_image)
-
-        #trigger when brightness threshold changes
-        #shows the frame index where that is found
-        if not trigger_frame_found and avg_brightness > BRIGHTNESS_THRESHOLD:
-            trigger_frame_found = True
-            trigger_frame_index = frame_count
-            trigger_timestamp_ms = color_frame.get_timestamp()
-            print(f"\n✨ Trigger Detected! ✨")
-            print(f"Frame Index: {trigger_frame_index}")
-            print(f"Timestamp: {trigger_timestamp_ms / 1000.0:.3f} seconds")
-            print(f"Average Brightness: {avg_brightness:.2f}\n")
-        frame_count += 1
+        frames_list = []
         
-        #Display while recording for testing
-        cv2.imshow('Recording Stream', color_image)
+        for i, pipe in enumerate(pipelines):
+            # Wait for frames from this specific camera
+            frames = pipe.wait_for_frames()
+            color_frame = frames.get_color_frame()
+            
+            if not color_frame:
+                continue
+
+            color_image = np.asanyarray(color_frame.get_data())
+            
+            # Logic for individual camera (Brightness check)
+            avg_brightness = np.mean(color_image)
+            if avg_brightness > BRIGHTNESS_THRESHOLD:
+                # You can add per-camera trigger logic here if needed
+                pass
+
+            # Write to the specific file for this camera
+            video_writers[i].write(color_image)
+            
+            # Label the image for the preview window
+            cv2.putText(color_image, f"SN: {device_names[i]}", (10, 30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            frames_list.append(color_image)
+
+        # 5. Display all cameras side-by-side (Horizontal concatenation)
+        if frames_list:
+            display_image = np.hstack(frames_list)
+            cv2.imshow('Multi-Camera Stream', display_image)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        
+        frame_count += 1
 
 finally:
-    # Stop streaming and close video writer
-    pipeline.stop()
-    video_writer.release()
+    # Cleanup all resources
+    print("\nClosing streams...")
+    for pipe in pipelines:
+        pipe.stop()
+    for writer in video_writers:
+        writer.release()
     cv2.destroyAllWindows()
-    print(f"Recording finished and saved to '{OUTPUT_FILENAME}'.")
+    print("Recording finished.")
