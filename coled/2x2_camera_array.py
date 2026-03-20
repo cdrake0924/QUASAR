@@ -61,6 +61,7 @@ frame_count = 0
 #I got this from  google gemini
 #It is supposed to be code to get the focal length from meta data from Intel
 intrinsics = pipelines[0].get_active_profile().get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+print(intrinsics)
 focal_length = intrinsics.fx
 print(focal_length)
 
@@ -118,6 +119,37 @@ try:
     avg_disparity = sum(all_disparities) / len(all_disparities)
     avg_baseline = (DEPTH * avg_disparity) / focal_length
     print(f"Average Baseline: {avg_baseline:.2f}")
+
+    # --- NEW: Reprojection Error Calculation ---
+    print("\nEvaluating Calibration Quality...")
+    
+    # 1. Define the real-world coordinates of the checkerboard squares
+    objp = np.zeros((CHECKERBOARD_SIZE[0] * CHECKERBOARD_SIZE[1], 3), np.float32)
+    objp[:, :2] = np.mgrid[0:CHECKERBOARD_SIZE[0], 0:CHECKERBOARD_SIZE[1]].T.reshape(-1, 2)
+    objp *= SQUARE_SIZE  # Scale by your square size (30mm)
+
+    # 2. Use the intrinsics you got from the RealSense
+    # We convert the RealSense intrinsics object into a standard OpenCV matrix
+    camera_matrix = np.array([[intrinsics.fx, 0, intrinsics.ppx],
+                              [0, intrinsics.fy, intrinsics.ppy],
+                              [0, 0, 1]], dtype=np.float32)
+    print(camera_matrix)
+    dist_coeffs = np.array(intrinsics.coeffs, dtype=np.float32)
+
+    # 3. Calculate error for the last captured frame
+    if found_checker_l:
+        # SolvePnP finds the pose of the camera (Rotation and Translation)
+        ret, rvec, tvec = cv2.solvePnP(objp, corners_l, camera_matrix, dist_coeffs)
+        
+        # Project the 3D points back onto the 2D image plane
+        imgpoints_projected, _ = cv2.projectPoints(objp, rvec, tvec, camera_matrix, dist_coeffs)
+        
+        # Calculate the distance between detected corners and projected points
+        error = cv2.norm(corners_l, imgpoints_projected, cv2.NORM_L2) / len(imgpoints_projected)
+        print(f"Reprojection Error (Left Cam): {error:.4f} pixels")
+        
+        if error > 1.0:
+            print("Warning: High error! FoundationStereo point clouds may be distorted.")
 
 finally:
     # Cleanup all resources
