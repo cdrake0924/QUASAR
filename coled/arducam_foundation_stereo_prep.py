@@ -30,14 +30,14 @@ Output files (saved to --out-dir, default: foundation_stereo_input/):
 """
 
 # --- Configuration ---
-FRAME_WIDTH   = 1920
-FRAME_HEIGHT  = 1080
+FRAME_WIDTH   = 1280
+FRAME_HEIGHT  = 720
 FPS           = 15
-CAM0_INDEX    = 1       # Left camera
-CAM1_INDEX    = 2       # Right camera
+CAM0_INDEX    = 2       # Left camera
+CAM1_INDEX    = 1       # Right camera
 
-STEREO_CALIB_FILE = "arducam_stereo_calib.npz"
-OUTPUT_DIR        = "foundation_stereo_input"
+STEREO_CALIB_FILE = "extrinsics/arducam_stereo_calib.npz"
+OUTPUT_DIR        = "foundation_prep"
 # ---------------------
 
 
@@ -45,6 +45,7 @@ def open_camera(index: int) -> cv2.VideoCapture:
     cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
     if not cap.isOpened():
         raise RuntimeError(f"Cannot open camera at index {index}.")
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,  FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
     cap.set(cv2.CAP_PROP_FPS,          FPS)
@@ -120,10 +121,10 @@ def write_K_txt(P0, baseline_m: float, output_path: str):
 
 def capture_live_pair(cap0, cap1):
     """
-    Show a live side-by-side preview and capture one frame pair on spacebar.
-    Press 'q' to quit without capturing.
+    Show a live side-by-side preview and capture one frame pair on SPACE or C.
+    Click the preview window first (otherwise keys go to the terminal). Q quits.
     """
-    print("\nLive preview — press SPACE to capture a frame pair, 'q' to quit.")
+    print("\nLive preview — click the preview window first, then SPACE or C to capture, Q to quit.")
     while True:
         ret0, frame0 = cap0.read()
         ret1, frame1 = cap1.read()
@@ -131,22 +132,33 @@ def capture_live_pair(cap0, cap1):
             time.sleep(0.05)
             continue
 
-        # Downsample for display only (1920x1080 side-by-side is very wide)
+        display0 = frame0.copy()
+        display1 = frame1.copy()
+        if display1.shape[0] != display0.shape[0] or display1.shape[1] != display0.shape[1]:
+            display1 = cv2.resize(display1, (display0.shape[1], display0.shape[0]))
+
+        # Downsample for display only (side-by-side at full res is very wide)
         scale = 0.4
-        disp0 = cv2.resize(frame0, None, fx=scale, fy=scale)
-        disp1 = cv2.resize(frame1, None, fx=scale, fy=scale)
+        disp0 = cv2.resize(display0, None, fx=scale, fy=scale)
+        disp1 = cv2.resize(display1, None, fx=scale, fy=scale)
         combined = np.hstack([disp0, disp1])
         cv2.putText(combined, "CAM 0 (LEFT)", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         cv2.putText(combined, "CAM 1 (RIGHT)", (disp0.shape[1] + 10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.putText(
+            combined, "Click this window | SPACE or C = capture | Q = quit",
+            (10, combined.shape[0] - 12),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA,
+        )
         cv2.imshow("Stereo Preview — SPACE to capture, Q to quit", combined)
 
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord(' '):
+        # waitKey(1) often drops keys on Windows; a few ms gives the GUI time to deliver SPACE.
+        key = cv2.waitKey(15) & 0xFF
+        if key in (ord(" "), ord("c"), ord("C")):
             cv2.destroyAllWindows()
             return frame0, frame1
-        elif key == ord('q'):
+        if key in (ord("q"), ord("Q")):
             cv2.destroyAllWindows()
             return None, None
 

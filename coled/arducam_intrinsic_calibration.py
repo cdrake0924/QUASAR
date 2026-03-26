@@ -8,8 +8,8 @@ import time
 # --- Configuration ---
 CHECKERBOARD_SIZE = (8, 6)       # Number of inner corners (cols, rows)
 SQUARE_SIZE_MM    = 30           # Physical size of each square in mm
-FRAME_WIDTH       = 1920
-FRAME_HEIGHT      = 1080
+FRAME_WIDTH       = 1280
+FRAME_HEIGHT      = 720
 FPS               = 15
 CAPTURE_COUNT     = 20           # How many valid frames to collect before calibrating
 CAPTURE_INTERVAL  = 0.5          # Minimum seconds between captures (avoid blurry duplicates)
@@ -18,7 +18,7 @@ CAPTURE_INTERVAL  = 0.5          # Minimum seconds between captures (avoid blurr
 DW = (11, 11)
 
 # Where to save the result
-OUTPUT_DIR  = "."
+OUTPUT_DIR  = "intrinsic"
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "arducam_intrinsic_calib.npz")
 # ---------------------
 
@@ -40,6 +40,8 @@ def open_arducam(index: int) -> cv2.VideoCapture:
     if not cap.isOpened():
         raise RuntimeError(f"Cannot open camera at index {index}.")
 
+    # MJPG often unlocks higher resolutions on USB webcams/Arducam devices.
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,  FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
     cap.set(cv2.CAP_PROP_FPS,          FPS)
@@ -48,6 +50,11 @@ def open_arducam(index: int) -> cv2.VideoCapture:
     h   = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
     print(f"  Camera opened: {w}x{h} @ {fps:.1f} fps")
+    if w < FRAME_WIDTH or h < FRAME_HEIGHT:
+        print(
+            f"  Warning: camera {index} did not accept requested {FRAME_WIDTH}x{FRAME_HEIGHT}. "
+            "Calibration may be invalid if you expected a different resolution."
+        )
     return cap
 
 
@@ -234,7 +241,7 @@ if __name__ == "__main__":
         help="Force a specific /dev/video index (auto-detected if omitted)."
     )
     parser.add_argument(
-        "--save-dir", default="calib_frames",
+        "--save-dir", default="intrinsic/calib_frames",
         help="Directory for captured calibration frames (default: calib_frames/)."
     )
     parser.add_argument(

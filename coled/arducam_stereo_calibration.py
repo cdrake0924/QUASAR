@@ -7,23 +7,23 @@ import time
 # --- Configuration ---
 CHECKERBOARD_SIZE = (8, 6)    # Must match what was used for intrinsic calibration
 SQUARE_SIZE_MM    = 30        # Must match what was used for intrinsic calibration
-FRAME_WIDTH       = 1920
-FRAME_HEIGHT      = 1080
+FRAME_WIDTH       = 1280
+FRAME_HEIGHT      = 720
 FPS               = 15
 CAPTURE_COUNT     = 20        # Number of simultaneous frame pairs to collect
 CAPTURE_INTERVAL  = 1.0       # Seconds between captures (longer than intrinsic — need both cameras stable)
 DW                = (11, 11)    # Corner refinement window
 
 # Camera indices
-CAM0_INDEX = 1
-CAM1_INDEX = 2
+CAM0_INDEX = 2
+CAM1_INDEX = 1
 
 # Intrinsic calibration files (produced by arducam_intrinsic_calibration.py)
-CAM0_INTRINSIC = "arducam_intrinsic_calib_0.npz"
-CAM1_INTRINSIC = "arducam_intrinsic_calib_1.npz"
+CAM0_INTRINSIC = "intrinsic/arducam_intrinsic_calib_1.npz"
+CAM1_INTRINSIC = "intrinsic/arducam_intrinsic_calib_2.npz"
 
 # Output
-OUTPUT_FILE = "arducam_stereo_calib.npz"
+OUTPUT_FILE = "extrinsics/arducam_stereo_calib.npz"
 # ---------------------
 
 
@@ -32,6 +32,8 @@ def open_camera(index: int) -> cv2.VideoCapture:
     cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
     if not cap.isOpened():
         raise RuntimeError(f"Cannot open camera at index {index}.")
+    # MJPG often unlocks higher resolutions on USB webcams/Arducam devices.
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,  FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
     cap.set(cv2.CAP_PROP_FPS,          FPS)
@@ -39,6 +41,11 @@ def open_camera(index: int) -> cv2.VideoCapture:
     h   = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
     print(f"  Camera {index} opened: {w}x{h} @ {fps:.1f} fps")
+    if w < FRAME_WIDTH or h < FRAME_HEIGHT:
+        print(
+            f"  Warning: camera {index} did not accept requested {FRAME_WIDTH}x{FRAME_HEIGHT}. "
+            "Try a different camera index or reduce FRAME_WIDTH/FRAME_HEIGHT."
+        )
     return cap
 
 
@@ -77,6 +84,13 @@ def capture_stereo_frames(cap0: cv2.VideoCapture,
             print("  Warning: failed to grab frame from one or both cameras.")
             time.sleep(0.05)
             continue
+
+        # Ensure the preview window always shows both cameras at equal size.
+        # If one camera reports a smaller stream, this avoids a narrow/cropped pane.
+        if frame0.shape[1] != FRAME_WIDTH or frame0.shape[0] != FRAME_HEIGHT:
+            frame0 = cv2.resize(frame0, (FRAME_WIDTH, FRAME_HEIGHT), interpolation=cv2.INTER_AREA)
+        if frame1.shape[1] != FRAME_WIDTH or frame1.shape[0] != FRAME_HEIGHT:
+            frame1 = cv2.resize(frame1, (FRAME_WIDTH, FRAME_HEIGHT), interpolation=cv2.INTER_AREA)
 
         gray0 = cv2.cvtColor(frame0, cv2.COLOR_BGR2GRAY)
         gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
@@ -125,11 +139,14 @@ def capture_stereo_frames(cap0: cv2.VideoCapture,
         cv2.putText(display0, label, (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
         cv2.putText(display1, label, (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
+        if display1.shape[0] != display0.shape[0] or display1.shape[1] != display0.shape[1]:
+            display1 = cv2.resize(display1, (display0.shape[1], display0.shape[0]))
+
         # Show both cameras side by side
         combined = np.hstack([display0, display1])
         cv2.putText(combined, "CAM 0", (10, FRAME_HEIGHT - 15),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(combined, "CAM 1", (FRAME_WIDTH + 10, FRAME_HEIGHT - 15),
+        cv2.putText(combined, "CAM 1", (display0.shape[1] + 10, display0.shape[0] - 15),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         cv2.imshow("Stereo Calibration Capture", combined)
 
@@ -265,7 +282,7 @@ if __name__ == "__main__":
         help=f"Camera index for cam1 (default: {CAM1_INDEX})"
     )
     parser.add_argument(
-        "--save-dir", default="stereo_frames",
+        "--save-dir", default="extrinsics/stereo_frames",
         help="Directory for captured stereo frame pairs (default: stereo_frames/)"
     )
     parser.add_argument(
@@ -288,6 +305,16 @@ if __name__ == "__main__":
     mtx1, dist1 = cam1_data['mtx'], cam1_data['dist']
     print(f"  Cam0 intrinsics loaded from: {args.cam0_intrinsic}")
     print(f"  Cam1 intrinsics loaded from: {args.cam1_intrinsic}")
+    fx0, fy0 = float(mtx0[0, 0]), float(mtx0[1, 1])
+    fx1, fy1 = float(mtx1[0, 0]), float(mtx1[1, 1])
+    print(f"  Cam0 focal px: fx={fx0:.2f}, fy={fy0:.2f}")
+    print(f"  Cam1 focal px: fx={fx1:.2f}, fy={fy1:.2f}")
+    focal_ratio = max(fx0, fx1) / max(min(fx0, fx1), 1e-9)
+    if focal_ratio > 1.35:
+        print(
+            "  Warning: camera focal lengths differ significantly. "
+            "This often means one intrinsic calibration is poor or from mismatched settings."
+        )
 
     # ---- Open both cameras -------------------------------------------------
     print(f"\nOpening cameras {args.cam0_index} and {args.cam1_index}...")
