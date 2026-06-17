@@ -1,0 +1,467 @@
+{
+  "stats": {
+    "n_sets": 30,
+    "all_four": 28,
+    "pairs": {
+      "tr": 30,
+      "bl": 30,
+      "br": 28
+    },
+    "img_size": [
+      640,
+      480
+    ]
+  },
+  "frames": [
+    {
+      "idx": 0,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_000.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_000.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_000.png",
+        "br": "extrinsics/quad_frames\\br\\frame_000.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 1,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_001.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_001.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_001.png",
+        "br": "extrinsics/quad_frames\\br\\frame_001.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 2,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_002.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_002.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_002.png",
+        "br": "extrinsics/quad_frames\\br\\frame_002.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 3,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_003.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_003.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_003.png",
+        "br": "extrinsics/quad_frames\\br\\frame_003.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 4,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_004.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_004.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_004.png",
+        "br": "extrinsics/quad_frames\\br\\frame_004.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 5,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_005.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_005.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_005.png",
+        "br": "extrinsics/quad_frames\\br\\frame_005.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 6,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_006.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_006.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_006.png",
+        "br": "extrinsics/quad_frames\\br\\frame_006.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 7,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_007.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_007.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_007.png",
+        "br": "extrinsics/quad_frames\\br\\frame_007.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 8,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_008.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_008.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_008.png",
+        "br": "extrinsics/quad_frames\\br\\frame_008.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 9,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_009.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_009.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_009.png",
+        "br": "extrinsics/quad_frames\\br\\frame_009.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 10,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_010.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_010.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_010.png",
+        "br": "extrinsics/quad_frames\\br\\frame_010.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 11,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_011.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_011.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_011.png",
+        "br": "extrinsics/quad_frames\\br\\frame_011.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 12,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_012.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_012.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_012.png",
+        "br": "extrinsics/quad_frames\\br\\frame_012.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": false
+      }
+    },
+    {
+      "idx": 13,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_013.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_013.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_013.png",
+        "br": "extrinsics/quad_frames\\br\\frame_013.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": false
+      }
+    },
+    {
+      "idx": 14,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_014.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_014.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_014.png",
+        "br": "extrinsics/quad_frames\\br\\frame_014.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 15,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_015.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_015.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_015.png",
+        "br": "extrinsics/quad_frames\\br\\frame_015.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 16,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_016.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_016.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_016.png",
+        "br": "extrinsics/quad_frames\\br\\frame_016.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 17,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_017.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_017.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_017.png",
+        "br": "extrinsics/quad_frames\\br\\frame_017.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 18,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_018.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_018.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_018.png",
+        "br": "extrinsics/quad_frames\\br\\frame_018.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 19,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_019.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_019.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_019.png",
+        "br": "extrinsics/quad_frames\\br\\frame_019.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 20,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_020.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_020.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_020.png",
+        "br": "extrinsics/quad_frames\\br\\frame_020.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 21,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_021.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_021.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_021.png",
+        "br": "extrinsics/quad_frames\\br\\frame_021.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 22,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_022.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_022.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_022.png",
+        "br": "extrinsics/quad_frames\\br\\frame_022.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 23,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_023.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_023.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_023.png",
+        "br": "extrinsics/quad_frames\\br\\frame_023.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 24,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_024.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_024.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_024.png",
+        "br": "extrinsics/quad_frames\\br\\frame_024.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 25,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_025.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_025.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_025.png",
+        "br": "extrinsics/quad_frames\\br\\frame_025.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 26,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_026.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_026.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_026.png",
+        "br": "extrinsics/quad_frames\\br\\frame_026.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 27,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_027.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_027.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_027.png",
+        "br": "extrinsics/quad_frames\\br\\frame_027.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 28,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_028.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_028.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_028.png",
+        "br": "extrinsics/quad_frames\\br\\frame_028.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    },
+    {
+      "idx": 29,
+      "paths": {
+        "tl": "extrinsics/quad_frames\\tl\\frame_029.png",
+        "tr": "extrinsics/quad_frames\\tr\\frame_029.png",
+        "bl": "extrinsics/quad_frames\\bl\\frame_029.png",
+        "br": "extrinsics/quad_frames\\br\\frame_029.png"
+      },
+      "found": {
+        "tl": true,
+        "tr": true,
+        "bl": true,
+        "br": true
+      }
+    }
+  ]
+}

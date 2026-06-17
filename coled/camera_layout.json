@@ -1,0 +1,11 @@
+{
+  "tl": 1,
+  "tr": 3,
+  "bl": 2,
+  "br": 4,
+  "frame_width": 1280,
+  "frame_height": 720,
+  "fps": 15,
+  "checkerboard": [8, 6],
+  "square_size_mm": 30
+}

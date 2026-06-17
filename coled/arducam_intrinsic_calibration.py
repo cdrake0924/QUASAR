@@ -5,9 +5,24 @@ import os
 import sys
 import time
 
+try:
+    from quad_utils import (
+        POSITIONS,
+        load_layout,
+        intrinsic_path as quad_intrinsic_path,
+    )
+    _HAVE_QUAD_UTILS = True
+except Exception:
+    _HAVE_QUAD_UTILS = False
+
 # --- Configuration ---
 CHECKERBOARD_SIZE = (8, 6)       # Number of inner corners (cols, rows)
 SQUARE_SIZE_MM    = 30           # Physical size of each square in mm
+# Defaults; can be overridden per-run via --width/--height/--fps.
+# IMPORTANT: intrinsics MUST be calibrated at the same resolution you intend
+# to capture with downstream. UVC cameras change sensor crop / focal length
+# between resolutions (especially across aspect ratios), so a 1280x720
+# calibration is NOT generally valid at 640x480.
 FRAME_WIDTH       = 1280
 FRAME_HEIGHT      = 720
 FPS               = 15
@@ -35,25 +50,29 @@ def find_arducam_index(max_index: int = 10) -> int:
     return -1
 
 
-def open_arducam(index: int) -> cv2.VideoCapture:
+def open_arducam(index: int,
+                  width: int = FRAME_WIDTH,
+                  height: int = FRAME_HEIGHT,
+                  fps: int = FPS) -> cv2.VideoCapture:
     cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
     if not cap.isOpened():
         raise RuntimeError(f"Cannot open camera at index {index}.")
 
     # MJPG often unlocks higher resolutions on USB webcams/Arducam devices.
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH,  FRAME_WIDTH)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
-    cap.set(cv2.CAP_PROP_FPS,          FPS)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,  width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    cap.set(cv2.CAP_PROP_FPS,          fps)
 
     w   = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h   = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    print(f"  Camera opened: {w}x{h} @ {fps:.1f} fps")
-    if w < FRAME_WIDTH or h < FRAME_HEIGHT:
+    actual_fps = cap.get(cv2.CAP_PROP_FPS)
+    print(f"  Camera opened: {w}x{h} @ {actual_fps:.1f} fps")
+    if w != width or h != height:
         print(
-            f"  Warning: camera {index} did not accept requested {FRAME_WIDTH}x{FRAME_HEIGHT}. "
-            "Calibration may be invalid if you expected a different resolution."
+            f"  Warning: camera {index} delivered {w}x{h} instead of "
+            f"{width}x{height}. Calibration will be valid for {w}x{h} only — "
+            "use the same resolution for extrinsic capture downstream."
         )
     return cap
 
@@ -222,6 +241,61 @@ def capture_calibration_frames(cap: cv2.VideoCapture,
     return saved_paths
 
 
+def _run_single(camera_index: int | None,
+                images: list | None,
+                save_dir: str,
+                output_path: str,
+                label: str = "",
+                width: int = FRAME_WIDTH,
+                height: int = FRAME_HEIGHT,
+                fps: int = FPS) -> None:
+    """
+    End-to-end intrinsic calibration for ONE camera. Captures (or loads) frames,
+    runs calibrateCamera, and writes the .npz to output_path.
+    """
+    banner = f" ({label}) " if label else " "
+    print(f"\n========= Intrinsic calibration{banner}=========")
+    print(f"Output: {output_path}")
+    print(f"Save dir: {save_dir}")
+    print(f"Capture resolution: {width}x{height} @ {fps} fps")
+
+    if images:
+        image_paths = []
+        for pattern in images:
+            expanded = glob.glob(pattern)
+            image_paths.extend(expanded if expanded else [pattern])
+        image_paths = sorted(image_paths)
+        print(f"Using {len(image_paths)} provided image(s).")
+    else:
+        print("No images provided — starting live capture from Arducam.")
+        if camera_index is None:
+            print("Auto-detecting Arducam...")
+            camera_index = find_arducam_index()
+
+        if camera_index is None or camera_index < 0:
+            raise RuntimeError("No camera found. Connect the Arducam and try again.")
+
+        print(f"Opening camera index {camera_index}...")
+        cap = open_arducam(camera_index, width=width, height=height, fps=fps)
+        try:
+            image_paths = capture_calibration_frames(
+                cap, CHECKERBOARD_SIZE, CAPTURE_COUNT, CAPTURE_INTERVAL, save_dir
+            )
+        finally:
+            cap.release()
+
+        if len(image_paths) < 4:
+            raise RuntimeError(
+                f"Too few frames captured ({len(image_paths)}). Need at least 4."
+            )
+
+    mtx, dist = computeIntrinsic(image_paths, CHECKERBOARD_SIZE, DW)
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    np.savez(output_path, mtx=mtx, dist=dist)
+    print(f"\nCalibration saved to: {output_path}")
+
+
 # ===========================================================================
 # Main
 # ===========================================================================
@@ -229,7 +303,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Arducam intrinsic calibration using a checkerboard."
+        description="Arducam intrinsic calibration using a checkerboard. "
+                    "Supports single-camera (legacy) and 4-camera (quad) workflows."
     )
     parser.add_argument(
         "--images", nargs="*", default=None,
@@ -241,54 +316,124 @@ if __name__ == "__main__":
         help="Force a specific /dev/video index (auto-detected if omitted)."
     )
     parser.add_argument(
-        "--save-dir", default="intrinsic/calib_frames",
-        help="Directory for captured calibration frames (default: calib_frames/)."
+        "--save-dir", default=None,
+        help="Directory for captured calibration frames. "
+             "Default: intrinsic/calib_frames/ (legacy) "
+             "or intrinsic/calib_frames/<position>/ (quad)."
     )
     parser.add_argument(
-        "--output", default=OUTPUT_FILE,
-        help=f"Path for the output .npz file (default: {OUTPUT_FILE})."
+        "--output", default=None,
+        help=f"Path for the output .npz file. "
+             f"Default (legacy): {OUTPUT_FILE}. "
+             f"Default (quad): intrinsic/cam_<position>_intr.npz."
+    )
+    parser.add_argument(
+        "--position", choices=POSITIONS if _HAVE_QUAD_UTILS else ["tl", "tr", "bl", "br"],
+        default=None,
+        help="Quad-rig position to calibrate. Reads camera_layout.json for the "
+             "OS index and writes intrinsic/cam_<position>_intr.npz."
+    )
+    parser.add_argument(
+        "--all", action="store_true",
+        help="Quad mode: calibrate all 4 positions (tl, tr, bl, br) sequentially "
+             "using indices from camera_layout.json. Pauses between each."
+    )
+    parser.add_argument(
+        "--layout", default="camera_layout.json",
+        help="Path to camera_layout.json (used with --position or --all)."
+    )
+    parser.add_argument(
+        "--width", type=int, default=None,
+        help=f"Capture/calibration width (default: {FRAME_WIDTH}, or layout's "
+             "frame_width when --position/--all is used). The .npz this script "
+             "writes is ONLY valid at this exact resolution; use the same value "
+             "when capturing extrinsics downstream."
+    )
+    parser.add_argument(
+        "--height", type=int, default=None,
+        help=f"Capture/calibration height (default: {FRAME_HEIGHT})."
+    )
+    parser.add_argument(
+        "--fps", type=int, default=None,
+        help=f"Capture fps (default: {FPS})."
     )
     args = parser.parse_args()
 
-    # ---- Determine image source -----------------------------------------
-    if args.images:
-        # Expand globs if the shell didn't
-        image_paths = []
-        for pattern in args.images:
-            expanded = glob.glob(pattern)
-            image_paths.extend(expanded if expanded else [pattern])
-        image_paths = sorted(image_paths)
-        print(f"Using {len(image_paths)} provided image(s).")
-    else:
-        # Live capture
-        print("No images provided — starting live capture from Arducam.")
-        if args.camera_index is not None:
-            cam_idx = args.camera_index
+    def _resolve_dims(layout: dict | None) -> tuple[int, int, int]:
+        """CLI flag > layout > module default."""
+        if layout is not None:
+            lw, lh, lfps = layout["frame_width"], layout["frame_height"], layout["fps"]
         else:
-            print("Auto-detecting Arducam...")
-            cam_idx = find_arducam_index()
-
-        if cam_idx < 0:
-            print("Error: no camera found. Connect the Arducam and try again.")
-            sys.exit(1)
-
-        print(f"Opening camera index {cam_idx}...")
-        cap = open_arducam(cam_idx)
-
-        image_paths = capture_calibration_frames(
-            cap, CHECKERBOARD_SIZE, CAPTURE_COUNT, CAPTURE_INTERVAL, args.save_dir
+            lw, lh, lfps = FRAME_WIDTH, FRAME_HEIGHT, FPS
+        return (
+            args.width  if args.width  is not None else lw,
+            args.height if args.height is not None else lh,
+            args.fps    if args.fps    is not None else lfps,
         )
-        cap.release()
 
-        if len(image_paths) < 4:
-            print("Error: too few frames captured for calibration. Exiting.")
+    # -------- Quad mode (--all) -----------------------------------------
+    if args.all:
+        if not _HAVE_QUAD_UTILS:
+            print("Error: quad_utils.py not importable; cannot use --all.")
             sys.exit(1)
+        layout = load_layout(args.layout)
+        w, h, fps_v = _resolve_dims(layout)
+        print(f"Quad mode: calibrating all 4 positions from '{args.layout}' "
+              f"at {w}x{h}@{fps_v} fps.")
+        for pos in POSITIONS:
+            input(f"\n>>> Position the {pos.upper()} camera's view of the board, "
+                  f"then press ENTER to start capture for '{pos}' (index "
+                  f"{layout[pos]})... ")
+            save_dir = args.save_dir or os.path.join("intrinsic", "calib_frames", pos)
+            output   = args.output   or quad_intrinsic_path(pos)
+            try:
+                _run_single(
+                    camera_index=layout[pos],
+                    images=None,
+                    save_dir=save_dir,
+                    output_path=output,
+                    label=pos,
+                    width=w, height=h, fps=fps_v,
+                )
+            except Exception as e:
+                print(f"  Error calibrating '{pos}': {e}")
+                resp = input("  Continue with next camera? [y/N]: ").strip().lower()
+                if resp != "y":
+                    sys.exit(1)
+        print("\nAll 4 intrinsic calibrations done.")
+        sys.exit(0)
 
-    # ---- Run calibration -------------------------------------------------
-    mtx, dist = computeIntrinsic(image_paths, CHECKERBOARD_SIZE, DW)
+    # -------- Quad mode (--position) ------------------------------------
+    if args.position is not None:
+        if not _HAVE_QUAD_UTILS:
+            print("Error: quad_utils.py not importable; cannot use --position.")
+            sys.exit(1)
+        layout = load_layout(args.layout)
+        w, h, fps_v = _resolve_dims(layout)
+        pos = args.position
+        cam_idx  = args.camera_index if args.camera_index is not None else layout[pos]
+        save_dir = args.save_dir or os.path.join("intrinsic", "calib_frames", pos)
+        output   = args.output   or quad_intrinsic_path(pos)
+        _run_single(
+            camera_index=cam_idx,
+            images=args.images,
+            save_dir=save_dir,
+            output_path=output,
+            label=pos,
+            width=w, height=h, fps=fps_v,
+        )
+        sys.exit(0)
 
-    # ---- Save results ----------------------------------------------------
-    np.savez(args.output, mtx=mtx, dist=dist)
-    print(f"\nCalibration saved to: {args.output}")
-    print("Load with:  data = np.load('arducam_intrinsic_calib.npz')")
+    # -------- Legacy single-camera mode ---------------------------------
+    w, h, fps_v = _resolve_dims(None)
+    save_dir = args.save_dir or "intrinsic/calib_frames"
+    output   = args.output   or OUTPUT_FILE
+    _run_single(
+        camera_index=args.camera_index,
+        images=args.images,
+        save_dir=save_dir,
+        output_path=output,
+        width=w, height=h, fps=fps_v,
+    )
+    print("Load with:  data = np.load(output_path)")
     print("            mtx, dist = data['mtx'], data['dist']")
