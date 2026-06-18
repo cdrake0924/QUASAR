@@ -20,6 +20,7 @@ quasar/
     ├── intrinsics.py
     ├── extrinsics.py
     ├── static_scene.py            ← Stage 3 static-capture helper
+    ├── dynamic_scene.py           ← Stage 4 dynamic-capture helper
     ├── sfm.py
     ├── mvs.py
     ├── scgs.py
@@ -49,9 +50,16 @@ quasar/
     │           ├── images.bin
     │           └── points3D.bin
     ├── mvs/
-    │   └── frame_XXXXXX/          ← one folder per synchronized frame-set
+    │   ├── frames/                ← INPUT: raw dynamic footage, one folder per moment
+    │   │   └── XXXXXX/
+    │   │       ├── top_left.jpg
+    │   │       ├── top_right.jpg
+    │   │       ├── bot_left.jpg
+    │   │       └── bot_right.jpg
+    │   ├── _rig/sparse/           ← reusable fixed 4-camera pose model (auto-built)
+    │   └── frame_XXXXXX/          ← one workspace per synchronized frame-set
     │       ├── images/
-    │       ├── stereo/
+    │       ├── dense/
     │       └── fused.ply
     └── scgs/
         ├── input/                 ← symlink or copy of mvs/ output
@@ -302,29 +310,63 @@ This is how the pipeline handles **dynamic content**: the camera poses are fixed
    ├── 000002/
    │   └── ...
    ```
-   Frame numbers should be zero-padded to 6 digits. Each folder is one synchronized moment in time.
+   Frame numbers should be zero-padded to 6 digits. Each folder is one synchronized moment in time. Use the `dynamic_scene.py` helper below to record this directly, or export frames yourself with matching names.
 2. Run: `python mvs.py`
 3. For each frame folder, the script prepares a COLMAP dense workspace and runs PatchMatch stereo and fusion.
 4. Output: `mvs/frame_XXXXXX/fused.ply` — one PLY point cloud per frame.
 
+## Helper — `dynamic_scene.py`
+
+Records synchronized frames from all 4 cameras over time and writes them straight into `mvs/frames/{frame:06d}/{position}.jpg`, so the output drops directly into Stage 4. Unlike the static helper, this captures a moving scene as a time sequence; each loop iteration grabs all 4 cameras before decoding to keep the views as close to simultaneous as possible.
+
+**Depends on:** `camera.json`
+
+Controls (interactive mode):
+- `R` / `SPACE` — start / stop recording (saves a set every `1/fps` while recording)
+- `C` — capture a single synchronized set (one moment)
+- `Q` / `ESC` — finish and exit
+
+Run:
+```bash
+python dynamic_scene.py                  # interactive
+python dynamic_scene.py --fps 15         # target 15 sets/sec while recording
+python dynamic_scene.py --duration 5     # auto-record 5 seconds, then quit
+python dynamic_scene.py --fresh          # wipe mvs/frames/ before capturing
+```
+
+Capture tips:
+- Keep the **rig fixed** — do not move the cameras. The poses were solved once in Stage 3 and are reused for every frame; only the scene should move.
+- Frame numbering continues after any folders already in `mvs/frames/` (use `--fresh` to start over).
+- For a first validation, record a short clip and process only a few frames: `python mvs.py --start_frame 1 --end_frame 5`.
+
 ## Implementation notes for Cursor
 
-- Iterate over `mvs/frames/` in sorted order.
-- For each frame, create a workspace at `mvs/frame_{n:06d}/`.
-- Copy the 4 images into `mvs/frame_{n:06d}/images/`.
-- Copy the SfM sparse model from `sfm/sparse/0/` into `mvs/frame_{n:06d}/sparse/` — this is the fixed camera pose set reused for every frame.
-- Run the following COLMAP commands per frame:
+**Fixed-rig reconciliation (important).** The naive plan — "copy `sfm/sparse/0/` straight into each frame workspace" — assumes the SfM model holds exactly one image per camera. In practice the Stage-3 static capture produces several frames per camera (e.g. ~10), so `sfm/sparse/0/` contains ~40 images. COLMAP's `image_undistorter` requires every image in the model to exist on disk, so a 40-image model cannot be reused against the 4 images of a dynamic frame.
+
+Instead, `mvs.py` builds a **reusable fixed-rig model once** (`mvs/_rig/sparse/`):
+- 4 cameras (one per position) using the **OPENCV** model with the calibrated `fx, fy, cx, cy, k1, k2, p1, p2`, so `image_undistorter` genuinely undistorts the **raw** dynamic frames.
+- 4 images named `{position}.jpg`, each carrying the single best-constrained pose for that position, lifted from the refined SfM model (the image with the most 3D-point observations).
+- An empty `points3D.txt`; the scene depth range is instead estimated from the static SfM points and passed explicitly to PatchMatch (`--PatchMatchStereo.depth_min/max`).
+
+This honors the README's intent (fixed poses reused for every frame) while working with the real multi-frame static capture.
+
+**Per-frame flow:**
+- Iterate `mvs/frames/` in sorted order. Each `mvs/frames/{n:06d}/` holds `{position}.jpg` for all 4 positions (raw, distorted footage straight from the cameras).
+- Create a workspace at `mvs/frame_{n:06d}/`, copy the 4 raw views into `images/`, and copy the fixed-rig model into `sparse/`.
+- Run the COLMAP commands per frame:
   ```bash
   colmap image_undistorter \
     --image_path mvs/frame_{n:06d}/images \
     --input_path mvs/frame_{n:06d}/sparse \
     --output_path mvs/frame_{n:06d}/dense \
-    --output_type COLMAP
+    --output_type COLMAP --max_image_size 640
 
   colmap patch_match_stereo \
     --workspace_path mvs/frame_{n:06d}/dense \
     --workspace_format COLMAP \
-    --PatchMatchStereo.max_image_size 640
+    --PatchMatchStereo.max_image_size 640 \
+    --PatchMatchStereo.geom_consistency 1 \
+    --PatchMatchStereo.depth_min <d> --PatchMatchStereo.depth_max <D>
 
   colmap stereo_fusion \
     --workspace_path mvs/frame_{n:06d}/dense \
@@ -332,9 +374,10 @@ This is how the pipeline handles **dynamic content**: the camera poses are fixed
     --input_type geometric \
     --output_path mvs/frame_{n:06d}/fused.ply
   ```
-- After all frames, print a summary: total frames processed, average point count per cloud, any frames that failed.
-- **Performance note:** MVS is slow — plan for several minutes per frame on a single GPU. For a first test run, process only 5–10 frames to validate the pipeline before running the full sequence.
-- Add a `--start_frame` and `--end_frame` CLI argument so the user can process subsets: `python mvs.py --start_frame 10 --end_frame 20`.
+- After all frames, print a summary: frames processed, average/min/max point count, any frames that failed (a single frame failing does not abort the run).
+- **GPU note:** `patch_match_stereo` requires a CUDA GPU — there is no CPU fallback in COLMAP.
+- **Performance note:** MVS is slow — plan for several minutes per frame. For a first test run, process only 5–10 frames (`--start_frame` / `--end_frame`) to validate the pipeline before the full sequence.
+- CLI: `--start_frame`, `--end_frame`, `--max_image_size` (default 640), `--fresh` (wipe `mvs/frame_*`), `--colmap`, `--no-gpu`.
 
 ---
 
