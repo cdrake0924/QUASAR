@@ -56,9 +56,11 @@ quasar/
     │   │       ├── top_right.jpg
     │   │       ├── bot_left.jpg
     │   │       └── bot_right.jpg
-    │   ├── _rig/sparse/           ← reusable fixed 4-camera pose model (auto-built)
     │   └── frame_XXXXXX/          ← one workspace per synchronized frame-set
-    │       ├── images/
+    │       ├── images/            ← the 4 raw views for this frame
+    │       ├── database.db        ← per-frame features + matches
+    │       ├── model_in/          ← poses-only model (fixed rig poses + OPENCV K)
+    │       ├── sparse/            ← re-triangulated sparse cloud (anchors dense step)
     │       ├── dense/
     │       └── fused.ply
     └── scgs/
@@ -341,42 +343,53 @@ Capture tips:
 
 ## Implementation notes for Cursor
 
-**Fixed-rig reconciliation (important).** The naive plan — "copy `sfm/sparse/0/` straight into each frame workspace" — assumes the SfM model holds exactly one image per camera. In practice the Stage-3 static capture produces several frames per camera (e.g. ~10), so `sfm/sparse/0/` contains ~40 images. COLMAP's `image_undistorter` requires every image in the model to exist on disk, so a 40-image model cannot be reused against the 4 images of a dynamic frame.
+**Fixed poses, re-triangulated per frame (important).** The naive plan — "copy `sfm/sparse/0/` straight into each frame workspace" — assumes the SfM model holds exactly one image per camera. In practice the Stage-3 static capture produces several frames per camera (e.g. ~10), so `sfm/sparse/0/` contains ~40 images that do not match a dynamic frame's 4 images. `mvs.py` therefore lifts **one fixed pose per camera position** from the refined SfM model (the image with the most 3D-point observations) and reuses those poses for every frame.
 
-Instead, `mvs.py` builds a **reusable fixed-rig model once** (`mvs/_rig/sparse/`):
-- 4 cameras (one per position) using the **OPENCV** model with the calibrated `fx, fy, cx, cy, k1, k2, p1, p2`, so `image_undistorter` genuinely undistorts the **raw** dynamic frames.
-- 4 images named `{position}.jpg`, each carrying the single best-constrained pose for that position, lifted from the refined SfM model (the image with the most 3D-point observations).
-- An empty `points3D.txt`; the scene depth range is instead estimated from the static SfM points and passed explicitly to PatchMatch (`--PatchMatchStereo.depth_min/max`).
+**Why a poses-only model is not enough.** COLMAP's dense stereo needs a sparse model that actually contains **3D points**: PatchMatch derives each view's depth-search range and its stereo source images from sparse co-visibility, and `stereo_fusion` needs consistent multi-view geometry. A model with fixed poses but an empty `points3D.txt` makes PatchMatch produce geometrically inconsistent depth maps that fusion silently discards — you get a workspace that runs cleanly but yields **0 fused points**.
 
-This honors the README's intent (fixed poses reused for every frame) while working with the real multi-frame static capture.
+So each frame is re-triangulated at the fixed poses:
+- `feature_extractor` + `exhaustive_matcher` on the 4 raw views (keypoint detection is intrinsic-free; the **OPENCV** camera model is requested so the database carries the right model).
+- A poses-only input model is written matching the database's image/camera IDs, using the calibrated **OPENCV** intrinsics (`fx, fy, cx, cy, k1, k2, p1, p2`) and the fixed rig poses.
+- `point_triangulator` fills in a small but real sparse cloud (typically 60–150 points for a moving subject). This anchors the dense step, and depth ranges are then auto-derived from **each frame's own** points (so content moving in depth is handled correctly).
 
-**Per-frame flow:**
-- Iterate `mvs/frames/` in sorted order. Each `mvs/frames/{n:06d}/` holds `{position}.jpg` for all 4 positions (raw, distorted footage straight from the cameras).
-- Create a workspace at `mvs/frame_{n:06d}/`, copy the 4 raw views into `images/`, and copy the fixed-rig model into `sparse/`.
-- Run the COLMAP commands per frame:
-  ```bash
-  colmap image_undistorter \
-    --image_path mvs/frame_{n:06d}/images \
-    --input_path mvs/frame_{n:06d}/sparse \
-    --output_path mvs/frame_{n:06d}/dense \
-    --output_type COLMAP --max_image_size 640
+**Per-frame flow** (`mvs/frame_{n:06d}/`):
+```bash
+colmap feature_extractor \
+  --database_path mvs/frame_{n:06d}/database.db \
+  --image_path   mvs/frame_{n:06d}/images \
+  --ImageReader.camera_model OPENCV --ImageReader.single_camera 0
 
-  colmap patch_match_stereo \
-    --workspace_path mvs/frame_{n:06d}/dense \
-    --workspace_format COLMAP \
-    --PatchMatchStereo.max_image_size 640 \
-    --PatchMatchStereo.geom_consistency 1 \
-    --PatchMatchStereo.depth_min <d> --PatchMatchStereo.depth_max <D>
+colmap exhaustive_matcher --database_path mvs/frame_{n:06d}/database.db
 
-  colmap stereo_fusion \
-    --workspace_path mvs/frame_{n:06d}/dense \
-    --workspace_format COLMAP \
-    --input_type geometric \
-    --output_path mvs/frame_{n:06d}/fused.ply
-  ```
+# write model_in/ (cameras.txt + images.txt with fixed poses, empty points3D.txt)
+colmap point_triangulator \
+  --database_path mvs/frame_{n:06d}/database.db \
+  --image_path   mvs/frame_{n:06d}/images \
+  --input_path   mvs/frame_{n:06d}/model_in \
+  --output_path  mvs/frame_{n:06d}/sparse
+
+colmap image_undistorter \
+  --image_path  mvs/frame_{n:06d}/images \
+  --input_path  mvs/frame_{n:06d}/sparse \
+  --output_path mvs/frame_{n:06d}/dense \
+  --output_type COLMAP --max_image_size 640
+
+colmap patch_match_stereo \
+  --workspace_path mvs/frame_{n:06d}/dense --workspace_format COLMAP \
+  --PatchMatchStereo.max_image_size 640 \
+  --PatchMatchStereo.geom_consistency 1
+
+colmap stereo_fusion \
+  --workspace_path mvs/frame_{n:06d}/dense --workspace_format COLMAP \
+  --input_type geometric \
+  --output_path mvs/frame_{n:06d}/fused.ply \
+  --StereoFusion.min_num_pixels 2
+```
+- **`min_num_pixels 2` is mandatory.** COLMAP's default (`5`) requires a fused point to be seen by ≥5 images, but a 4-camera rig sees any point in at most 4 — so the default always fuses **0 points**. The rig has 4 cameras, so the threshold must be ≤ 4 (2 is a good default).
+- A per-frame `patch-match.cfg` forces each of the 4 views to use the other three as stereo sources (correct for a fixed rig, independent of co-visibility counts).
 - After all frames, print a summary: frames processed, average/min/max point count, any frames that failed (a single frame failing does not abort the run).
 - **GPU note:** `patch_match_stereo` requires a CUDA GPU — there is no CPU fallback in COLMAP.
-- **Performance note:** MVS is slow — plan for several minutes per frame. For a first test run, process only 5–10 frames (`--start_frame` / `--end_frame`) to validate the pipeline before the full sequence.
+- **Performance note:** ~30–40 s per frame at 640 px on a modest GPU (feature/match/triangulate is quick; PatchMatch dominates). For a first test run, process only a few frames (`--start_frame` / `--end_frame`) before the full sequence.
 - CLI: `--start_frame`, `--end_frame`, `--max_image_size` (default 640), `--fresh` (wipe `mvs/frame_*`), `--colmap`, `--no-gpu`.
 
 ---
