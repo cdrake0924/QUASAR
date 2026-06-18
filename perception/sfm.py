@@ -38,6 +38,7 @@ import argparse
 import json
 import os
 import shutil
+import struct
 import subprocess
 import sys
 
@@ -243,7 +244,7 @@ def feature_extraction(colmap, work_dir, groups, pinhole_params, use_gpu):
             "--ImageReader.camera_model", "PINHOLE",
             "--ImageReader.single_camera", "1",
             "--ImageReader.camera_params", f"{fx},{fy},{cx},{cy}",
-            "--SiftExtraction.use_gpu", "1" if use_gpu else "0",
+            "--FeatureExtraction.use_gpu", "1" if use_gpu else "0",
         ])
 
 
@@ -251,7 +252,7 @@ def feature_matching(colmap, use_gpu):
     run([
         colmap, "exhaustive_matcher",
         "--database_path", DATABASE_PATH,
-        "--SiftMatching.use_gpu", "1" if use_gpu else "0",
+        "--FeatureMatching.use_gpu", "1" if use_gpu else "0",
     ])
 
 
@@ -270,13 +271,51 @@ def mapping(colmap, work_dir):
     ])
 
 
-def convert_model(colmap):
-    model_dir = os.path.join(SPARSE_DIR, "0")
-    if not os.path.isdir(model_dir):
+def model_num_images(model_dir):
+    """Read the registered-image count from a COLMAP images.bin header."""
+    bin_path = os.path.join(model_dir, "images.bin")
+    if not os.path.exists(bin_path):
+        return 0
+    try:
+        with open(bin_path, "rb") as f:
+            return struct.unpack("<Q", f.read(8))[0]
+    except Exception:
+        return 0
+
+
+def select_best_model():
+    """
+    COLMAP may emit several sub-models (sparse/0, sparse/1, ...), numbered by
+    creation order rather than size. Pick the one with the most registered
+    images.
+    """
+    if not os.path.isdir(SPARSE_DIR):
         raise RuntimeError(
-            f"Mapper did not produce {model_dir}. Reconstruction failed — see "
-            "COLMAP output above (often too few matches / textureless scene)."
+            f"Mapper produced no output in {SPARSE_DIR}. Reconstruction failed "
+            "— see COLMAP output above (often too few matches / low texture)."
         )
+    candidates = []
+    for name in sorted(os.listdir(SPARSE_DIR)):
+        model_dir = os.path.join(SPARSE_DIR, name)
+        if os.path.isdir(model_dir) and \
+                os.path.exists(os.path.join(model_dir, "images.bin")):
+            candidates.append((model_dir, model_num_images(model_dir)))
+    if not candidates:
+        raise RuntimeError(
+            f"No reconstruction found under {SPARSE_DIR}. Reconstruction "
+            "failed — see COLMAP output above."
+        )
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    if len(candidates) > 1:
+        summary = ", ".join(f"{os.path.basename(d)}({n})"
+                            for d, n in candidates)
+        print(f"  COLMAP produced {len(candidates)} sub-models: {summary}")
+        print("  Using the largest. (Multiple models mean some views did not "
+              "connect into a single reconstruction.)")
+    return candidates[0][0]
+
+
+def convert_model(colmap, model_dir):
     run([
         colmap, "model_converter",
         "--input_path", model_dir,
@@ -458,7 +497,8 @@ def main():
     print("\nRunning COLMAP mapper...")
     mapping(colmap, work_dir)
     print("\nExporting model to TXT...")
-    model_dir = convert_model(colmap)
+    model_dir = select_best_model()
+    convert_model(colmap, model_dir)
 
     report_and_validate(model_dir)
     print(f"\nSparse model ready at {model_dir}")
