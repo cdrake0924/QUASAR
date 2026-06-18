@@ -45,7 +45,7 @@ SQUARE_SIZE_MM = 30
 
 # Capture resolution used everywhere in this project.
 FRAME_WIDTH = 640
-FRAME_HEIGHT = 360
+FRAME_HEIGHT = 480
 FPS = 30
 
 # Minimum seconds between two auto-captures so successive synchronized sets
@@ -165,31 +165,6 @@ def build_object_points():
     return objp
 
 
-def average_rotations(rotations):
-    """
-    Chordal L2 mean of a list of rotation matrices: sum them and project the
-    result back onto SO(3) via SVD.
-    """
-    A = np.sum(rotations, axis=0)
-    U, _, Vt = np.linalg.svd(A)
-    R = U @ Vt
-    if np.linalg.det(R) < 0:
-        U[:, -1] *= -1
-        R = U @ Vt
-    return R
-
-
-def relative_pose(R_ref, t_ref, R_cam, t_cam):
-    """
-    Given board->camera poses for the reference and another camera (from the
-    same synchronized set), return the pose (R_rel, t_rel) of `cam` expressed
-    in the reference camera's frame: X_cam = R_rel @ X_ref + t_rel.
-    """
-    R_rel = R_cam @ R_ref.T
-    t_rel = t_cam - R_rel @ t_ref
-    return R_rel, t_rel
-
-
 def camera_center(R_rel, t_rel):
     """Camera center in the reference frame: C = -R_rel^T @ t_rel."""
     return (-R_rel.T @ t_rel).reshape(3)
@@ -209,10 +184,11 @@ def make_tile(frame, found, corners, label):
 
 def collect_sets(caps):
     """
-    Live tiled preview. Returns a list of synchronized sets; each set is a dict
-    {position: refined_corners}. Frames are also saved to disk per camera.
+    Live tiled preview. Returns (sets, image_size) where sets is a list of
+    synchronized sets, each a dict {position: refined_corners}, and image_size
+    is the (width, height) of the captured frames. Frames are also saved to
+    disk per camera.
     """
-    objp_count = CHECKERBOARD[0] * CHECKERBOARD[1]
     find_flags = (
         cv2.CALIB_CB_ADAPTIVE_THRESH
         + cv2.CALIB_CB_NORMALIZE_IMAGE
@@ -220,6 +196,7 @@ def collect_sets(caps):
     )
 
     sets = []
+    image_size = None
     last_capture_time = 0.0
     window = "Extrinsics - all cameras (press Q when done)"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -245,6 +222,10 @@ def collect_sets(caps):
         if not read_ok:
             print("  Warning: dropped frame, retrying...")
             continue
+
+        if image_size is None:
+            ref_gray = grays[POSITION_ORDER[0]]
+            image_size = (ref_gray.shape[1], ref_gray.shape[0])
 
         for position in POSITION_ORDER:
             found, corners = cv2.findChessboardCorners(
@@ -296,60 +277,53 @@ def collect_sets(caps):
             break
 
     cv2.destroyWindow(window)
-    return sets
+    return sets, image_size
 
 
 # --- Solve -------------------------------------------------------------------
 
-def solve_extrinsics(sets, intrinsics):
+def solve_extrinsics(sets, intrinsics, image_size):
     """
-    For each synchronized set, solvePnP per camera and convert to a pose
-    relative to the reference, then average across sets.
+    Solve each non-reference camera's pose relative to the reference using
+    cv2.stereoCalibrate with fixed (pre-calibrated) intrinsics.
 
-    Returns {position: (R_rel, t_rel)}.
+    Unlike per-frame solvePnP + averaging, stereoCalibrate jointly optimizes
+    the relative pose over every corner correspondence across all synchronized
+    sets, which is far more robust to intrinsic noise. The returned R, T satisfy
+    X_cam = R @ X_ref + T, i.e. the pose of `cam` in the reference frame.
+
+    Returns {position: (R, t)} with the reference fixed to identity / zero.
     """
     objp = build_object_points()
-    per_camera_R = {p: [] for p in POSITION_ORDER}
-    per_camera_t = {p: [] for p in POSITION_ORDER}
+    objpoints = [objp for _ in sets]
+    imgpoints = {p: [s[p] for s in sets] for p in POSITION_ORDER}
 
-    for s in sets:
-        # Reference board->camera pose for this set.
-        K_ref, dist_ref = intrinsics[REFERENCE]
-        ok_ref, rvec_ref, tvec_ref = cv2.solvePnP(
-            objp, s[REFERENCE], K_ref, dist_ref,
-            flags=cv2.SOLVEPNP_ITERATIVE
-        )
-        if not ok_ref:
-            continue
-        R_ref, _ = cv2.Rodrigues(rvec_ref)
-        t_ref = tvec_ref.reshape(3, 1)
+    K_ref, dist_ref = intrinsics[REFERENCE]
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, 1e-6)
+    flags = cv2.CALIB_FIX_INTRINSIC
 
-        for position in POSITION_ORDER:
-            K, dist = intrinsics[position]
-            ok, rvec, tvec = cv2.solvePnP(
-                objp, s[position], K, dist, flags=cv2.SOLVEPNP_ITERATIVE
-            )
-            if not ok:
-                continue
-            R_cam, _ = cv2.Rodrigues(rvec)
-            t_cam = tvec.reshape(3, 1)
-            R_rel, t_rel = relative_pose(R_ref, t_ref, R_cam, t_cam)
-            per_camera_R[position].append(R_rel)
-            per_camera_t[position].append(t_rel.reshape(3))
+    poses = {REFERENCE: (np.eye(3), np.zeros((3, 1)))}
 
-    poses = {}
+    print("\nStereo calibration (each camera vs reference):")
     for position in POSITION_ORDER:
-        if not per_camera_R[position]:
-            raise RuntimeError(
-                f"No valid solvePnP results for '{position}'. "
-                "Collect more synchronized sets."
-            )
-        R_avg = average_rotations(per_camera_R[position])
-        t_avg = np.mean(per_camera_t[position], axis=0).reshape(3, 1)
-        poses[position] = (R_avg, t_avg)
+        if position == REFERENCE:
+            continue
+        K_c, dist_c = intrinsics[position]
+        result = cv2.stereoCalibrate(
+            objpoints, imgpoints[REFERENCE], imgpoints[position],
+            K_ref, dist_ref, K_c, dist_c, image_size,
+            criteria=criteria, flags=flags
+        )
+        rms, R, T = result[0], result[5], result[6]
+        poses[position] = (
+            np.asarray(R, dtype=np.float64),
+            np.asarray(T, dtype=np.float64).reshape(3, 1),
+        )
+        print(f"  {position} vs {REFERENCE}: stereo RMS = {rms:.4f} px")
+        if rms > 1.0:
+            print("    WARNING: stereo RMS above 1.0 px — relative pose for "
+                  "this camera may be unreliable.")
 
-    # Force the reference to exactly identity / zero.
-    poses[REFERENCE] = (np.eye(3), np.zeros((3, 1)))
     return poses
 
 
@@ -427,7 +401,7 @@ def main():
             caps[position] = open_camera(camera_number)
             time.sleep(0.25)
 
-        sets = collect_sets(caps)
+        sets, image_size = collect_sets(caps)
     finally:
         for cap in caps.values():
             cap.release()
@@ -439,7 +413,7 @@ def main():
         if not sets:
             return
 
-    poses = solve_extrinsics(sets, intrinsics)
+    poses = solve_extrinsics(sets, intrinsics, image_size)
 
     print("\nRecovered poses (relative to top_left):")
     for position in POSITION_ORDER:

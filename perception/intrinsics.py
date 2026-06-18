@@ -8,8 +8,10 @@ Workflow:
   - Reads device indices from camera.json (positions -> OS indices).
   - Processes one camera at a time, in the order:
         top_left, top_right, bot_left, bot_right
-  - Opens a live preview, auto-captures when a valid checkerboard is found,
-    collects 10 images, then runs cv2.calibrateCamera() immediately.
+  - Opens a live preview and auto-captures when a valid checkerboard is found.
+    Captures are gated on frame coverage (the board must be seen across all
+    regions of the frame) so the distortion and principal point are well
+    constrained. After TARGET_IMAGES views it runs cv2.calibrateCamera().
   - Saves K_{n}.txt and dist_{n}.txt into intrinsics/.
 
 Run:
@@ -32,20 +34,34 @@ CHECKERBOARD = (8, 6)
 
 # Capture resolution used everywhere in this project.
 FRAME_WIDTH = 640
-FRAME_HEIGHT = 360
+FRAME_HEIGHT = 480
 FPS = 30
 
-# Number of valid checkerboard views to collect per camera.
-IMAGES_PER_CAMERA = 10
+# Number of valid checkerboard views to collect per camera. More views with
+# good spatial coverage give a far more stable distortion / principal point
+# estimate than the bare minimum.
+TARGET_IMAGES = 20
 
 # Physical size of one checkerboard square. The absolute scale does not affect
 # the intrinsic matrix, so a unit square is fine for K. Used only to build the
 # object-point grid.
 SQUARE_SIZE = 1.0
 
-# Minimum seconds between two auto-captures so we don't grab 10 nearly
-# identical frames in a fraction of a second.
+# Frame-coverage gating. The frame is divided into a COVERAGE_GRID grid of
+# cells; the board centroid must land in many different cells before we accept
+# enough images. This forces the board toward the edges/corners, which is where
+# lens distortion is strongest and least observed otherwise.
+COVERAGE_GRID = (3, 3)            # (columns, rows)
+MAX_CAPTURES_PER_CELL = 3         # cap per cell to force spatial spread
+MIN_CENTROID_SHIFT_PX = 40.0      # min board movement between captures
+
+# Minimum seconds between two auto-captures so we don't grab nearly identical
+# frames in a fraction of a second.
 CAPTURE_COOLDOWN_SEC = 1.0
+
+# Warn if the calibrated principal point sits farther than this fraction of the
+# image dimension from the center (a symptom of poor coverage).
+PRINCIPAL_POINT_TOLERANCE = 0.15
 
 # Order in which cameras are calibrated.
 POSITION_ORDER = ["top_left", "top_right", "bot_left", "bot_right"]
@@ -88,7 +104,7 @@ def load_camera_indices():
 
 def open_camera(index):
     """
-    Open a webcam at the given OS index at 640x360.
+    Open a webcam at the given OS index at FRAME_WIDTH x FRAME_HEIGHT.
 
     On Windows the DirectShow backend is the most reliable for USB UVC
     cameras, with Media Foundation as a fallback. MJPG is requested first
@@ -139,10 +155,54 @@ def build_object_points():
     return objp
 
 
+def board_centroid(corners):
+    """Mean (x, y) pixel position of the detected corners."""
+    return corners.reshape(-1, 2).mean(axis=0)
+
+
+def cell_of(centroid, image_size):
+    """Map a pixel position to a (col, row) cell in the coverage grid."""
+    w, h = image_size
+    gx, gy = COVERAGE_GRID
+    col = min(int(centroid[0] / w * gx), gx - 1)
+    row = min(int(centroid[1] / h * gy), gy - 1)
+    return (col, row)
+
+
+def draw_coverage_hud(display, image_size, cell_counts, captured):
+    """Overlay the coverage grid, per-cell counts, and progress text."""
+    w, h = image_size
+    gx, gy = COVERAGE_GRID
+    for c in range(1, gx):
+        x = int(w * c / gx)
+        cv2.line(display, (x, 0), (x, h), (80, 80, 80), 1)
+    for r in range(1, gy):
+        y = int(h * r / gy)
+        cv2.line(display, (0, y), (w, y), (80, 80, 80), 1)
+
+    for col in range(gx):
+        for row in range(gy):
+            count = cell_counts.get((col, row), 0)
+            full = count >= MAX_CAPTURES_PER_CELL
+            color = (0, 200, 0) if full else (
+                (0, 165, 255) if count > 0 else (0, 0, 200))
+            cx = int(w * (col + 0.5) / gx)
+            cy = int(h * (row + 0.5) / gy)
+            cv2.putText(display, str(count), (cx - 6, cy + 6),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+    cv2.putText(display, f"Captured: {captured}/{TARGET_IMAGES}", (10, 25),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(display, "Fill all cells; tilt & vary distance",
+                (10, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                (255, 255, 0), 1)
+
+
 def collect_images(cap, camera_number):
     """
-    Show a live preview and auto-capture IMAGES_PER_CAMERA valid checkerboard
-    views. Returns lists of object points and image points ready for
+    Show a live preview and auto-capture TARGET_IMAGES valid checkerboard
+    views, gated on frame coverage so the board is seen across the whole frame.
+    Returns lists of object points and image points ready for
     cv2.calibrateCamera(), along with the image size (w, h).
 
     Saves each captured frame to intrinsics/img_{camera_number}_{n}.jpg.
@@ -154,6 +214,8 @@ def collect_images(cap, camera_number):
 
     captured = 0
     last_capture_time = 0.0
+    last_centroid = None
+    cell_counts = {}
     window = f"Intrinsics - camera {camera_number} (ESC to abort)"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
 
@@ -163,9 +225,10 @@ def collect_images(cap, camera_number):
         + cv2.CALIB_CB_FAST_CHECK
     )
 
-    print(f"  Move the checkerboard around. Need {IMAGES_PER_CAMERA} views.")
+    print(f"  Move the checkerboard around. Need {TARGET_IMAGES} views "
+          f"spread across the whole frame (corners included).")
 
-    while captured < IMAGES_PER_CAMERA:
+    while captured < TARGET_IMAGES:
         ok, frame = cap.read()
         if not ok:
             print("  Warning: dropped frame, retrying...")
@@ -190,9 +253,22 @@ def collect_images(cap, camera_number):
                 display, CHECKERBOARD, corners_refined, found
             )
 
-            if now - last_capture_time >= CAPTURE_COOLDOWN_SEC:
+            centroid = board_centroid(corners_refined)
+            cell = cell_of(centroid, image_size)
+            moved_enough = (
+                last_centroid is None
+                or np.linalg.norm(centroid - last_centroid)
+                >= MIN_CENTROID_SHIFT_PX
+            )
+            cell_has_room = (
+                cell_counts.get(cell, 0) < MAX_CAPTURES_PER_CELL
+            )
+            cooled_down = (now - last_capture_time) >= CAPTURE_COOLDOWN_SEC
+
+            if cooled_down and moved_enough and cell_has_room:
                 object_points.append(objp.copy())
                 image_points.append(corners_refined)
+                cell_counts[cell] = cell_counts.get(cell, 0) + 1
 
                 photo_number = captured + 1
                 filename = f"img_{camera_number}_{photo_number}.jpg"
@@ -200,16 +276,11 @@ def collect_images(cap, camera_number):
 
                 captured += 1
                 last_capture_time = now
-                print(f"    Captured {captured}/{IMAGES_PER_CAMERA} "
-                      f"-> {filename}")
+                last_centroid = centroid
+                print(f"    Captured {captured}/{TARGET_IMAGES} "
+                      f"(cell {cell}) -> {filename}")
 
-        status = f"Captured: {captured}/{IMAGES_PER_CAMERA}"
-        if found:
-            status += "  [board detected]"
-        cv2.putText(
-            display, status, (10, 25), cv2.FONT_HERSHEY_SIMPLEX,
-            0.7, (0, 255, 0) if found else (0, 0, 255), 2
-        )
+        draw_coverage_hud(display, image_size, cell_counts, captured)
         cv2.imshow(window, display)
 
         key = cv2.waitKey(1) & 0xFF
@@ -275,7 +346,7 @@ def main():
         finally:
             cap.release()
 
-        if len(object_points) < IMAGES_PER_CAMERA:
+        if len(object_points) < TARGET_IMAGES:
             print(f"  Only collected {len(object_points)} images for "
                   f"'{position}'. Skipping calibration for this camera.\n")
         else:
@@ -285,6 +356,19 @@ def main():
                 print("  WARNING: reprojection error is above 1.0 pixels. "
                       "Calibration quality is poor — consider recollecting "
                       "images with more varied angles and no motion blur.")
+
+            # Sanity-check the principal point against the image center.
+            w, h = image_size
+            cx, cy = K[0, 2], K[1, 2]
+            off_x = abs(cx - w / 2.0) / w
+            off_y = abs(cy - h / 2.0) / h
+            if off_x > PRINCIPAL_POINT_TOLERANCE or \
+                    off_y > PRINCIPAL_POINT_TOLERANCE:
+                print(f"  WARNING: principal point ({cx:.1f}, {cy:.1f}) is far "
+                      f"from the image center ({w / 2:.0f}, {h / 2:.0f}). This "
+                      "usually means the board did not cover the frame edges "
+                      "well — recollect with more corner/edge coverage.")
+
             print("  K =")
             print(K)
             save_results(camera_number, K, dist)

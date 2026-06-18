@@ -122,7 +122,7 @@ This is done using a checkerboard pattern. OpenCV detects the corners of the che
 
 ## Implementation notes for Cursor
 
-- Resolution: **640×360** for all cameras throughout this project.
+- Resolution: **640×480** for all cameras throughout this project.
 - Camera indices come from `camera.json`. Iterate in order: `top_left`, `top_right`, `bot_left`, `bot_right`.
 - Image naming: `img_{camera_number}_{photo_number}.jpg` — e.g. `img_1_4.jpg`. Camera number is the integer value from `camera.json`, not the position key.
 - Images save to `intrinsics/`.
@@ -175,7 +175,7 @@ These measurements are a rough estimate and should not be used for any validatio
 
 - Load `camera.json` to get device indices and position labels.
 - Load `intrinsics/K_{n}.txt` and `intrinsics/dist_{n}.txt` for each camera before opening streams.
-- Resolution: **640×360**.
+- Resolution: **640×480**.
 - Detection: use `cv2.findChessboardCorners()` followed by `cv2.cornerSubPix()` for refinement. Only capture when corners are found in **all 4 cameras in the same loop iteration**.
 - Image saving: each camera gets its own subfolder matching its position key.
   - `extrinsics/top_left/img_1.jpg`, `extrinsics/top_left/img_2.jpg`, etc.
@@ -388,7 +388,7 @@ python ../SC-GS/train_gui.py \
   --gs_with_motion_mask \
   --init_isotropic_gs_with_all_colmap_pcl \
   --W 640 \
-  --H 360
+  --H 480
 ```
 
 **Training has two phases that happen automatically:**
