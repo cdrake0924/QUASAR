@@ -160,6 +160,24 @@ def board_centroid(corners):
     return corners.reshape(-1, 2).mean(axis=0)
 
 
+def board_scale_bucket(corners, image_size):
+    """
+    Classify the board's apparent size as 'far', 'mid', or 'near' from the
+    fraction of the frame its bounding box covers. Used as a distance-variety
+    hint — calibration needs both near and far views.
+    """
+    w, h = image_size
+    pts = corners.reshape(-1, 2)
+    bbox = (pts[:, 0].max() - pts[:, 0].min()) * \
+           (pts[:, 1].max() - pts[:, 1].min())
+    frac = bbox / float(w * h)
+    if frac < 0.06:
+        return "far"
+    if frac > 0.18:
+        return "near"
+    return "mid"
+
+
 def cell_of(centroid, image_size):
     """Map a pixel position to a (col, row) cell in the coverage grid."""
     w, h = image_size
@@ -169,7 +187,8 @@ def cell_of(centroid, image_size):
     return (col, row)
 
 
-def draw_coverage_hud(display, image_size, cell_counts, captured):
+def draw_coverage_hud(display, image_size, cell_counts, captured,
+                      scale_counts):
     """Overlay the coverage grid, per-cell counts, and progress text."""
     w, h = image_size
     gx, gy = COVERAGE_GRID
@@ -193,7 +212,12 @@ def draw_coverage_hud(display, image_size, cell_counts, captured):
 
     cv2.putText(display, f"Captured: {captured}/{TARGET_IMAGES}", (10, 25),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-    cv2.putText(display, "Fill all cells; tilt & vary distance",
+    scale_text = (f"near {scale_counts.get('near', 0)}  "
+                  f"mid {scale_counts.get('mid', 0)}  "
+                  f"far {scale_counts.get('far', 0)}")
+    cv2.putText(display, scale_text, (10, 48),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 200, 0), 1)
+    cv2.putText(display, "TILT the board 30-45 deg; vary near/far",
                 (10, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
                 (255, 255, 0), 1)
 
@@ -216,6 +240,7 @@ def collect_images(cap, camera_number):
     last_capture_time = 0.0
     last_centroid = None
     cell_counts = {}
+    scale_counts = {}
     window = f"Intrinsics - camera {camera_number} (ESC to abort)"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
 
@@ -225,8 +250,10 @@ def collect_images(cap, camera_number):
         + cv2.CALIB_CB_FAST_CHECK
     )
 
-    print(f"  Move the checkerboard around. Need {TARGET_IMAGES} views "
-          f"spread across the whole frame (corners included).")
+    print(f"  Need {TARGET_IMAGES} views spread across the whole frame "
+          "(corners included). IMPORTANT: tilt the board at strong angles "
+          "and capture at both near and far distances — flat-on views alone "
+          "make the focal length diverge.")
 
     while captured < TARGET_IMAGES:
         ok, frame = cap.read()
@@ -269,6 +296,8 @@ def collect_images(cap, camera_number):
                 object_points.append(objp.copy())
                 image_points.append(corners_refined)
                 cell_counts[cell] = cell_counts.get(cell, 0) + 1
+                bucket = board_scale_bucket(corners_refined, image_size)
+                scale_counts[bucket] = scale_counts.get(bucket, 0) + 1
 
                 photo_number = captured + 1
                 filename = f"img_{camera_number}_{photo_number}.jpg"
@@ -278,9 +307,10 @@ def collect_images(cap, camera_number):
                 last_capture_time = now
                 last_centroid = centroid
                 print(f"    Captured {captured}/{TARGET_IMAGES} "
-                      f"(cell {cell}) -> {filename}")
+                      f"(cell {cell}, {bucket}) -> {filename}")
 
-        draw_coverage_hud(display, image_size, cell_counts, captured)
+        draw_coverage_hud(display, image_size, cell_counts, captured,
+                          scale_counts)
         cv2.imshow(window, display)
 
         key = cv2.waitKey(1) & 0xFF
@@ -293,9 +323,15 @@ def collect_images(cap, camera_number):
 
 
 def calibrate(object_points, image_points, image_size):
-    """Run cv2.calibrateCamera and return (K, dist, reprojection_error)."""
+    """Run cv2.calibrateCamera and return (K, dist, reprojection_error).
+
+    CALIB_FIX_K3 drops the 3rd radial-distortion term. These are mild ~50 deg
+    lenses, so k3 only adds a free parameter that couples with focal length and
+    can let the solve diverge when views lack perspective variety.
+    """
     rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
-        object_points, image_points, image_size, None, None
+        object_points, image_points, image_size, None, None,
+        flags=cv2.CALIB_FIX_K3
     )
 
     # Compute mean reprojection error explicitly for a clear per-camera report.
@@ -311,6 +347,35 @@ def calibrate(object_points, image_points, image_size):
     mean_error = np.sqrt(total_error / total_points) if total_points else rms
 
     return K, dist, mean_error
+
+
+def assess_calibration(K, dist, image_size):
+    """
+    Return a list of human-readable problems if the calibration looks like it
+    diverged. Empty list means it looks plausible.
+
+    A diverged solve (too few perspective/tilt variations) typically shows up
+    as a wildly wrong focal length, mismatched fx/fy, or huge distortion terms.
+    """
+    import math
+
+    w, _ = image_size
+    fx, fy = float(K[0, 0]), float(K[1, 1])
+    d = np.asarray(dist).reshape(-1)
+    issues = []
+
+    hfov = 2.0 * math.degrees(math.atan((w / 2.0) / fx))
+    if hfov < 30.0 or hfov > 120.0:
+        issues.append(
+            f"implausible horizontal FOV {hfov:.0f} deg (fx={fx:.0f}); "
+            "expected roughly 40-70 deg for these lenses"
+        )
+    if abs(fx - fy) / max(fx, fy) > 0.15:
+        issues.append(f"fx/fy mismatch (fx={fx:.0f}, fy={fy:.0f})")
+    if abs(d[0]) > 1.5 or (d.size > 1 and abs(d[1]) > 3.0):
+        issues.append(f"extreme distortion coeffs {np.round(d[:3], 2)}")
+
+    return issues
 
 
 def save_results(camera_number, K, dist):
@@ -335,6 +400,8 @@ def main():
     print(f"  Checkerboard inner corners: {CHECKERBOARD}")
     print(f"  Resolution: {FRAME_WIDTH}x{FRAME_HEIGHT}")
     print(f"  Cameras (in order): {cameras}\n")
+
+    focal_lengths = {}
 
     for i, (position, camera_number) in enumerate(cameras):
         print(f"=== Camera '{position}' (index {camera_number}) ===")
@@ -369,6 +436,18 @@ def main():
                       "usually means the board did not cover the frame edges "
                       "well — recollect with more corner/edge coverage.")
 
+            # Detect a diverged solve (the usual cause of bad extrinsics).
+            issues = assess_calibration(K, dist, image_size)
+            if issues:
+                print("  >>> CALIBRATION LOOKS BAD — recommend RECOLLECT:")
+                for issue in issues:
+                    print(f"        - {issue}")
+                print("      Most likely cause: not enough TILT / distance "
+                      "variety. Hold the board at strong angles (30-45 deg "
+                      "pitch & yaw) and at near AND far distances, not just "
+                      "flat-on while sliding it around.")
+
+            focal_lengths[position] = float(K[0, 0])
             print("  K =")
             print(K)
             save_results(camera_number, K, dist)
@@ -379,6 +458,19 @@ def main():
             print()
 
     cv2.destroyAllWindows()
+
+    # Cross-camera consistency: these are identical cameras, so their focal
+    # lengths should be close. A big outlier means that camera diverged.
+    if len(focal_lengths) >= 2:
+        values = np.array(list(focal_lengths.values()))
+        median_fx = float(np.median(values))
+        print("\nFocal-length consistency (identical cameras should match):")
+        for position, fx in focal_lengths.items():
+            dev = abs(fx - median_fx) / median_fx
+            flag = "  <-- OUTLIER, recollect this camera" if dev > 0.25 else ""
+            print(f"  {position}: fx = {fx:.1f} "
+                  f"({dev * 100:.0f}% from median){flag}")
+
     print("\nAll cameras processed.")
 
 
