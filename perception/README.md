@@ -19,6 +19,7 @@ quasar/
     ├── camera.json                ← camera position mapping (edit manually)
     ├── intrinsics.py
     ├── extrinsics.py
+    ├── static_scene.py            ← Stage 3 static-capture helper
     ├── sfm.py
     ├── mvs.py
     ├── scgs.py
@@ -153,11 +154,11 @@ This is done by showing the checkerboard to all 4 cameras simultaneously and usi
 The camera array is a fixed 2×2 grid with known physical spacing:
 
 ```
-top_left ——— 4 inches ——— top_right
+top_left ——— ~180mm ——— top_right
     |                         |
-  3 inches                 3 inches
+  ~180mm                    ~180mm
     |                         |
-bot_left  ——— 4 inches ——— bot_right
+bot_left  ——— ~180mm ——— bot_right
 ```
 
 These measurements are a rough estimate and should not be used for any validation
@@ -213,10 +214,34 @@ Structure from Motion (SfM) finds matching visual features (SIFT keypoints) acro
 
 ## How to run
 
-1. Before running, capture a short static clip of your scene with all 4 cameras (5–10 seconds, nothing moving). Export frames from this clip into `sfm/images/`, naming them `{position}_{frame_number:06d}.jpg` — e.g. `top_left_000001.jpg`.
+1. Before running, capture a static scene with all 4 cameras (rig and scene perfectly still). Use the `static_scene.py` helper below to write frames into `sfm/images/` with the correct `{position}_{frame_number:06d}.jpg` naming — e.g. `top_left_000001.jpg`. (You may also export them yourself by any means as long as the naming matches.)
 2. Run: `python sfm.py`
 3. The script runs COLMAP feature extraction, matching, and mapping using subprocess calls.
 4. Output lands in `sfm/sparse/0/`.
+
+## Helper — `static_scene.py`
+
+A small capture utility for the static SfM pass. It opens all 4 cameras at once, shows a tiled 2×2 preview, and writes synchronized frames straight into `sfm/images/` named `{position}_{frame:06d}.jpg`, so the output drops directly into the Stage 3 pipeline.
+
+**Depends on:** `camera.json`
+
+Controls (interactive mode):
+- `SPACE` / `C` — capture one synchronized set (all 4 cameras)
+- `B` — capture a burst of `--num` sets spaced by `--interval`
+- `Q` / `ESC` — finish and exit
+
+Run:
+```bash
+python static_scene.py                 # interactive
+python static_scene.py --num 10        # auto-capture 10 sets, then quit
+python static_scene.py --interval 0.5  # seconds between auto-captured sets
+python static_scene.py --fresh         # wipe sfm/images/ before capturing
+```
+
+Capture tips:
+- Keep the rig **and** the scene perfectly still — the 3D comes from the 4 fixed viewpoints, not motion, so a handful of synchronized sets is plenty.
+- Make sure the scene is **texture-rich**; blank/low-texture surfaces are the most common cause of COLMAP failing to register.
+- Frame numbering continues after any frames already in `sfm/images/` (use `--fresh` to start over).
 
 ## Implementation notes for Cursor
 
