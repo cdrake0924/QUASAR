@@ -402,6 +402,7 @@ def main():
     print(f"  Cameras (in order): {cameras}\n")
 
     focal_lengths = {}
+    radial_k1 = {}
 
     for i, (position, camera_number) in enumerate(cameras):
         print(f"=== Camera '{position}' (index {camera_number}) ===")
@@ -448,6 +449,7 @@ def main():
                       "flat-on while sliding it around.")
 
             focal_lengths[position] = float(K[0, 0])
+            radial_k1[position] = float(np.asarray(dist).reshape(-1)[0])
             print("  K =")
             print(K)
             save_results(camera_number, K, dist)
@@ -460,16 +462,21 @@ def main():
     cv2.destroyAllWindows()
 
     # Cross-camera consistency: these are identical cameras, so their focal
-    # lengths should be close. A big outlier means that camera diverged.
+    # lengths and distortion should be close. An outlier means that camera's
+    # calibration is still under-constrained (usually too little tilt/distance
+    # variety) and will throw off its extrinsic pose — recollect it.
     if len(focal_lengths) >= 2:
-        values = np.array(list(focal_lengths.values()))
-        median_fx = float(np.median(values))
-        print("\nFocal-length consistency (identical cameras should match):")
-        for position, fx in focal_lengths.items():
-            dev = abs(fx - median_fx) / median_fx
-            flag = "  <-- OUTLIER, recollect this camera" if dev > 0.25 else ""
-            print(f"  {position}: fx = {fx:.1f} "
-                  f"({dev * 100:.0f}% from median){flag}")
+        median_fx = float(np.median(list(focal_lengths.values())))
+        median_k1 = float(np.median(list(radial_k1.values())))
+        print("\nCross-camera consistency (identical cameras should match):")
+        for position in focal_lengths:
+            fx = focal_lengths[position]
+            k1 = radial_k1[position]
+            fx_dev = abs(fx - median_fx) / median_fx
+            outlier = fx_dev > 0.15 or abs(k1 - median_k1) > 0.3
+            flag = "  <-- OUTLIER, recollect this camera" if outlier else ""
+            print(f"  {position}: fx = {fx:.1f} ({fx_dev * 100:.0f}% from "
+                  f"median), k1 = {k1:.2f}{flag}")
 
     print("\nAll cameras processed.")
 
