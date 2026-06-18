@@ -322,6 +322,15 @@ def convert_model(colmap, model_dir):
         "--output_path", model_dir,
         "--output_type", "TXT",
     ])
+    # Also export a viewable point cloud next to the model.
+    ply_path = os.path.join(model_dir, "points.ply")
+    run([
+        colmap, "model_converter",
+        "--input_path", model_dir,
+        "--output_path", ply_path,
+        "--output_type", "PLY",
+    ])
+    print(f"  Point cloud: {ply_path}")
     return model_dir
 
 
