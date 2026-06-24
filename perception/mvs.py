@@ -1,246 +1,93 @@
 """
 Stage 4 — MVS / Dense Point Cloud (quasar/perception)
 
-Multi-View Stereo. The camera poses are FIXED (recovered once by the static
-Stage-3 SfM pass) and reused for every synchronized dynamic frame. For each
-frame-set (one image per camera at time T) COLMAP's PatchMatch estimates a
-dense depth map per view and fuses them into a single dense point cloud.
+Multi-View Stereo on the FIXED rig poses from rig.py (Stage 3). For each
+synchronized 4-image set, COLMAP's PatchMatch estimates a dense depth map per
+view and fuses them into a single dense point cloud. Two modes:
 
-Pipeline per frame (COLMAP CLI via subprocess):
+  --mode static    process mvs/static/{position}.jpg          -> mvs/static_fused.ply
+  --mode dynamic   process mvs/frames/{n:06d}/{position}.jpg  -> mvs/frame_{n:06d}/fused.ply
+
+Both modes share the identical rig poses (rig/sparse/). The rig is fixed, so the
+scene depth range is estimated ONCE (from a reference frame-set) and reused.
+
+Depth range via point_triangulator
+-----------------------------------
+The rig model has poses but no 3D points, so PatchMatch has no depth prior.
+Rather than guessing from the baseline, we triangulate a REAL sparse cloud using
+the fixed rig poses (point_triangulator never moves the poses):
+
+  feature_extractor -> exhaustive_matcher -> point_triangulator
+
+point_triangulator matches the input model to the database BY IMAGE NAME, and
+the model's IMAGE_ID / CAMERA_ID must equal the IDs feature_extractor wrote into
+the database. So we read the SQLite DB for the real IDs, then write the
+triangulation input model with the fixed rig poses under those IDs. The clean
+rig/sparse/ model (IDs 1..4) is still used as-is for image_undistorter.
+
+Per-workspace MVS (COLMAP CLI):
   1. image_undistorter   - undistort the 4 raw views + lay out a dense workspace
   2. patch_match_stereo  - dense depth/normal maps (CUDA GPU required)
   3. stereo_fusion       - fuse depth maps -> fused.ply
 
-Depends on: sfm/sparse/0/ (fixed poses), intrinsics/K_*.txt + dist_*.txt,
-            camera.json.
-
-----------------------------------------------------------------------------
-Design note (why this differs slightly from the README):
-
-The README says "copy sfm/sparse/0/ as the fixed pose set". That assumes the
-SfM model holds one image per camera. In practice the Stage-3 static capture
-produced ~10 frames per camera, so sfm/sparse/0 contains ~40 images. COLMAP's
-image_undistorter requires every image in the model to exist on disk, so a
-40-image model cannot be reused against the 4 images of a dynamic frame.
-
-Instead we build a *reusable fixed-rig model* once: 4 cameras + 4 images (the
-single best-constrained pose per position, lifted from the refined SfM model),
-named {position}.jpg to match the dynamic frames, with OPENCV intrinsics
-(fx,fy,cx,cy,k1,k2,p1,p2) so image_undistorter genuinely undistorts the raw
-frames. This honors the README's intent (fixed poses reused per frame) while
-working with the real data.
-----------------------------------------------------------------------------
-
-Input layout (raw synchronized dynamic footage):
-    mvs/frames/
-    |-- 000001/
-    |   |-- top_left.jpg
-    |   |-- top_right.jpg
-    |   |-- bot_left.jpg
-    |   `-- bot_right.jpg
-    |-- 000002/
-    |   `-- ...
-
-Output: mvs/frame_{n:06d}/fused.ply  (one dense cloud per frame)
+Depends on: rig/sparse/ (run rig.py first), intrinsics/, extrinsics/, camera.json
 
 Run:
-    python mvs.py
-    python mvs.py --start_frame 10 --end_frame 20
-    python mvs.py --max_image_size 640
-    python mvs.py --fresh                 # delete existing mvs/frame_* workspaces
+    python mvs.py --mode static
+    python mvs.py --mode dynamic
+    python mvs.py --mode dynamic --start_frame 1 --end_frame 5
+    python mvs.py --mode static --depth_min 200 --depth_max 3000
+    python mvs.py --mode dynamic --fresh
 """
 
 import argparse
 import os
 import shutil
+import sqlite3
 
 import cv2
 import numpy as np
 
-# Reuse Stage-3 helpers (no side effects at import; main() is __main__-guarded).
-from sfm import (
+from common import (
     POSITION_ORDER,
+    IMAGE_EXTS,
+    MVS_DIR,
+    STATIC_DIR,
+    FRAMES_DIR,
+    STATIC_FUSED_PLY,
+    RIG_SPARSE_DIR,
     load_camera_indices,
     load_intrinsics,
+    load_poses,
     find_colmap,
     run,
-    select_best_model,
-    SPARSE_DIR as SFM_SPARSE_DIR,
+    rot_to_quat,
+    count_ply_points,
 )
 
 
 # --- Paths -------------------------------------------------------------------
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-MVS_DIR = os.path.join(HERE, "mvs")
-FRAMES_DIR = os.path.join(MVS_DIR, "frames")
-RIG_DIR = os.path.join(MVS_DIR, "_rig")          # reusable fixed-pose model
-RIG_SPARSE_DIR = os.path.join(RIG_DIR, "sparse")
-
-IMAGE_EXTS = (".jpg", ".jpeg", ".png")
+STATIC_WORK_DIR = os.path.join(MVS_DIR, "static_work")     # dense workspace
+TRIANGULATE_DIR = os.path.join(MVS_DIR, "_triangulate")    # depth-range estimate
 
 
-# --- Fixed-rig model ---------------------------------------------------------
+# --- Helpers -----------------------------------------------------------------
 
-def parse_sfm_poses(model_dir):
-    """
-    From sfm/sparse/0/images.txt pick, per camera position, the single image
-    with the most 3D-point observations (best-constrained pose).
+def opencv_params(K, dist):
+    """Return (fx, fy, cx, cy, k1, k2, p1, p2) for the OPENCV camera model."""
+    fx, fy = float(K[0, 0]), float(K[1, 1])
+    cx, cy = float(K[0, 2]), float(K[1, 2])
+    d = np.asarray(dist).reshape(-1)
+    k1 = float(d[0]) if d.size > 0 else 0.0
+    k2 = float(d[1]) if d.size > 1 else 0.0
+    p1 = float(d[2]) if d.size > 2 else 0.0
+    p2 = float(d[3]) if d.size > 3 else 0.0
+    return fx, fy, cx, cy, k1, k2, p1, p2
 
-    Returns {position: (qw, qx, qy, qz, tx, ty, tz)} using COLMAP's raw
-    world->camera convention (exactly as stored in images.txt).
-    """
-    images_txt = os.path.join(model_dir, "images.txt")
-    if not os.path.exists(images_txt):
-        raise FileNotFoundError(
-            f"{images_txt} not found. Run sfm.py (Stage 3) first; it exports "
-            "the model to TXT."
-        )
-    with open(images_txt, "r") as f:
-        lines = [ln for ln in f if not ln.startswith("#")]
-
-    best = {}  # position -> (n_obs, pose_tuple)
-    for i in range(0, len(lines) - 1, 2):
-        header = lines[i].split()
-        if len(header) < 10:
-            continue
-        pose = tuple(float(x) for x in header[1:8])  # qw qx qy qz tx ty tz
-        name = header[9]
-        position = _position_of(name)
-        if position is None:
-            continue
-        pts = lines[i + 1].split()
-        # second line is X Y POINT3D_ID triplets; count valid observations
-        n_obs = sum(1 for j in range(2, len(pts), 3) if pts[j] != "-1")
-        if position not in best or n_obs > best[position][0]:
-            best[position] = (n_obs, pose)
-
-    missing = [p for p in POSITION_ORDER if p not in best]
-    if missing:
-        raise RuntimeError(
-            f"SfM model is missing camera positions {missing}. All 4 cameras "
-            "must be registered in Stage 3 before running MVS."
-        )
-    return {p: best[p][1] for p in POSITION_ORDER}
-
-
-def _position_of(name):
-    for position in POSITION_ORDER:
-        if name.startswith(position):
-            return position
-    return None
-
-
-def _quat_to_rot(qw, qx, qy, qz):
-    n = np.sqrt(qw * qw + qx * qx + qy * qy + qz * qz)
-    qw, qx, qy, qz = qw / n, qx / n, qy / n, qz / n
-    return np.array([
-        [1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qz * qw),
-         2 * (qx * qz + qy * qw)],
-        [2 * (qx * qy + qz * qw), 1 - 2 * (qx * qx + qz * qz),
-         2 * (qy * qz - qx * qw)],
-        [2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw),
-         1 - 2 * (qx * qx + qy * qy)],
-    ])
-
-
-def compute_depth_range(model_dir, poses):
-    """
-    Estimate a global [depth_min, depth_max] (in the SfM coordinate scale) by
-    projecting the static 3D points into each fixed camera and taking robust
-    percentiles of their z (camera-forward) coordinate. Returns (dmin, dmax)
-    or None if no points are available.
-    """
-    points_txt = os.path.join(model_dir, "points3D.txt")
-    if not os.path.exists(points_txt):
-        return None
-    xyz = []
-    with open(points_txt, "r") as f:
-        for ln in f:
-            if ln.startswith("#") or not ln.strip():
-                continue
-            parts = ln.split()
-            if len(parts) < 4:
-                continue
-            xyz.append([float(parts[1]), float(parts[2]), float(parts[3])])
-    if not xyz:
-        return None
-    X = np.array(xyz).T  # 3 x N
-
-    depths = []
-    for position in POSITION_ORDER:
-        qw, qx, qy, qz, tx, ty, tz = poses[position]
-        R = _quat_to_rot(qw, qx, qy, qz)
-        t = np.array([tx, ty, tz]).reshape(3, 1)
-        z = (R @ X + t)[2]
-        depths.append(z[z > 0])
-    depths = np.concatenate(depths) if depths else np.array([])
-    if depths.size == 0:
-        return None
-    dmin = float(np.percentile(depths, 1))
-    dmax = float(np.percentile(depths, 99))
-    # pad the range so legitimately closer/farther dynamic content isn't clipped
-    span = max(dmax - dmin, 1e-6)
-    dmin = max(dmin - 0.25 * span, 1e-4)
-    dmax = dmax + 0.25 * span
-    return dmin, dmax
-
-
-def build_rig_model(intrinsics, image_size, poses):
-    """
-    Write the reusable fixed-rig COLMAP model (TXT) to mvs/_rig/sparse/.
-    4 OPENCV cameras (one per position) + 4 images named {position}.jpg, each
-    carrying its fixed SfM pose. points3D.txt is intentionally empty (depth
-    ranges are passed to PatchMatch explicitly).
-    """
-    if os.path.isdir(RIG_SPARSE_DIR):
-        shutil.rmtree(RIG_SPARSE_DIR)
-    os.makedirs(RIG_SPARSE_DIR, exist_ok=True)
-    w, h = image_size
-
-    # cameras.txt — OPENCV model: fx, fy, cx, cy, k1, k2, p1, p2
-    with open(os.path.join(RIG_SPARSE_DIR, "cameras.txt"), "w") as f:
-        f.write("# Camera list with one line of data per camera:\n")
-        f.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
-        f.write(f"# Number of cameras: {len(POSITION_ORDER)}\n")
-        for cam_id, position in enumerate(POSITION_ORDER, start=1):
-            K, dist = intrinsics[position]
-            fx, fy = float(K[0, 0]), float(K[1, 1])
-            cx, cy = float(K[0, 2]), float(K[1, 2])
-            d = np.array(dist).reshape(-1)
-            k1 = float(d[0]) if d.size > 0 else 0.0
-            k2 = float(d[1]) if d.size > 1 else 0.0
-            p1 = float(d[2]) if d.size > 2 else 0.0
-            p2 = float(d[3]) if d.size > 3 else 0.0
-            f.write(f"{cam_id} OPENCV {w} {h} "
-                    f"{fx:.6f} {fy:.6f} {cx:.6f} {cy:.6f} "
-                    f"{k1:.8f} {k2:.8f} {p1:.8f} {p2:.8f}\n")
-
-    # images.txt — 2 lines per image; the 2nd (points2D) line is empty.
-    with open(os.path.join(RIG_SPARSE_DIR, "images.txt"), "w") as f:
-        f.write("# Image list with two lines of data per image:\n")
-        f.write("#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n")
-        f.write("#   POINTS2D[] as (X, Y, POINT3D_ID)\n")
-        f.write(f"# Number of images: {len(POSITION_ORDER)}\n")
-        for cam_id, position in enumerate(POSITION_ORDER, start=1):
-            qw, qx, qy, qz, tx, ty, tz = poses[position]
-            f.write(f"{cam_id} {qw:.10f} {qx:.10f} {qy:.10f} {qz:.10f} "
-                    f"{tx:.10f} {ty:.10f} {tz:.10f} {cam_id} {position}.jpg\n")
-            f.write("\n")  # no 2D observations
-
-    # points3D.txt — empty (header only).
-    with open(os.path.join(RIG_SPARSE_DIR, "points3D.txt"), "w") as f:
-        f.write("# 3D point list with one line of data per point:\n")
-        f.write("#   POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[]\n")
-        f.write("# Number of points: 0\n")
-
-    print(f"  Fixed-rig model written to {RIG_SPARSE_DIR}")
-
-
-# --- Dynamic frame discovery -------------------------------------------------
 
 def find_view_file(folder, position):
-    """Locate {position}.<ext> inside a frame folder (any supported ext)."""
+    """Locate {position}.<ext> inside a folder (any supported extension)."""
     for ext in IMAGE_EXTS:
         candidate = os.path.join(folder, f"{position}{ext}")
         if os.path.exists(candidate):
@@ -248,16 +95,36 @@ def find_view_file(folder, position):
     return None
 
 
-def discover_dynamic_frames(start_frame, end_frame):
-    """
-    Return sorted list of (frame_number, folder_path) for frame folders that
-    contain all 4 camera views, filtered to [start_frame, end_frame].
-    """
+def position_of(name):
+    base = os.path.basename(name)
+    for position in POSITION_ORDER:
+        if base.startswith(position):
+            return position
+    return None
+
+
+def discover_static():
+    """Return {position: path} for the 4 views in mvs/static/, or raise."""
+    if not os.path.isdir(STATIC_DIR):
+        raise FileNotFoundError(
+            f"{STATIC_DIR} does not exist. Capture a static frame-set first "
+            "(static_scene.py) so it holds top_left.jpg, top_right.jpg, "
+            "bot_left.jpg, bot_right.jpg."
+        )
+    views = {p: find_view_file(STATIC_DIR, p) for p in POSITION_ORDER}
+    missing = [p for p, v in views.items() if v is None]
+    if missing:
+        raise RuntimeError(f"mvs/static/ is missing views {missing}.")
+    return views
+
+
+def discover_dynamic(start_frame, end_frame):
+    """Return sorted [(num, folder, views)] for complete dynamic frame folders."""
     if not os.path.isdir(FRAMES_DIR):
         raise FileNotFoundError(
-            f"{FRAMES_DIR} does not exist. Create one folder per synchronized "
-            "moment, e.g. mvs/frames/000001/top_left.jpg (+ top_right, "
-            "bot_left, bot_right)."
+            f"{FRAMES_DIR} does not exist. Capture a sequence first "
+            "(dynamic_scene.py), e.g. mvs/frames/000001/top_left.jpg (+ the "
+            "other three positions)."
         )
     frames = []
     for name in sorted(os.listdir(FRAMES_DIR)):
@@ -281,50 +148,203 @@ def discover_dynamic_frames(start_frame, end_frame):
         frames.append((num, folder, views))
     if not frames:
         raise RuntimeError(
-            "No complete frame folders found in "
-            f"{FRAMES_DIR} for the requested range."
+            f"No complete frame folders found in {FRAMES_DIR} for the "
+            "requested range."
         )
     return frames
 
 
-# --- Per-frame MVS -----------------------------------------------------------
+# --- Depth range via point_triangulator --------------------------------------
 
-def count_ply_points(path):
-    """Read the vertex count from a PLY header."""
-    if not os.path.exists(path):
-        return 0
+def _read_db_image_ids(database_path):
+    """Return {name: (image_id, camera_id)} from a COLMAP SQLite database."""
+    conn = sqlite3.connect(database_path)
     try:
-        with open(path, "rb") as f:
-            for _ in range(40):
-                line = f.readline().decode("ascii", "ignore").strip()
-                if line.startswith("element vertex"):
-                    return int(line.split()[-1])
-                if line == "end_header":
-                    break
-    except Exception:
-        return 0
-    return 0
+        rows = conn.execute(
+            "SELECT image_id, name, camera_id FROM images"
+        ).fetchall()
+    finally:
+        conn.close()
+    return {name: (int(image_id), int(camera_id))
+            for image_id, name, camera_id in rows}
 
 
-def process_frame(colmap, num, views, max_image_size, depth_range, use_gpu):
-    """Run undistort -> patch_match -> fusion for one frame. Returns point
-    count, or raises on failure (caller records it)."""
-    frame_dir = os.path.join(MVS_DIR, f"frame_{num:06d}")
-    images_dir = os.path.join(frame_dir, "images")
-    sparse_dir = os.path.join(frame_dir, "sparse")
-    dense_dir = os.path.join(frame_dir, "dense")
-    fused_ply = os.path.join(frame_dir, "fused.ply")
+def _write_triangulation_model(model_dir, db_ids, intrinsics, poses,
+                               image_size):
+    """
+    Write a COLMAP TXT model (cameras/images/empty points) whose IMAGE_ID and
+    CAMERA_ID match the database, with the FIXED rig poses, ready for
+    point_triangulator.
+    """
+    os.makedirs(model_dir, exist_ok=True)
+    w, h = image_size
 
-    # Clean any stale per-frame workspace, then lay it out fresh.
-    if os.path.isdir(frame_dir):
-        shutil.rmtree(frame_dir)
+    # One camera per database image (one image per position here).
+    with open(os.path.join(model_dir, "cameras.txt"), "w") as f:
+        f.write("# CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
+        for name, (_img_id, cam_id) in db_ids.items():
+            position = position_of(name)
+            if position is None:
+                continue
+            fx, fy, cx, cy, k1, k2, p1, p2 = opencv_params(*intrinsics[position])
+            f.write(f"{cam_id} OPENCV {w} {h} "
+                    f"{fx:.6f} {fy:.6f} {cx:.6f} {cy:.6f} "
+                    f"{k1:.8f} {k2:.8f} {p1:.8f} {p2:.8f}\n")
+
+    with open(os.path.join(model_dir, "images.txt"), "w") as f:
+        f.write("# IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n")
+        for name, (img_id, cam_id) in db_ids.items():
+            position = position_of(name)
+            if position is None:
+                continue
+            R, t = poses[position]
+            qw, qx, qy, qz = rot_to_quat(R)
+            tx, ty, tz = (float(v) for v in np.asarray(t).reshape(3))
+            f.write(f"{img_id} {qw:.10f} {qx:.10f} {qy:.10f} {qz:.10f} "
+                    f"{tx:.10f} {ty:.10f} {tz:.10f} {cam_id} "
+                    f"{os.path.basename(name)}\n")
+            f.write("\n")
+
+    with open(os.path.join(model_dir, "points3D.txt"), "w") as f:
+        f.write("# POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[]\n")
+
+
+def _depth_range_from_points(points_txt, poses):
+    """Project triangulated points into each camera; robust depth percentiles."""
+    if not os.path.exists(points_txt):
+        return None
+    xyz = []
+    with open(points_txt, "r") as f:
+        for ln in f:
+            if ln.startswith("#") or not ln.strip():
+                continue
+            parts = ln.split()
+            if len(parts) < 4:
+                continue
+            xyz.append([float(parts[1]), float(parts[2]), float(parts[3])])
+    if not xyz:
+        return None
+    X = np.asarray(xyz).T  # 3 x N
+
+    depths = []
+    for position in POSITION_ORDER:
+        R, t = poses[position]
+        z = (R @ X + np.asarray(t).reshape(3, 1))[2]
+        depths.append(z[z > 0])
+    depths = np.concatenate(depths) if depths else np.array([])
+    if depths.size == 0:
+        return None
+    dmin = float(np.percentile(depths, 1))
+    dmax = float(np.percentile(depths, 99))
+    span = max(dmax - dmin, 1e-6)
+    dmin = max(dmin - 0.25 * span, 1e-4)
+    dmax = dmax + 0.25 * span
+    return dmin, dmax
+
+
+def estimate_depth_range(colmap, ref_views, intrinsics, poses, use_gpu):
+    """
+    Triangulate a sparse cloud from the reference views using the fixed rig
+    poses, then derive a robust [depth_min, depth_max]. Returns (dmin, dmax) or
+    None if triangulation produced nothing.
+    """
+    print("\n=== Estimating depth range (point_triangulator) ===")
+    if os.path.isdir(TRIANGULATE_DIR):
+        shutil.rmtree(TRIANGULATE_DIR)
+    images_dir = os.path.join(TRIANGULATE_DIR, "images")
+    lists_dir = os.path.join(TRIANGULATE_DIR, "_lists")
+    model_in = os.path.join(TRIANGULATE_DIR, "model_in")
+    model_out = os.path.join(TRIANGULATE_DIR, "model_out")
+    database = os.path.join(TRIANGULATE_DIR, "database.db")
+    os.makedirs(images_dir, exist_ok=True)
+    os.makedirs(lists_dir, exist_ok=True)
+    os.makedirs(model_out, exist_ok=True)
+
+    sample = None
+    for position in POSITION_ORDER:
+        dst = os.path.join(images_dir, f"{position}.jpg")
+        shutil.copy(ref_views[position], dst)
+        if sample is None:
+            sample = cv2.imread(dst)
+    if sample is None:
+        raise RuntimeError("Could not read reference views for triangulation.")
+    image_size = (sample.shape[1], sample.shape[0])
+
+    # Features: one extractor call per position so each gets its OPENCV camera.
+    for position in POSITION_ORDER:
+        list_path = os.path.join(lists_dir, f"{position}.txt")
+        with open(list_path, "w") as f:
+            f.write(f"{position}.jpg\n")
+        fx, fy, cx, cy, k1, k2, p1, p2 = opencv_params(*intrinsics[position])
+        run([
+            colmap, "feature_extractor",
+            "--database_path", database,
+            "--image_path", images_dir,
+            "--image_list_path", list_path,
+            "--ImageReader.camera_model", "OPENCV",
+            "--ImageReader.single_camera", "1",
+            "--ImageReader.camera_params",
+            f"{fx},{fy},{cx},{cy},{k1},{k2},{p1},{p2}",
+            "--FeatureExtraction.use_gpu", "1" if use_gpu else "0",
+        ])
+
+    run([
+        colmap, "exhaustive_matcher",
+        "--database_path", database,
+        "--FeatureMatching.use_gpu", "1" if use_gpu else "0",
+    ])
+
+    db_ids = _read_db_image_ids(database)
+    if len(db_ids) < len(POSITION_ORDER):
+        print("  WARNING: not all reference views registered in the database; "
+              "depth range may be unreliable.")
+    _write_triangulation_model(model_in, db_ids, intrinsics, poses, image_size)
+
+    try:
+        run([
+            colmap, "point_triangulator",
+            "--database_path", database,
+            "--image_path", images_dir,
+            "--input_path", model_in,
+            "--output_path", model_out,
+        ])
+        run([
+            colmap, "model_converter",
+            "--input_path", model_out,
+            "--output_path", model_out,
+            "--output_type", "TXT",
+        ])
+    except Exception as exc:
+        print(f"  point_triangulator failed ({exc}); depth range -> auto.")
+        return None
+
+    rng = _depth_range_from_points(
+        os.path.join(model_out, "points3D.txt"), poses
+    )
+    if rng is None:
+        print("  No triangulated points; depth range -> auto.")
+    else:
+        print(f"  Depth range: {rng[0]:.2f} .. {rng[1]:.2f} mm")
+    return rng
+
+
+# --- Per-workspace MVS -------------------------------------------------------
+
+def process_workspace(colmap, views, work_dir, fused_ply, max_image_size,
+                      depth_range, use_gpu):
+    """Run undistort -> patch_match -> fusion for one 4-view set."""
+    images_dir = os.path.join(work_dir, "images")
+    sparse_dir = os.path.join(work_dir, "sparse")
+    dense_dir = os.path.join(work_dir, "dense")
+
+    if os.path.isdir(work_dir):
+        shutil.rmtree(work_dir)
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(sparse_dir, exist_ok=True)
 
-    # Copy the 4 raw views in, named to match the rig model ({position}.jpg).
     for position in POSITION_ORDER:
-        shutil.copy(views[position], os.path.join(images_dir, f"{position}.jpg"))
-    # Copy the fixed-rig model in.
+        shutil.copy(views[position],
+                    os.path.join(images_dir, f"{position}.jpg"))
     for fn in ("cameras.txt", "images.txt", "points3D.txt"):
         shutil.copy(os.path.join(RIG_SPARSE_DIR, fn),
                     os.path.join(sparse_dir, fn))
@@ -352,6 +372,7 @@ def process_frame(colmap, num, views, max_image_size, depth_range, use_gpu):
                "--PatchMatchStereo.depth_max", f"{dmax:.6f}"]
     run(pm)
 
+    os.makedirs(os.path.dirname(fused_ply) or ".", exist_ok=True)
     run([
         colmap, "stereo_fusion",
         "--workspace_path", dense_dir,
@@ -359,7 +380,6 @@ def process_frame(colmap, num, views, max_image_size, depth_range, use_gpu):
         "--input_type", "geometric",
         "--output_path", fused_ply,
     ])
-
     return count_ply_points(fused_ply)
 
 
@@ -367,90 +387,106 @@ def process_frame(colmap, num, views, max_image_size, depth_range, use_gpu):
 
 def main():
     parser = argparse.ArgumentParser(description="Stage 4 dense MVS via COLMAP.")
+    parser.add_argument("--mode", required=True, choices=["static", "dynamic"],
+                        help="static: mvs/static/  dynamic: mvs/frames/")
     parser.add_argument("--colmap", default=None,
                         help="Path to the colmap binary (default: PATH).")
     parser.add_argument("--start_frame", type=int, default=None,
-                        help="First frame number to process (inclusive).")
+                        help="(dynamic) first frame number, inclusive.")
     parser.add_argument("--end_frame", type=int, default=None,
-                        help="Last frame number to process (inclusive).")
+                        help="(dynamic) last frame number, inclusive.")
     parser.add_argument("--max_image_size", type=int, default=640,
                         help="Max image dimension for PatchMatch (default 640).")
+    parser.add_argument("--depth_min", type=float, default=None,
+                        help="Override auto depth_min (mm).")
+    parser.add_argument("--depth_max", type=float, default=None,
+                        help="Override auto depth_max (mm).")
     parser.add_argument("--no-gpu", action="store_true",
-                        help="Disable CUDA. NOTE: PatchMatch requires a GPU; "
-                             "this will almost certainly fail without CUDA.")
+                        help="Disable CUDA. NOTE: patch_match_stereo needs a "
+                             "GPU and will almost certainly fail without CUDA.")
     parser.add_argument("--fresh", action="store_true",
-                        help="Delete existing mvs/frame_* workspaces first.")
+                        help="(dynamic) delete existing mvs/frame_* workspaces "
+                             "first.")
     args = parser.parse_args()
 
     colmap = find_colmap(args.colmap)
     cameras = load_camera_indices()
     intrinsics = {p: load_intrinsics(idx) for p, idx in cameras}
+    poses = load_poses()
 
-    print("Stage 4 — MVS (dense)")
-    print(f"  COLMAP: {colmap}")
-
-    # Locate the Stage-3 SfM model (largest sub-model) and lift fixed poses.
-    if not os.path.isdir(SFM_SPARSE_DIR):
+    if not os.path.isdir(RIG_SPARSE_DIR):
         raise FileNotFoundError(
-            f"{SFM_SPARSE_DIR} not found. Run sfm.py (Stage 3) first."
+            f"{RIG_SPARSE_DIR} not found. Run rig.py (Stage 3) first."
         )
-    sfm_model = select_best_model()
-    print(f"  SfM model: {sfm_model}")
-    poses = parse_sfm_poses(sfm_model)
-    depth_range = compute_depth_range(sfm_model, poses)
-    if depth_range:
-        print(f"  Depth range (SfM scale): "
-              f"{depth_range[0]:.3f} .. {depth_range[1]:.3f}")
-    else:
-        print("  Depth range: auto (no SfM points found)")
 
-    os.makedirs(MVS_DIR, exist_ok=True)
-    if args.fresh:
-        for name in os.listdir(MVS_DIR):
-            if name.startswith("frame_"):
-                shutil.rmtree(os.path.join(MVS_DIR, name))
-        print("  Cleared previous frame_* workspaces.")
-
-    print("Discovering dynamic frames...")
-    frames = discover_dynamic_frames(args.start_frame, args.end_frame)
-    print(f"  {len(frames)} frame(s) to process.")
-
-    # Build the reusable fixed-rig model from a sample frame's dimensions.
-    sample_view = frames[0][2][POSITION_ORDER[0]]
-    sample = cv2.imread(sample_view)
-    if sample is None:
-        raise RuntimeError(f"Could not read sample frame {sample_view}.")
-    image_size = (sample.shape[1], sample.shape[0])
-    print(f"  Frame resolution: {image_size[0]}x{image_size[1]}")
-    build_rig_model(intrinsics, image_size, poses)
-
+    print(f"Stage 4 — MVS (dense), mode = {args.mode}")
+    print(f"  COLMAP: {colmap}")
     use_gpu = not args.no_gpu
     if not use_gpu:
         print("  WARNING: --no-gpu set; PatchMatch needs CUDA and will likely "
               "fail.")
 
+    # Build the job list and pick reference views for depth estimation.
+    os.makedirs(MVS_DIR, exist_ok=True)
+    jobs = []  # (label, views, work_dir, fused_ply)
+    if args.mode == "static":
+        views = discover_static()
+        jobs.append(("static", views, STATIC_WORK_DIR, STATIC_FUSED_PLY))
+        ref_views = views
+    else:
+        if args.fresh:
+            for name in os.listdir(MVS_DIR):
+                if name.startswith("frame_"):
+                    shutil.rmtree(os.path.join(MVS_DIR, name))
+            print("  Cleared previous frame_* workspaces.")
+        print("Discovering dynamic frames...")
+        frames = discover_dynamic(args.start_frame, args.end_frame)
+        print(f"  {len(frames)} frame(s) to process.")
+        for num, _folder, views in frames:
+            frame_dir = os.path.join(MVS_DIR, f"frame_{num:06d}")
+            fused = os.path.join(frame_dir, "fused.ply")
+            jobs.append((f"frame_{num:06d}", views, frame_dir, fused))
+        ref_views = frames[0][2]
+
+    # Depth range: explicit override, else triangulate once and reuse.
+    if args.depth_min is not None and args.depth_max is not None:
+        depth_range = (args.depth_min, args.depth_max)
+        print(f"  Depth range (override): {depth_range[0]:.2f} .. "
+              f"{depth_range[1]:.2f} mm")
+    else:
+        depth_range = estimate_depth_range(
+            colmap, ref_views, intrinsics, poses, use_gpu
+        )
+        if args.depth_min is not None or args.depth_max is not None:
+            print("  NOTE: pass BOTH --depth_min and --depth_max to override; "
+                  "using auto estimate.")
+
+    # Process each workspace.
     point_counts = []
     failures = []
-    for idx, (num, _folder, views) in enumerate(frames, start=1):
-        print(f"\n=== Frame {num:06d} ({idx}/{len(frames)}) ===")
+    for idx, (label, views, work_dir, fused_ply) in enumerate(jobs, start=1):
+        print(f"\n=== {label} ({idx}/{len(jobs)}) ===")
         try:
-            n = process_frame(colmap, num, views, args.max_image_size,
-                              depth_range, use_gpu)
-            print(f"  -> fused.ply: {n} points")
+            n = process_workspace(colmap, views, work_dir, fused_ply,
+                                  args.max_image_size, depth_range, use_gpu)
+            print(f"  -> {os.path.relpath(fused_ply, MVS_DIR)}: {n} points")
             point_counts.append(n)
         except Exception as exc:
             print(f"  FAILED: {exc}")
-            failures.append(num)
+            failures.append(label)
 
     print("\n=== MVS summary ===")
-    print(f"  Frames processed: {len(point_counts)}/{len(frames)}")
+    print(f"  Workspaces processed: {len(point_counts)}/{len(jobs)}")
     if point_counts:
         print(f"  Avg points per cloud: {int(np.mean(point_counts)):,}")
         print(f"  Min / max points: {min(point_counts):,} / "
               f"{max(point_counts):,}")
     if failures:
-        print(f"  FAILED frames: {failures}")
-    print(f"\n  Dense clouds: {MVS_DIR}\\frame_XXXXXX\\fused.ply")
+        print(f"  FAILED: {failures}")
+    if args.mode == "static":
+        print(f"\n  Dense cloud: {STATIC_FUSED_PLY}")
+    else:
+        print(f"\n  Dense clouds: {MVS_DIR}\\frame_XXXXXX\\fused.ply")
 
 
 if __name__ == "__main__":

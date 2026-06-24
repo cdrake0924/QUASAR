@@ -1,76 +1,43 @@
 """
-Static-scene capture helper (quasar/perception)
+Static-scene capture helper — Track A (quasar/perception)
 
-Captures synchronized frames from all 4 cameras and writes them into
-sfm/images/ named  {position}_{frame:06d}.jpg  (e.g. top_left_000001.jpg) —
-exactly the layout Stage 3 (sfm.py) expects.
+Captures ONE synchronized set of frames from all 4 cameras and writes them into
+mvs/static/ named  {position}.jpg  (top_left.jpg, top_right.jpg, bot_left.jpg,
+bot_right.jpg) — exactly the input layout `mvs.py --mode static` expects.
 
-This is for the STATIC SfM capture: keep the rig and the scene perfectly still.
-The 3D structure comes from the 4 different camera viewpoints, not from motion,
-so a handful of well-exposed, synchronized sets of a TEXTURE-RICH scene is
-plenty. Blank walls / low texture are the usual cause of COLMAP failing later.
+Keep the rig and the scene perfectly still; the 3D structure comes from the 4
+different camera viewpoints. A texture-rich scene helps the later MVS / depth
+triangulation (blank walls are the usual cause of holey point clouds).
 
-Controls (interactive mode):
-  SPACE / C  capture one synchronized set (all 4 cameras)
-  B          capture a burst of --num sets at --interval spacing
-  Q / ESC    finish and exit
+Controls:
+  SPACE / C  capture one synchronized set, save, and exit
+  Q / ESC    exit without saving
 
 Run:
-    python static_scene.py                 # interactive
-    python static_scene.py --num 10        # auto-capture 10 sets, then quit
-    python static_scene.py --fresh         # wipe sfm/images/ first
+    python static_scene.py
+    python static_scene.py --fresh         # wipe mvs/static/ first
 """
 
 import argparse
-import json
 import os
 import time
 
 import cv2
 import numpy as np
 
+from common import (
+    POSITION_ORDER,
+    FRAME_WIDTH,
+    FRAME_HEIGHT,
+    STATIC_DIR,
+    IMAGE_EXTS,
+    load_camera_indices,
+)
 
-# --- Configuration -----------------------------------------------------------
-
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
 FPS = 30
-
-POSITION_ORDER = ["top_left", "top_right", "bot_left", "bot_right"]
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-CAMERA_JSON = os.path.join(HERE, "camera.json")
-OUTPUT_DIR = os.path.join(HERE, "sfm", "images")
-
-IMAGE_EXTS = (".jpg", ".jpeg", ".png")
 
 
 # --- Camera I/O --------------------------------------------------------------
-
-def load_camera_indices():
-    """Load camera.json -> ordered list of (position, device_index)."""
-    if not os.path.exists(CAMERA_JSON):
-        raise FileNotFoundError(
-            f"camera.json not found at {CAMERA_JSON}. Create it first, e.g.:\n"
-            '  {\n'
-            '    "top_left":  1,\n'
-            '    "top_right": 2,\n'
-            '    "bot_left":  3,\n'
-            '    "bot_right": 4\n'
-            '  }'
-        )
-    with open(CAMERA_JSON, "r") as f:
-        mapping = json.load(f)
-    cameras = []
-    for position in POSITION_ORDER:
-        if position not in mapping:
-            raise KeyError(
-                f"camera.json is missing the '{position}' key. "
-                f"Expected keys: {POSITION_ORDER}."
-            )
-        cameras.append((position, int(mapping[position])))
-    return cameras
-
 
 def open_camera(index):
     """
@@ -116,24 +83,6 @@ def open_camera(index):
 
 # --- Capture -----------------------------------------------------------------
 
-def next_frame_index():
-    """Continue numbering after any frames already in OUTPUT_DIR."""
-    if not os.path.isdir(OUTPUT_DIR):
-        return 1
-    highest = 0
-    for name in os.listdir(OUTPUT_DIR):
-        base, ext = os.path.splitext(name)
-        if ext.lower() not in IMAGE_EXTS:
-            continue
-        for position in POSITION_ORDER:
-            prefix = position + "_"
-            if base.startswith(prefix):
-                digits = base[len(prefix):]
-                if digits.isdigit():
-                    highest = max(highest, int(digits))
-    return highest + 1
-
-
 def grab_frames(caps):
     """Read one frame from every camera. Returns dict or None on any failure."""
     frames = {}
@@ -145,13 +94,13 @@ def grab_frames(caps):
     return frames
 
 
-def save_set(frames, frame_index):
-    """Write one synchronized set to disk as {position}_{index:06d}.jpg."""
+def save_set(frames):
+    """Write one synchronized set to mvs/static/ as {position}.jpg."""
     for position in POSITION_ORDER:
-        filename = f"{position}_{frame_index:06d}.jpg"
-        cv2.imwrite(os.path.join(OUTPUT_DIR, filename), frames[position])
-    print(f"    Saved set {frame_index:06d} "
-          f"({', '.join(POSITION_ORDER)})")
+        cv2.imwrite(os.path.join(STATIC_DIR, f"{position}.jpg"),
+                    frames[position])
+    print(f"  Saved {', '.join(p + '.jpg' for p in POSITION_ORDER)} "
+          f"to {STATIC_DIR}")
 
 
 def make_tile(frame, label):
@@ -161,62 +110,39 @@ def make_tile(frame, label):
     return tile
 
 
-def build_preview(frames, saved_count):
+def build_preview(frames):
     tiles = {p: make_tile(frames[p], p) for p in POSITION_ORDER}
     top = np.hstack([tiles["top_left"], tiles["top_right"]])
     bottom = np.hstack([tiles["bot_left"], tiles["bot_right"]])
     grid = np.vstack([top, bottom])
-    cv2.putText(grid, f"Saved sets: {saved_count}   "
-                "[SPACE/C] capture  [B] burst  [Q/ESC] quit",
+    cv2.putText(grid, "[SPACE/C] capture & exit   [Q/ESC] quit",
                 (8, grid.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX,
                 0.55, (255, 255, 0), 1)
     return grid
 
 
-def capture(caps, num, interval):
-    """Run the capture session. Returns the number of sets saved."""
-    frame_index = next_frame_index()
-    saved = 0
-    window = "Static scene capture (Q to finish)"
+def capture(caps):
+    """Run the capture session. Returns True if a set was saved."""
+    window = "Static scene capture"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+    saved = False
+    try:
+        while True:
+            frames = grab_frames(caps)
+            if frames is None:
+                print("  Warning: dropped frame, retrying...")
+                continue
 
-    auto_remaining = num if num and num > 0 else 0
-    next_auto_time = time.time()
-
-    while True:
-        frames = grab_frames(caps)
-        if frames is None:
-            print("  Warning: dropped frame, retrying...")
-            continue
-
-        do_capture = False
-        now = time.time()
-
-        if auto_remaining > 0 and now >= next_auto_time:
-            do_capture = True
-            auto_remaining -= 1
-            next_auto_time = now + interval
-
-        cv2.imshow(window, build_preview(frames, saved))
-        key = cv2.waitKey(1) & 0xFF
-        if key in (ord("q"), ord("Q"), 27):
-            break
-        if key in (ord(" "), ord("c"), ord("C")):
-            do_capture = True
-        if key in (ord("b"), ord("B")) and auto_remaining == 0:
-            auto_remaining = num if num and num > 0 else 10
-            next_auto_time = now
-
-        if do_capture:
-            save_set(frames, frame_index)
-            frame_index += 1
-            saved += 1
-
-        if num and num > 0 and auto_remaining == 0 and saved >= num:
-            # Non-interactive run requested a fixed count and we're done.
-            break
-
-    cv2.destroyWindow(window)
+            cv2.imshow(window, build_preview(frames))
+            key = cv2.waitKey(1) & 0xFF
+            if key in (ord("q"), ord("Q"), 27):
+                break
+            if key in (ord(" "), ord("c"), ord("C")):
+                save_set(frames)
+                saved = True
+                break
+    finally:
+        cv2.destroyWindow(window)
     return saved
 
 
@@ -224,31 +150,26 @@ def capture(caps, num, interval):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Capture a static scene into sfm/images/ for Stage 3."
+        description="Capture one static frame-set into mvs/static/ for Track A."
     )
-    parser.add_argument("--num", type=int, default=0,
-                        help="Auto-capture this many synchronized sets, then "
-                             "quit (0 = fully interactive).")
-    parser.add_argument("--interval", type=float, default=0.5,
-                        help="Seconds between auto-captured sets (default 0.5).")
     parser.add_argument("--fresh", action="store_true",
-                        help="Delete existing frames in sfm/images/ first.")
+                        help="Delete existing images in mvs/static/ first.")
     args = parser.parse_args()
 
     cameras = load_camera_indices()
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(STATIC_DIR, exist_ok=True)
 
     if args.fresh:
         removed = 0
-        for name in os.listdir(OUTPUT_DIR):
+        for name in os.listdir(STATIC_DIR):
             if os.path.splitext(name)[1].lower() in IMAGE_EXTS:
-                os.remove(os.path.join(OUTPUT_DIR, name))
+                os.remove(os.path.join(STATIC_DIR, name))
                 removed += 1
-        print(f"Removed {removed} existing frame(s) from {OUTPUT_DIR}.")
+        print(f"Removed {removed} existing image(s) from {STATIC_DIR}.")
 
-    print("Static-scene capture")
+    print("Static-scene capture (Track A)")
     print(f"  Resolution: {FRAME_WIDTH}x{FRAME_HEIGHT}")
-    print(f"  Output: {OUTPUT_DIR}")
+    print(f"  Output: {STATIC_DIR}")
     print("  Keep the rig AND the scene perfectly still. Make sure the scene "
           "is texture-rich.\n")
 
@@ -259,24 +180,17 @@ def main():
             caps[position] = open_camera(camera_number)
             time.sleep(0.25)
 
-        if args.num and args.num > 0:
-            print(f"\nAuto-capturing {args.num} set(s) at "
-                  f"{args.interval}s spacing...")
-        else:
-            print("\nInteractive: SPACE/C to capture, B for a burst, Q to "
-                  "finish.")
-
-        saved = capture(caps, args.num, args.interval)
+        print("\nSPACE/C to capture & exit, Q to quit without saving.")
+        saved = capture(caps)
     finally:
         for cap in caps.values():
             cap.release()
         cv2.destroyAllWindows()
 
-    print(f"\nDone. Saved {saved} synchronized set(s) to {OUTPUT_DIR}.")
-    if saved > 0:
-        print("Next: run  python sfm.py")
+    if saved:
+        print("\nDone. Next: run  python mvs.py --mode static")
     else:
-        print("No frames captured — nothing to run Stage 3 on yet.")
+        print("\nNo frames captured — nothing saved.")
 
 
 if __name__ == "__main__":
