@@ -26,9 +26,14 @@ triangulation input model with the fixed rig poses under those IDs. The clean
 rig/sparse/ model (IDs 1..4) is still used as-is for image_undistorter.
 
 Per-workspace MVS (COLMAP CLI):
-  1. image_undistorter   - undistort the 4 raw views + lay out a dense workspace
-  2. patch_match_stereo  - dense depth/normal maps (CUDA GPU required)
-  3. stereo_fusion       - fuse depth maps -> fused.ply
+  1. feature_extractor + exhaustive_matcher + point_triangulator
+                         - triangulate REAL sparse points at the fixed rig poses.
+                           PatchMatch/fusion need points in the model; an
+                           empty-points model yields 0 fused points.
+  2. image_undistorter   - undistort the 4 raw views + lay out a dense workspace
+  3. patch_match_stereo  - dense depth/normal maps (CUDA GPU required)
+  4. stereo_fusion       - fuse depth maps -> fused.ply
+                           (min_num_pixels must be <= 4 for a 4-camera rig)
 
 Depends on: rig/sparse/ (run rig.py first), intrinsics/, extrinsics/, camera.json
 
@@ -70,6 +75,11 @@ from common import (
 
 STATIC_WORK_DIR = os.path.join(MVS_DIR, "static_work")     # dense workspace
 TRIANGULATE_DIR = os.path.join(MVS_DIR, "_triangulate")    # depth-range estimate
+
+# A fused 3D point needs >= this many consistent views. COLMAP's default is 5,
+# but a 4-camera rig sees any point in at most 4 views, so the default always
+# fuses 0 points. Must be <= 4 for this rig.
+MIN_NUM_PIXELS = 2
 
 
 # --- Helpers -----------------------------------------------------------------
@@ -242,35 +252,36 @@ def _depth_range_from_points(points_txt, poses):
     return dmin, dmax
 
 
-def estimate_depth_range(colmap, ref_views, intrinsics, poses, use_gpu):
+def triangulate_sparse(colmap, images_dir, out_dir, intrinsics, poses, use_gpu):
     """
-    Triangulate a sparse cloud from the reference views using the fixed rig
-    poses, then derive a robust [depth_min, depth_max]. Returns (dmin, dmax) or
-    None if triangulation produced nothing.
+    Triangulate a REAL sparse cloud from the 4 views already present in
+    images_dir, using the FIXED rig poses (point_triangulator never moves them).
+
+    feature_extractor (per position, with that camera's calibrated OPENCV
+    params) -> exhaustive_matcher -> point_triangulator. Intermediates are
+    written under out_dir; returns the triangulated TXT model directory
+    (out_dir/sparse). Raises on a hard COLMAP failure.
     """
-    print("\n=== Estimating depth range (point_triangulator) ===")
-    if os.path.isdir(TRIANGULATE_DIR):
-        shutil.rmtree(TRIANGULATE_DIR)
-    images_dir = os.path.join(TRIANGULATE_DIR, "images")
-    lists_dir = os.path.join(TRIANGULATE_DIR, "_lists")
-    model_in = os.path.join(TRIANGULATE_DIR, "model_in")
-    model_out = os.path.join(TRIANGULATE_DIR, "model_out")
-    database = os.path.join(TRIANGULATE_DIR, "database.db")
-    os.makedirs(images_dir, exist_ok=True)
+    database = os.path.join(out_dir, "database.db")
+    lists_dir = os.path.join(out_dir, "_lists")
+    model_in = os.path.join(out_dir, "model_in")
+    model_out = os.path.join(out_dir, "sparse")
     os.makedirs(lists_dir, exist_ok=True)
     os.makedirs(model_out, exist_ok=True)
 
     sample = None
     for position in POSITION_ORDER:
-        dst = os.path.join(images_dir, f"{position}.jpg")
-        shutil.copy(ref_views[position], dst)
-        if sample is None:
-            sample = cv2.imread(dst)
+        path = os.path.join(images_dir, f"{position}.jpg")
+        if os.path.exists(path):
+            sample = cv2.imread(path)
+            break
     if sample is None:
-        raise RuntimeError("Could not read reference views for triangulation.")
+        raise RuntimeError(f"No {{position}}.jpg views found in {images_dir}.")
     image_size = (sample.shape[1], sample.shape[0])
 
-    # Features: one extractor call per position so each gets its OPENCV camera.
+    # One extractor call per position so each image gets its own OPENCV camera
+    # with the calibrated parameters (keeps the database IDs clean for
+    # point_triangulator's name-based matching).
     for position in POSITION_ORDER:
         list_path = os.path.join(lists_dir, f"{position}.txt")
         with open(list_path, "w") as f:
@@ -296,26 +307,46 @@ def estimate_depth_range(colmap, ref_views, intrinsics, poses, use_gpu):
 
     db_ids = _read_db_image_ids(database)
     if len(db_ids) < len(POSITION_ORDER):
-        print("  WARNING: not all reference views registered in the database; "
-              "depth range may be unreliable.")
+        print("  WARNING: not all 4 views registered in the database.")
     _write_triangulation_model(model_in, db_ids, intrinsics, poses, image_size)
 
+    run([
+        colmap, "point_triangulator",
+        "--database_path", database,
+        "--image_path", images_dir,
+        "--input_path", model_in,
+        "--output_path", model_out,
+    ])
+    run([
+        colmap, "model_converter",
+        "--input_path", model_out,
+        "--output_path", model_out,
+        "--output_type", "TXT",
+    ])
+    return model_out
+
+
+def estimate_depth_range(colmap, ref_views, intrinsics, poses, use_gpu):
+    """
+    Triangulate a sparse cloud from the reference views using the fixed rig
+    poses, then derive a robust [depth_min, depth_max]. Returns (dmin, dmax) or
+    None if triangulation produced nothing.
+    """
+    print("\n=== Estimating depth range (point_triangulator) ===")
+    if os.path.isdir(TRIANGULATE_DIR):
+        shutil.rmtree(TRIANGULATE_DIR)
+    images_dir = os.path.join(TRIANGULATE_DIR, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    for position in POSITION_ORDER:
+        shutil.copy(ref_views[position],
+                    os.path.join(images_dir, f"{position}.jpg"))
+
     try:
-        run([
-            colmap, "point_triangulator",
-            "--database_path", database,
-            "--image_path", images_dir,
-            "--input_path", model_in,
-            "--output_path", model_out,
-        ])
-        run([
-            colmap, "model_converter",
-            "--input_path", model_out,
-            "--output_path", model_out,
-            "--output_type", "TXT",
-        ])
+        model_out = triangulate_sparse(
+            colmap, images_dir, TRIANGULATE_DIR, intrinsics, poses, use_gpu
+        )
     except Exception as exc:
-        print(f"  point_triangulator failed ({exc}); depth range -> auto.")
+        print(f"  triangulation failed ({exc}); depth range -> auto.")
         return None
 
     rng = _depth_range_from_points(
@@ -330,24 +361,59 @@ def estimate_depth_range(colmap, ref_views, intrinsics, poses, use_gpu):
 
 # --- Per-workspace MVS -------------------------------------------------------
 
-def process_workspace(colmap, views, work_dir, fused_ply, max_image_size,
-                      depth_range, use_gpu):
-    """Run undistort -> patch_match -> fusion for one 4-view set."""
+def write_patchmatch_config(dense_dir):
+    """Force every view to use the other three as stereo source images.
+
+    image_undistorter writes a co-visibility-based config; with only 4 cameras
+    we want each reference view to always pair with all the others.
+    """
+    cfg_path = os.path.join(dense_dir, "stereo", "patch-match.cfg")
+    with open(cfg_path, "w") as f:
+        for position in POSITION_ORDER:
+            f.write(f"{position}.jpg\n")
+            f.write("__all__\n")
+
+
+def count_model_points(points_txt):
+    """Count entries in a COLMAP points3D.txt (0 if missing)."""
+    if not os.path.exists(points_txt):
+        return 0
+    n = 0
+    with open(points_txt, "r") as f:
+        for ln in f:
+            if ln.strip() and not ln.startswith("#"):
+                n += 1
+    return n
+
+
+def process_workspace(colmap, views, work_dir, fused_ply, intrinsics, poses,
+                      max_image_size, depth_range, use_gpu):
+    """Triangulate -> undistort -> patch_match -> fusion for one 4-view set."""
     images_dir = os.path.join(work_dir, "images")
-    sparse_dir = os.path.join(work_dir, "sparse")
+    sparse_dir = os.path.join(work_dir, "sparse")   # filled by triangulation
     dense_dir = os.path.join(work_dir, "dense")
 
     if os.path.isdir(work_dir):
         shutil.rmtree(work_dir)
     os.makedirs(images_dir, exist_ok=True)
-    os.makedirs(sparse_dir, exist_ok=True)
 
     for position in POSITION_ORDER:
         shutil.copy(views[position],
                     os.path.join(images_dir, f"{position}.jpg"))
-    for fn in ("cameras.txt", "images.txt", "points3D.txt"):
-        shutil.copy(os.path.join(RIG_SPARSE_DIR, fn),
-                    os.path.join(sparse_dir, fn))
+
+    # Triangulate REAL sparse points at the fixed rig poses. COLMAP's dense
+    # stereo needs points in the model: PatchMatch derives stereo source images
+    # and depth priors from sparse co-visibility, and an empty-points model
+    # produces geometrically inconsistent depth maps that fusion discards
+    # (0 points). This is the per-workspace fix proven out previously.
+    triangulate_sparse(colmap, images_dir, work_dir, intrinsics, poses, use_gpu)
+    n_sparse = count_model_points(os.path.join(sparse_dir, "points3D.txt"))
+    print(f"  Triangulated sparse points: {n_sparse}")
+    if n_sparse == 0:
+        raise RuntimeError(
+            "point_triangulator produced 0 points — the 4 views share too "
+            "little matchable texture. Capture a more textured scene."
+        )
 
     run([
         colmap, "image_undistorter",
@@ -357,6 +423,9 @@ def process_workspace(colmap, views, work_dir, fused_ply, max_image_size,
         "--output_type", "COLMAP",
         "--max_image_size", str(max_image_size),
     ])
+
+    # 4-camera rig: force each view to use the other three as stereo sources.
+    write_patchmatch_config(dense_dir)
 
     pm = [
         colmap, "patch_match_stereo",
@@ -379,6 +448,7 @@ def process_workspace(colmap, views, work_dir, fused_ply, max_image_size,
         "--workspace_format", "COLMAP",
         "--input_type", "geometric",
         "--output_path", fused_ply,
+        "--StereoFusion.min_num_pixels", str(MIN_NUM_PIXELS),
     ])
     return count_ply_points(fused_ply)
 
@@ -468,7 +538,8 @@ def main():
         print(f"\n=== {label} ({idx}/{len(jobs)}) ===")
         try:
             n = process_workspace(colmap, views, work_dir, fused_ply,
-                                  args.max_image_size, depth_range, use_gpu)
+                                  intrinsics, poses, args.max_image_size,
+                                  depth_range, use_gpu)
             print(f"  -> {os.path.relpath(fused_ply, MVS_DIR)}: {n} points")
             point_counts.append(n)
         except Exception as exc:
