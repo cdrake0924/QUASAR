@@ -14,12 +14,22 @@ Workflow:
     constrained. After TARGET_IMAGES views it runs cv2.calibrateCamera().
   - Saves K_{n}.txt and dist_{n}.txt into intrinsics/.
 
+A quality gate rejects a camera's calibration (does NOT save K/dist) when the
+principal point is far from center, the FOV/focal is implausible, fx/fy
+mismatch, distortion is extreme, or reprojection error is high — the symptoms
+of an under-constrained solve that silently breaks triangulation/MVS later.
+
 Run:
     python intrinsics.py
+    python intrinsics.py --fresh        # clear intrinsics/ before capturing
+    python intrinsics.py --force        # save even if the quality gate fails
 """
 
+import argparse
+import glob
 import json
 import os
+import shutil
 import time
 
 import cv2
@@ -59,9 +69,12 @@ MIN_CENTROID_SHIFT_PX = 40.0      # min board movement between captures
 # frames in a fraction of a second.
 CAPTURE_COOLDOWN_SEC = 1.0
 
-# Warn if the calibrated principal point sits farther than this fraction of the
-# image dimension from the center (a symptom of poor coverage).
+# Reject if the calibrated principal point sits farther than this fraction of
+# the image dimension from the center (a symptom of poor edge/corner coverage).
 PRINCIPAL_POINT_TOLERANCE = 0.15
+
+# Reject a calibration whose reprojection error exceeds this (px).
+REPROJ_FAIL_PX = 1.0
 
 # Order in which cameras are calibrated.
 POSITION_ORDER = ["top_left", "top_right", "bot_left", "bot_right"]
@@ -378,6 +391,61 @@ def assess_calibration(K, dist, image_size):
     return issues
 
 
+def gate_issues(K, dist, image_size, reproj):
+    """
+    All hard-fail reasons that make a calibration unusable downstream. An empty
+    list means the calibration passes the gate.
+
+    Combines the divergence checks (assess_calibration) with the two strongest
+    symptoms of poor coverage: an off-center principal point and high
+    reprojection error. A bad principal point in particular silently wrecks
+    triangulation in MVS (rays are mis-aimed), so it must block the save.
+    """
+    w, h = image_size
+    cx, cy = float(K[0, 2]), float(K[1, 2])
+    issues = list(assess_calibration(K, dist, image_size))
+
+    off_x = abs(cx - w / 2.0) / w
+    off_y = abs(cy - h / 2.0) / h
+    if off_x > PRINCIPAL_POINT_TOLERANCE or off_y > PRINCIPAL_POINT_TOLERANCE:
+        issues.append(
+            f"principal point ({cx:.1f}, {cy:.1f}) too far from center "
+            f"({w / 2:.0f}, {h / 2:.0f}) — off ({off_x * 100:.0f}%, "
+            f"{off_y * 100:.0f}%); board did not cover the frame edges/corners"
+        )
+    if reproj > REPROJ_FAIL_PX:
+        issues.append(f"reprojection error {reproj:.2f} px > {REPROJ_FAIL_PX} px")
+
+    return issues
+
+
+def write_calibration_report(rows, image_size):
+    """Write intrinsics/calibration_report.txt. rows: position -> dict."""
+    path = os.path.join(OUTPUT_DIR, "calibration_report.txt")
+    w, h = image_size if image_size else (FRAME_WIDTH, FRAME_HEIGHT)
+    with open(path, "w") as f:
+        f.write("Intrinsic calibration report\n")
+        f.write(f"  resolution: {w}x{h}  (center {w / 2:.0f}, {h / 2:.0f})\n")
+        f.write(f"  principal-point tolerance: {PRINCIPAL_POINT_TOLERANCE} of "
+                f"image dim\n")
+        f.write(f"  reprojection fail gate: {REPROJ_FAIL_PX} px\n\n")
+        for position in POSITION_ORDER:
+            if position not in rows:
+                continue
+            r = rows[position]
+            f.write(f"{position} (camera {r['camera_number']}): {r['verdict']}\n")
+            if r.get("K") is not None:
+                K = r["K"]
+                f.write(f"  fx={K[0, 0]:.2f} fy={K[1, 1]:.2f} "
+                        f"cx={K[0, 2]:.2f} cy={K[1, 2]:.2f}  "
+                        f"reproj={r['reproj']:.3f} px\n")
+            for issue in r.get("issues", []):
+                f.write(f"  - {issue}\n")
+            f.write("\n")
+    print(f"  Saved {path}")
+    return path
+
+
 def save_results(camera_number, K, dist):
     """Save K and distortion coefficients as space-delimited text."""
     k_path = os.path.join(OUTPUT_DIR, f"K_{camera_number}.txt")
@@ -393,7 +461,23 @@ def save_results(camera_number, K, dist):
 # --- Main --------------------------------------------------------------------
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Stage 1 intrinsic calibration (with quality gate).")
+    parser.add_argument("--force", action="store_true",
+                        help="Save K/dist even if the quality gate fails.")
+    parser.add_argument("--fresh", action="store_true",
+                        help="Clear intrinsics/ (K_*, dist_*, img_*, report) "
+                             "before capturing.")
+    args = parser.parse_args()
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    if args.fresh:
+        for pattern in ("K_*.txt", "dist_*.txt", "img_*.jpg",
+                        "calibration_report.txt"):
+            for stale in glob.glob(os.path.join(OUTPUT_DIR, pattern)):
+                os.remove(stale)
+        print("  --fresh: cleared previous intrinsics outputs.\n")
+
     cameras = load_camera_indices()
 
     print("Intrinsic calibration")
@@ -403,6 +487,8 @@ def main():
 
     focal_lengths = {}
     radial_k1 = {}
+    rows = {}
+    last_image_size = None
 
     for i, (position, camera_number) in enumerate(cameras):
         print(f"=== Camera '{position}' (index {camera_number}) ===")
@@ -413,46 +499,41 @@ def main():
             )
         finally:
             cap.release()
+        last_image_size = image_size or last_image_size
 
         if len(object_points) < TARGET_IMAGES:
             print(f"  Only collected {len(object_points)} images for "
                   f"'{position}'. Skipping calibration for this camera.\n")
+            rows[position] = {"camera_number": camera_number, "K": None,
+                              "reproj": float("nan"), "verdict": "SKIPPED",
+                              "issues": ["too few images collected"]}
         else:
             K, dist, error = calibrate(object_points, image_points, image_size)
             print(f"  Reprojection error: {error:.4f} pixels")
-            if error > 1.0:
-                print("  WARNING: reprojection error is above 1.0 pixels. "
-                      "Calibration quality is poor — consider recollecting "
-                      "images with more varied angles and no motion blur.")
-
-            # Sanity-check the principal point against the image center.
-            w, h = image_size
-            cx, cy = K[0, 2], K[1, 2]
-            off_x = abs(cx - w / 2.0) / w
-            off_y = abs(cy - h / 2.0) / h
-            if off_x > PRINCIPAL_POINT_TOLERANCE or \
-                    off_y > PRINCIPAL_POINT_TOLERANCE:
-                print(f"  WARNING: principal point ({cx:.1f}, {cy:.1f}) is far "
-                      f"from the image center ({w / 2:.0f}, {h / 2:.0f}). This "
-                      "usually means the board did not cover the frame edges "
-                      "well — recollect with more corner/edge coverage.")
-
-            # Detect a diverged solve (the usual cause of bad extrinsics).
-            issues = assess_calibration(K, dist, image_size)
-            if issues:
-                print("  >>> CALIBRATION LOOKS BAD — recommend RECOLLECT:")
-                for issue in issues:
-                    print(f"        - {issue}")
-                print("      Most likely cause: not enough TILT / distance "
-                      "variety. Hold the board at strong angles (30-45 deg "
-                      "pitch & yaw) and at near AND far distances, not just "
-                      "flat-on while sliding it around.")
-
-            focal_lengths[position] = float(K[0, 0])
-            radial_k1[position] = float(np.asarray(dist).reshape(-1)[0])
             print("  K =")
             print(K)
-            save_results(camera_number, K, dist)
+
+            issues = gate_issues(K, dist, image_size, error)
+            verdict = "OK" if not issues else "FAIL"
+            rows[position] = {"camera_number": camera_number, "K": K,
+                              "reproj": float(error), "verdict": verdict,
+                              "issues": issues}
+
+            if issues and not args.force:
+                print("  >>> CALIBRATION REJECTED — K/dist NOT saved:")
+                for issue in issues:
+                    print(f"        - {issue}")
+                print("      Recollect this camera: get the board into all 4 "
+                      "image CORNERS/edges, tilt 30-45 deg (pitch & yaw), and "
+                      "capture near AND far. (--force saves anyway.)")
+            else:
+                if issues:
+                    print("  WARNING: saving despite gate issues (--force):")
+                    for issue in issues:
+                        print(f"        - {issue}")
+                focal_lengths[position] = float(K[0, 0])
+                radial_k1[position] = float(np.asarray(dist).reshape(-1)[0])
+                save_results(camera_number, K, dist)
 
         # Do not auto-advance to the next camera.
         if i < len(cameras) - 1:
@@ -460,6 +541,17 @@ def main():
             print()
 
     cv2.destroyAllWindows()
+
+    write_calibration_report(rows, last_image_size)
+    saved = [p for p in rows if rows[p]["verdict"] == "OK"]
+    failed = [p for p in rows if rows[p]["verdict"] not in ("OK",)]
+    print("\n=== Intrinsics gate summary ===")
+    for position in POSITION_ORDER:
+        if position in rows:
+            print(f"  {position:10s}: {rows[position]['verdict']}")
+    if failed and not args.force:
+        print(f"  {len(failed)} camera(s) NOT saved: {failed}. Recollect them "
+              "and re-run before Stage 2.")
 
     # Cross-camera consistency: these are identical cameras, so their focal
     # lengths and distortion should be close. An outlier means that camera's

@@ -47,7 +47,8 @@ quasar/
     │   ├── dist_1.txt
     │   ├── dist_2.txt
     │   ├── dist_3.txt
-    │   └── dist_4.txt
+    │   ├── dist_4.txt
+    │   └── calibration_report.txt ← per-camera fx/fy/cx/cy, reproj, pass/fail gate
     ├── extrinsics/
     │   ├── K.txt                  ← human-readable R, t + stereo RMS per camera
     │   ├── poses.npz              ← machine-readable R, t per camera
@@ -189,14 +190,30 @@ Intrinsic calibration finds each camera's internal optical properties — focal 
 
 This is done using a checkerboard pattern. OpenCV detects the corners of the checkerboard in multiple images taken from different angles, then solves for K using the known physical geometry of the checkerboard squares.
 
+> **Why this stage is critical.** A bad `K` — especially an off-center principal point `(cx, cy)` — silently breaks MVS later: with the optical center wrong, every back-projected ray is mis-aimed, so triangulating the scene produces reprojection errors far above COLMAP's filter and dense fusion yields **0 points**. A flat checkerboard at limited depths can still produce a low *extrinsic* RMS with a bad `K`, so the error hides until MVS. For a 640×480 camera the principal point must land near **(320, 240)**; values like `cy=108` or `cy=397` mean the calibration is bad and must be redone.
+
 ## How to run
 
 1. Print or display a checkerboard pattern. The default assumes an **8×6 inner corner** grid (i.e. 9×7 squares). If yours differs, edit the `CHECKERBOARD` constant at the top of the file. The same grid must be used in Stage 2 (`extrinsics.py` also uses `8×6`).
 2. Run the script: `python intrinsics.py`
-3. The script processes one camera at a time. For each camera, a live preview window opens.
-4. Hold the checkerboard in front of the camera and move it to different positions, angles, and distances. When the script detects a valid checkerboard, it captures the image automatically.
-5. 10 images are collected per camera, then calibration runs immediately.
+3. The script processes one camera at a time. For each camera, a live preview window opens with a coverage HUD.
+4. Hold the checkerboard in front of the camera and move it to different positions, angles, and distances. When the script detects a valid checkerboard, it captures automatically. **Get the board into all four image corners/edges and tilt it 30–45° (pitch & yaw) at both near and far distances** — this is what constrains the principal point and distortion. Flat-on, center-only views are exactly what produces a bad `K`.
+5. `TARGET_IMAGES` views are collected per camera (with coverage gating), then calibration runs immediately.
 6. Repeat for all 4 cameras.
+
+## Quality gate
+
+After each camera's solve, a gate decides whether the calibration is good enough to save:
+
+- It checks: principal point within `PRINCIPAL_POINT_TOLERANCE` (default **15%**) of center, plausible FOV/focal, `fx ≈ fy`, non-extreme distortion, and reprojection error ≤ `REPROJ_FAIL_PX` (default **1.0 px**).
+- If a camera **FAIL**s, its `K_{n}.txt` / `dist_{n}.txt` are **not saved** — recollect that camera (more corner/edge coverage, more tilt) and re-run. Pass `--force` to save anyway.
+- A summary and `intrinsics/calibration_report.txt` (per-camera fx/fy/cx/cy, reprojection, verdict, issues) are written at the end.
+
+```
+python intrinsics.py            # normal run (gate enforced)
+python intrinsics.py --fresh    # clear intrinsics/ (K_*, dist_*, img_*, report) first
+python intrinsics.py --force    # save even if the gate FAILs
+```
 
 ## Implementation notes for Cursor
 
@@ -204,10 +221,9 @@ This is done using a checkerboard pattern. OpenCV detects the corners of the che
 - Camera indices come from `camera.json`. Iterate in order: `top_left`, `top_right`, `bot_left`, `bot_right`.
 - Image naming: `img_{camera_number}_{photo_number}.jpg` — e.g. `img_1_4.jpg`. Camera number is the integer value from `camera.json`, not the position key.
 - Images save to `intrinsics/`.
-- After collecting 10 images for a camera, immediately run `cv2.calibrateCamera()` on those images.
-- Save the intrinsic matrix K as `intrinsics/K_{camera_number}.txt` using `numpy.savetxt`. Use a plain space-delimited format with 6 decimal places.
-- Also save the distortion coefficients alongside K — name them `dist_{camera_number}.txt` — they are needed for undistortion in later stages.
-- Print the reprojection error for each camera after calibration. If it is above 1.0 pixels, warn the user and suggest recollecting images.
+- After collecting `TARGET_IMAGES` images for a camera, immediately run `cv2.calibrateCamera()` (with `CALIB_FIX_K3`) on those images.
+- Save the intrinsic matrix K as `intrinsics/K_{camera_number}.txt` using `numpy.savetxt` (space-delimited, 6 decimals) **only if the camera passes the gate** (or `--force`). Save distortion coefficients alongside as `dist_{camera_number}.txt`.
+- Reprojection error, principal-point offset, FOV/`fx≈fy`, and distortion sanity feed the gate; a `FAIL` blocks the save and prints why.
 - Do not auto-advance to the next camera. Print a prompt and wait for the user to press Enter before opening the next camera.
 
 ---
