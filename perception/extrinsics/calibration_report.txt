@@ -4,8 +4,8 @@ Extrinsic calibration report
   RMS fail gate (px):    1.0
 
   pair                       RMS_px      sets  verdict
-  top_left<->top_right       0.5021     40/40  OK
-  top_left<->bot_left        0.5883     12/40  OK
-  top_left<->bot_right       0.6457     10/40  WARN
+  top_left<->top_right       0.5176     22/41  OK
+  top_left<->bot_left        0.4570     19/41  OK
+  top_left<->bot_right       0.5957     29/41  OK
 
-  worst RMS: 0.6457 px  ->  PASS
+  worst RMS: 0.5957 px  ->  PASS
