@@ -10,20 +10,24 @@ Workflow:
   - Opens all 4 cameras at once and shows a tiled 2x2 live preview.
   - When a checkerboard is detected in ALL 4 cameras in the same loop
     iteration, one synchronized image-set is captured automatically.
-  - Press Q when done collecting (aim for 15-20 synchronized sets).
-  - For each set, cv2.solvePnP gives the board pose in each camera; these are
-    combined to express every camera's pose relative to top_left, then
-    averaged across all sets.
+  - Press Q when done collecting (aim for 15-20+ synchronized sets).
+  - Each camera's pose vs top_left is solved with cv2.stereoCalibrate over all
+    sets, then refined by greedily dropping the worst-reprojecting sets until
+    the RMS hits a target (best-subset selection). A final quality gate refuses
+    to save poses whose RMS is too high for fixed-pose triangulation/MVS.
 
 Outputs:
   - extrinsics/<position>/img_<n>.jpg   (captured frames)
-  - extrinsics/K.txt                    (human-readable R / t per camera)
+  - extrinsics/K.txt                    (human-readable R / t + RMS per camera)
   - extrinsics/poses.npz                (R_<position>, t_<position> arrays)
+  - extrinsics/calibration_report.txt   (per-pair RMS, sets used, pass/fail)
 
 Run:
     python extrinsics.py
+    python extrinsics.py --force        # save even if the RMS gate fails
 """
 
+import argparse
 import json
 import os
 import time
@@ -64,6 +68,23 @@ INTRINSICS_DIR = os.path.join(HERE, "intrinsics")
 OUTPUT_DIR = os.path.join(HERE, "extrinsics")
 
 SUBPIX_CRITERIA = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+# --- Quality gate / best-subset selection ------------------------------------
+# Stop dropping sets once a pair's stereo RMS reaches this (px).
+RMS_TARGET_PX = 0.6
+# Gate: refuse to save poses if any pair's RMS exceeds this (px). At this level
+# the relative pose is too inaccurate for fixed-pose triangulation — every
+# triangulated point blows past COLMAP's ~4 px filter and fusion yields 0.
+RMS_FAIL_PX = 1.0
+# Never refine below this many sets (a small subset overfits / is unstable).
+MIN_KEEP_SETS = 10
+
+
+def verdict(rms):
+    """Map an RMS (px) to OK / WARN / FAIL."""
+    if rms <= RMS_TARGET_PX:
+        return "OK"
+    return "WARN" if rms <= RMS_FAIL_PX else "FAIL"
 
 
 # --- Loading -----------------------------------------------------------------
@@ -282,55 +303,118 @@ def collect_sets(caps):
 
 # --- Solve -------------------------------------------------------------------
 
+def _stereo_calibrate(objpoints, ip_ref, ip_c, K_ref, dist_ref, K_c, dist_c,
+                      image_size):
+    """Run stereoCalibrate with fixed intrinsics; return (rms, R, T)."""
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, 1e-6)
+    result = cv2.stereoCalibrate(
+        objpoints, ip_ref, ip_c, K_ref, dist_ref, K_c, dist_c, image_size,
+        criteria=criteria, flags=cv2.CALIB_FIX_INTRINSIC,
+    )
+    rms, R, T = result[0], result[5], result[6]
+    return (float(rms), np.asarray(R, dtype=np.float64),
+            np.asarray(T, dtype=np.float64).reshape(3, 1))
+
+
+def _per_set_errors(objp, ip_ref, ip_c, K_ref, dist_ref, K_c, dist_c, R, T):
+    """Mean reprojection error (px) in cam-c for each set, given R, T.
+
+    The board pose is recovered in the reference camera (solvePnP), mapped into
+    cam-c via the relative pose R, T, then the board corners are reprojected and
+    compared to the detected corners. A set the relative pose cannot explain
+    (motion during the async grab, a misdetection) shows a large error.
+    """
+    errs = []
+    for c_ref, c_c in zip(ip_ref, ip_c):
+        ok, rvec, tvec = cv2.solvePnP(objp, c_ref, K_ref, dist_ref)
+        if not ok:
+            errs.append(np.inf)
+            continue
+        R_ref, _ = cv2.Rodrigues(rvec)
+        R_c = R @ R_ref
+        t_c = R @ tvec + T
+        proj, _ = cv2.projectPoints(objp, cv2.Rodrigues(R_c)[0], t_c, K_c, dist_c)
+        e = np.linalg.norm(proj.reshape(-1, 2) - c_c.reshape(-1, 2),
+                           axis=1).mean()
+        errs.append(float(e))
+    return np.asarray(errs)
+
+
+def solve_pair(objp, ip_ref, ip_c, K_ref, dist_ref, K_c, dist_c, image_size):
+    """
+    Robust relative pose of one camera vs the reference.
+
+    Solves over all sets, then (if the RMS is above target) greedily drops the
+    worst-reprojecting sets — largest error first — re-solving each time until
+    the RMS reaches RMS_TARGET_PX or only MIN_KEEP_SETS sets remain. Keeps the
+    lowest-RMS solution seen. Returns (R, T, rms, n_used, n_total).
+    """
+    n = len(ip_ref)
+    objpoints = [objp for _ in range(n)]
+    rms, R, T = _stereo_calibrate(objpoints, ip_ref, ip_c, K_ref, dist_ref,
+                                  K_c, dist_c, image_size)
+    if n <= MIN_KEEP_SETS or rms <= RMS_TARGET_PX:
+        return R, T, rms, n, n
+
+    # Rank sets best-first by reprojection error under the full-set solve.
+    order = np.argsort(
+        _per_set_errors(objp, ip_ref, ip_c, K_ref, dist_ref, K_c, dist_c, R, T)
+    )
+    best = (R, T, rms, n)
+    for keep in range(n - 1, MIN_KEEP_SETS - 1, -1):
+        idx = order[:keep]
+        op = [objp for _ in range(keep)]
+        sr, sR, sT = _stereo_calibrate(
+            op, [ip_ref[i] for i in idx], [ip_c[i] for i in idx],
+            K_ref, dist_ref, K_c, dist_c, image_size,
+        )
+        if sr < best[2]:
+            best = (sR, sT, sr, keep)
+        if sr <= RMS_TARGET_PX:
+            return sR, sT, sr, keep, n
+    R, T, rms, keep = best
+    return R, T, rms, keep, n
+
+
 def solve_extrinsics(sets, intrinsics, image_size):
     """
-    Solve each non-reference camera's pose relative to the reference using
-    cv2.stereoCalibrate with fixed (pre-calibrated) intrinsics.
+    Solve every non-reference camera's pose vs the reference with robust
+    best-subset stereoCalibrate (fixed, pre-calibrated intrinsics).
 
-    Unlike per-frame solvePnP + averaging, stereoCalibrate jointly optimizes
-    the relative pose over every corner correspondence across all synchronized
-    sets, which is far more robust to intrinsic noise. The returned R, T satisfy
-    X_cam = R @ X_ref + T, i.e. the pose of `cam` in the reference frame.
-
-    Returns {position: (R, t)} with the reference fixed to identity / zero.
+    stereoCalibrate jointly optimizes the relative pose over all corner
+    correspondences; the returned R, T satisfy X_cam = R @ X_ref + T (the pose
+    of `cam` in the reference frame). Returns (poses, stats) where
+    poses = {position: (R, t)} (reference = identity / zero) and
+    stats = {position: (rms, n_used, n_total)}.
     """
     objp = build_object_points()
-    objpoints = [objp for _ in sets]
     imgpoints = {p: [s[p] for s in sets] for p in POSITION_ORDER}
-
     K_ref, dist_ref = intrinsics[REFERENCE]
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, 1e-6)
-    flags = cv2.CALIB_FIX_INTRINSIC
 
     poses = {REFERENCE: (np.eye(3), np.zeros((3, 1)))}
+    stats = {}
 
-    print("\nStereo calibration (each camera vs reference):")
+    print("\nStereo calibration (each camera vs reference, robust subset):")
     for position in POSITION_ORDER:
         if position == REFERENCE:
             continue
         K_c, dist_c = intrinsics[position]
-        result = cv2.stereoCalibrate(
-            objpoints, imgpoints[REFERENCE], imgpoints[position],
+        R, T, rms, n_used, n_total = solve_pair(
+            objp, imgpoints[REFERENCE], imgpoints[position],
             K_ref, dist_ref, K_c, dist_c, image_size,
-            criteria=criteria, flags=flags
         )
-        rms, R, T = result[0], result[5], result[6]
-        poses[position] = (
-            np.asarray(R, dtype=np.float64),
-            np.asarray(T, dtype=np.float64).reshape(3, 1),
-        )
-        print(f"  {position} vs {REFERENCE}: stereo RMS = {rms:.4f} px")
-        if rms > 1.0:
-            print("    WARNING: stereo RMS above 1.0 px — relative pose for "
-                  "this camera may be unreliable.")
+        poses[position] = (R, T.reshape(3, 1))
+        stats[position] = (rms, n_used, n_total)
+        print(f"  {position:10s} vs {REFERENCE}: RMS = {rms:.4f} px "
+              f"[{verdict(rms)}]  (used {n_used}/{n_total} sets)")
 
-    return poses
+    return poses, stats
 
 
 # --- Output ------------------------------------------------------------------
 
-def save_outputs(poses):
-    """Write extrinsics/K.txt (human-readable) and extrinsics/poses.npz."""
+def save_outputs(poses, stats):
+    """Write extrinsics/K.txt (human-readable + RMS) and extrinsics/poses.npz."""
     k_path = os.path.join(OUTPUT_DIR, "K.txt")
     with open(k_path, "w") as f:
         for position in POSITION_ORDER:
@@ -344,6 +428,10 @@ def save_outputs(poses):
                 formatter={"float_kind": lambda x: f"{x:.6f}"}
             )
             f.write(f"{position}\n")
+            if position in stats:
+                rms, n_used, n_total = stats[position]
+                f.write(f"# stereo RMS: {rms:.4f} px [{verdict(rms)}] "
+                        f"(used {n_used}/{n_total} sets)\n")
             f.write(f"R: {R_list}\n")
             f.write(f"t: {t_list}\n\n")
     print(f"  Saved {k_path}")
@@ -356,6 +444,29 @@ def save_outputs(poses):
         arrays[f"t_{position}"] = t.reshape(3)
     np.savez(npz_path, **arrays)
     print(f"  Saved {npz_path}")
+
+
+def write_calibration_report(stats):
+    """Write extrinsics/calibration_report.txt and return the worst RMS (px)."""
+    path = os.path.join(OUTPUT_DIR, "calibration_report.txt")
+    worst = max((s[0] for s in stats.values()), default=0.0)
+    with open(path, "w") as f:
+        f.write("Extrinsic calibration report\n")
+        f.write(f"  square_size_mm:        {SQUARE_SIZE_MM}\n")
+        f.write(f"  RMS target (px):       {RMS_TARGET_PX}\n")
+        f.write(f"  RMS fail gate (px):    {RMS_FAIL_PX}\n\n")
+        f.write(f"  {'pair':24s}{'RMS_px':>9s}{'sets':>10s}  verdict\n")
+        for position in POSITION_ORDER:
+            if position not in stats:
+                continue
+            rms, n_used, n_total = stats[position]
+            pair = f"{REFERENCE}<->{position}"
+            f.write(f"  {pair:24s}{rms:9.4f}{f'{n_used}/{n_total}':>10s}  "
+                    f"{verdict(rms)}\n")
+        overall = "PASS" if worst <= RMS_FAIL_PX else "FAIL"
+        f.write(f"\n  worst RMS: {worst:.4f} px  ->  {overall}\n")
+    print(f"  Saved {path}")
+    return worst
 
 
 def print_pair_distances(poses):
@@ -374,6 +485,12 @@ def print_pair_distances(poses):
 # --- Main --------------------------------------------------------------------
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Stage 2 extrinsic calibration (with RMS quality gate).")
+    parser.add_argument("--force", action="store_true",
+                        help="Save poses even if the RMS gate fails.")
+    args = parser.parse_args()
+
     cameras = load_camera_indices()
 
     # Prepare output subfolders.
@@ -413,16 +530,41 @@ def main():
         if not sets:
             return
 
-    poses = solve_extrinsics(sets, intrinsics, image_size)
+    poses, stats = solve_extrinsics(sets, intrinsics, image_size)
 
     print("\nRecovered poses (relative to top_left):")
     for position in POSITION_ORDER:
         R, t = poses[position]
         print(f"  {position}: t = {t.reshape(3)}")
 
-    save_outputs(poses)
+    # Quality gate.
+    worst = write_calibration_report(stats)
+    print("\n=== Calibration quality gate ===")
+    for position in POSITION_ORDER:
+        if position in stats:
+            rms, n_used, n_total = stats[position]
+            print(f"  {REFERENCE} <-> {position:10s}: {rms:.4f} px "
+                  f"[{verdict(rms)}]  (used {n_used}/{n_total})")
+    print(f"  Worst RMS: {worst:.4f} px  (target <= {RMS_TARGET_PX}, "
+          f"fail > {RMS_FAIL_PX})")
+
+    if worst > RMS_FAIL_PX and not args.force:
+        print("\n  CALIBRATION REJECTED — poses.npz NOT written.")
+        print("  The relative pose(s) are too inaccurate for fixed-pose "
+              "triangulation/MVS (points exceed COLMAP's reprojection filter "
+              "and fusion yields 0).")
+        print("  Recapture: hold the board completely still at each pose, fill "
+              "more of the frame, vary the tilt, and pay attention to the "
+              "FAIL camera(s). Then re-run extrinsics.py.")
+        print("  (Pass --force to save these poses anyway.)")
+        return
+
+    save_outputs(poses, stats)
     print_pair_distances(poses)
-    print("\nExtrinsic calibration complete.")
+    if worst > RMS_FAIL_PX:
+        print("\nExtrinsic calibration saved with --force despite a FAIL gate.")
+    else:
+        print("\nExtrinsic calibration complete.")
 
 
 if __name__ == "__main__":

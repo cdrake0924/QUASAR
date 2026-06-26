@@ -49,8 +49,9 @@ quasar/
     │   ├── dist_3.txt
     │   └── dist_4.txt
     ├── extrinsics/
-    │   ├── K.txt                  ← human-readable extrinsic output
+    │   ├── K.txt                  ← human-readable R, t + stereo RMS per camera
     │   ├── poses.npz              ← machine-readable R, t per camera
+    │   ├── calibration_report.txt ← per-pair RMS, sets used, pass/fail gate
     │   ├── top_left/
     │   │   ├── img_1.jpg
     │   │   └── ...
@@ -223,7 +224,9 @@ This is done using a checkerboard pattern. OpenCV detects the corners of the che
 
 Extrinsic calibration finds the **position and orientation of each camera relative to the others** — specifically, a rotation matrix R and translation vector t for each camera expressed relative to `top_left`, which is treated as the world origin.
 
-This is done by showing the checkerboard to all 4 cameras simultaneously and using the known intrinsics to solve for each camera's pose in the shared world frame.
+This is done by showing the checkerboard to all 4 cameras simultaneously and using the known intrinsics to solve each non-reference camera's pose with `cv2.stereoCalibrate` (intrinsics held fixed) against `top_left`.
+
+> **Accuracy matters a lot here.** These poses are used *directly* by `mvs.py` for fixed-pose triangulation. If a camera's relative pose is off by even a few degrees, every triangulated point exceeds COLMAP's reprojection filter and dense fusion produces **0 points**. To catch this, Stage 2 reports a **stereo RMS** per camera pair and applies a **quality gate** (see below) that refuses to save poses that are too inaccurate to use.
 
 ## Physical rig geometry
 
@@ -246,7 +249,31 @@ These measurements are a rough estimate and should not be used for any validatio
 3. Hold the checkerboard so it is **fully visible in all 4 cameras at once**.
 4. When all 4 cameras detect the checkerboard clearly, an image is captured automatically from each camera.
 5. Continue holding and repositioning the checkerboard. The script collects as many valid synchronized image-sets as possible (aim for at least 15–20).
-6. Press `Q` when done collecting. Calibration runs automatically.
+6. Press `Q` when done collecting. Calibration runs automatically and prints the quality gate result.
+
+### Capture technique (this is what determines accuracy)
+
+The cameras are **not hardware-synchronized** — they are read one after another in each loop iteration. If the board is moving when a set is grabbed, each camera sees it in a slightly different place, which corrupts the solve. To get a low RMS:
+
+- **Hold the board completely still** at each pose; let it settle, then let the auto-capture fire. Move only *between* captures.
+- **Fill more of the frame** and include **strong tilts** (not just flat/fronto-parallel) — tilt provides the depth constraint.
+- Vary position across the cameras' shared overlap; avoid glare and motion blur.
+- If one camera consistently fails the gate, give that camera extra well-tilted, board-still views.
+
+## Quality gate and best-subset selection
+
+- Each camera pair is first solved over all sets, then the solver **greedily drops the worst-reprojecting sets** (largest error first), re-solving until the RMS reaches the target or only `MIN_KEEP_SETS` remain. This rejects motion-corrupted/misdetected sets automatically.
+- Each pair gets a verdict from its final stereo RMS:
+  - `OK`   — RMS ≤ `RMS_TARGET_PX` (default **0.6 px**)
+  - `WARN` — RMS ≤ `RMS_FAIL_PX` (default **1.0 px**)
+  - `FAIL` — RMS > `RMS_FAIL_PX`
+- **Gate:** if any pair is `FAIL`, `poses.npz` is **not written** (so MVS can't silently consume bad poses). Re-capture and re-run. Pass `--force` to save anyway.
+- Thresholds and `MIN_KEEP_SETS` are constants at the top of `extrinsics.py`.
+
+```
+python extrinsics.py            # normal run (gate enforced)
+python extrinsics.py --force    # save even if the gate FAILs
+```
 
 ## Implementation notes for Cursor
 
@@ -258,19 +285,23 @@ These measurements are a rough estimate and should not be used for any validatio
   - `extrinsics/top_left/img_1.jpg`, `extrinsics/top_left/img_2.jpg`, etc.
   - `extrinsics/top_right/img_1.jpg`, etc.
   - Image numbers are shared across cameras (image 3 from all cameras is the same moment in time).
-- Extrinsic solve: use `cv2.solvePnP()` with each camera's intrinsics to get R and t for each camera relative to `top_left`. `top_left` is the reference frame — its R is identity, t is zero.
-- Save output to `extrinsics/K.txt`. This file should contain, for each camera position, its rotation matrix R (3×3) and translation vector t (3×1) in a clearly labeled plain-text format, e.g.:
+- Extrinsic solve: use `cv2.stereoCalibrate()` with `CALIB_FIX_INTRINSIC` (each camera's pre-calibrated K/dist held fixed) to get R and t for each camera relative to `top_left`. `top_left` is the reference frame — its R is identity, t is zero. The returned `R, T` satisfy `X_cam = R · X_ref + T` (world-to-camera, since the reference is the world origin).
+- Per-set filtering: rank sets by mapping the reference board pose (`solvePnP`) into the other camera and reprojecting; drop the largest-error sets first.
+- Save output to `extrinsics/K.txt`. For each camera position, write its rotation matrix R (3×3), translation vector t (3×1), and a `# stereo RMS` comment line, e.g.:
   ```
   top_left
+  # stereo RMS: 0.0000 px [OK] (used 40/40 sets)
   R: [[1,0,0],[0,1,0],[0,0,1]]
   t: [0,0,0]
 
   top_right
+  # stereo RMS: 0.55 px [OK] (used 18/40 sets)
   R: ...
   t: ...
   ```
-- Also save as `extrinsics/poses.npz` using `numpy.savez` with keys `R_top_left`, `t_top_left`, etc. for easy loading downstream.
-- Print the translation magnitudes between camera pairs
+- Also save as `extrinsics/poses.npz` using `numpy.savez` with keys `R_top_left`, `t_top_left`, etc. for easy loading downstream (only written if the gate passes or `--force`).
+- Write `extrinsics/calibration_report.txt` with the per-pair RMS, sets used, verdicts, and overall PASS/FAIL.
+- Print the translation magnitudes between camera pairs.
 
 ---
 
