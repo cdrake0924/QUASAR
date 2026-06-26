@@ -24,12 +24,14 @@ Outputs:
 
 Run:
     python extrinsics.py
+    python extrinsics.py --fresh        # clear extrinsics/ before capturing
     python extrinsics.py --force        # save even if the RMS gate fails
 """
 
 import argparse
 import json
 import os
+import shutil
 import time
 
 import cv2
@@ -489,12 +491,26 @@ def main():
         description="Stage 2 extrinsic calibration (with RMS quality gate).")
     parser.add_argument("--force", action="store_true",
                         help="Save poses even if the RMS gate fails.")
+    parser.add_argument("--fresh", action="store_true",
+                        help="Clear extrinsics/ (captured images + old "
+                             "K.txt/poses.npz/report) before capturing.")
     args = parser.parse_args()
 
     cameras = load_camera_indices()
 
     # Prepare output subfolders.
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    if args.fresh:
+        for position, _ in cameras:
+            sub = os.path.join(OUTPUT_DIR, position)
+            if os.path.isdir(sub):
+                shutil.rmtree(sub)
+        for name in ("K.txt", "poses.npz", "calibration_report.txt"):
+            stale = os.path.join(OUTPUT_DIR, name)
+            if os.path.exists(stale):
+                os.remove(stale)
+        print("  --fresh: cleared previous captures and outputs in "
+              f"{OUTPUT_DIR}.")
     for position, _ in cameras:
         os.makedirs(os.path.join(OUTPUT_DIR, position), exist_ok=True)
 

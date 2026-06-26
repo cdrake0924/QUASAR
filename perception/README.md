@@ -272,8 +272,11 @@ The cameras are **not hardware-synchronized** — they are read one after anothe
 
 ```
 python extrinsics.py            # normal run (gate enforced)
+python extrinsics.py --fresh    # clear extrinsics/ (old captures + outputs) first
 python extrinsics.py --force    # save even if the gate FAILs
 ```
+
+`--fresh` deletes the per-position image subfolders and the stale `K.txt` / `poses.npz` / `calibration_report.txt` before capturing, so a new run never mixes with old image-sets.
 
 ## Implementation notes for Cursor
 
