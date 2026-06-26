@@ -1,0 +1,8 @@
+- trainer.gpus=1
+- datasets=quasar_orbit
+- datasets.data_root=/mnt/c/Projects/QUASAR/perception/track_a/npbgpp/data
+- system=npbgpp_sphere
+- system.visibility_scale=1.0
+- weights_path=/home/cdrake0924/ckpts/npbgpp_dtu_nm_mvs_ft_epoch35.ckpt
+- eval_only=true
+- dataloader=small

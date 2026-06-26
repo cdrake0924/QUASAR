@@ -131,6 +131,8 @@ The helpers it exposes:
 - **`quat_to_rot(qw, qx, qy, qz)`** / **`rot_to_quat(R)`** — convert between rotation matrices and COLMAP-order quaternions `[w, x, y, z]`.
 - **`camera_center(R, t)`** — world-space camera center `C = -R.T @ t` for a world-to-camera pose.
 - **`count_ply_points(path)`** — reads the vertex count from a PLY header (for run summaries).
+- **`read_ply_xyz(path)`** — reads just the `(x, y, z)` vertices from an ascii/binary PLY (e.g. to find the cloud-median look target for the orbit path).
+- **`make_gif(frames, out_path, fps, loop)`** — stitches an ordered list/glob of PNGs into a looping GIF (used for the 3DGS/NPBG++ orbit gifs). Needs Pillow.
 
 ---
 
@@ -155,15 +157,23 @@ Each reconstruction method requires cloning its own external repository — see 
 
 ```bash
 # Track A-1: NPBG++
+# NOTE: this is a 2021 stack (torch 1.9.1 + source-built PyTorch3D + a custom
+# CUDA extension) and does NOT build cleanly on native Windows. Build it in
+# WSL2 / Linux. See the "Track A-1" section below for the full env recipe.
 git clone https://github.com/rakhimovv/npbgpp
-cd npbgpp && pip install -r requirements.txt && cd ..
+# (env setup is non-trivial — see Track A-1)
 
 # Track A-2: 3D Gaussian Splatting
+# NOTE: this repo has NO requirements.txt — it ships a conda environment.yml.
 git clone https://github.com/graphdeco-inria/gaussian-splatting --recursive
 cd gaussian-splatting
-pip install -r requirements.txt
-pip install ./submodules/diff-gaussian-rasterization
-pip install ./submodules/simple-knn
+# Recommended (conda): creates the env + builds both CUDA submodules.
+conda env create --file environment.yml
+conda activate gaussian_splatting
+# OR pip (manual): install torch matching your CUDA, then deps + submodules.
+#   pip install torch torchvision   # use the right CUDA wheel for your GPU
+#   pip install plyfile tqdm
+#   pip install ./submodules/diff-gaussian-rasterization ./submodules/simple-knn
 cd ..
 
 # Track B: SC-GS
@@ -522,23 +532,176 @@ NPBG++ is the successor to the original Neural Point-Based Graphics. It keeps yo
 
 The key advantage for this rig is that NPBG++ is **tolerant of noisy and incomplete point clouds**. With only 4 cameras the MVS output will have holes and outliers — the neural renderer learns to fill those gaps rather than failing on them as pure geometric methods would.
 
+## Environment (WSL2 / Linux — VERIFIED working recipe)
+
+NPBG++ pins a 2021 stack (torch 1.9.1) that does not build on native Windows, so
+it runs in **WSL2 Ubuntu**. The project lives on `C:` and is visible from WSL at
+`/mnt/c/Projects/QUASAR`. The key insight that made this painless: the repo's
+`setup.py` has **no `ext_modules`** (no custom CUDA compile — it uses PyTorch3D
+for rasterization), and PyTorch3D ships **prebuilt conda binaries** for this exact
+torch/CUDA combo. So the whole "source-build PyTorch3D + nvcc + CUB" gauntlet is
+avoidable — use conda binaries instead. This was built and validated end-to-end.
+
+Prereqs on Windows: WSL2 enabled with a GPU-capable NVIDIA driver. On an AMD
+machine you must enable **SVM Mode** in the BIOS or WSL2's VM won't boot
+(`WslRegisterDistribution failed 0x80370102`). Confirm with `wsl nvidia-smi`.
+
+```bash
+# --- one-time, inside WSL2 Ubuntu ---
+# system libs torch/opencv need at runtime (minimal Ubuntu lacks them):
+sudo apt-get update && sudo apt-get install -y libgomp1 libgl1 libglib2.0-0 curl git
+
+# Miniconda (if not present), then the env:
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+conda create -y -n npbgpp python=3.9
+conda activate npbgpp
+
+# GPU torch 1.9.1/cu111 + PyTorch3D, all prebuilt (no compiling):
+conda install -y -c pytorch3d -c pytorch -c conda-forge -c iopath \
+    pytorch=1.9.1 torchvision=0.10.1 cudatoolkit=11.1 pytorch3d
+pip install torch-scatter==2.0.8 -f https://data.pyg.org/whl/torch-1.9.1+cu111.html
+
+# repo deps (drop torch/torchvision so pip won't disturb the conda cu111 build,
+# and drop av — PyAV is unused and its old setup.py breaks on new setuptools):
+cd /mnt/c/Projects/QUASAR/npbgpp
+grep -viE '^(torch|torchvision|av)==' requirements.txt > /tmp/reqs.txt
+pip install -r /tmp/reqs.txt
+pip install -e . --no-deps
+```
+
+You also need a **pretrained checkpoint** — NPBG++'s descriptor-prediction network
+is pretrained, not learned per scene. Four are hosted at
+https://disk.yandex.ru/d/-1kx0XUlRHNumQ under `checkpoints/`; we use
+`npbgpp_dtu_nm_mvs_ft_epoch35.ckpt` (DTU = object-centric, `mvs_ft` = fine-tuned on
+noisy MVS clouds, the closest match to our COLMAP cloud). Drop it anywhere, e.g.
+`~/ckpts/`. The model also lazily fetches a caffe-VGG perceptual net to
+`~/.cache/torch/models/vgg19-d01eb7cb.pth` at init; if Python's SSL can't verify
+the host, pre-fetch it with `curl` (which uses the system CA store).
+
 ## How to run
 
 ```bash
-python npbgpp.py --mode train     # fit descriptors to your point cloud
-python npbgpp.py --mode render    # render novel views after training
+# 1) Prep needs OpenCV + COLMAP only — run on Windows OR WSL.
+python npbgpp.py --mode prep
+
+# 2) Render / train run INSIDE the WSL npbgpp env (activate it first, so --python
+#    'python' resolves to the env interpreter).
+python npbgpp.py --mode render --python python --weights ~/ckpts/npbgpp_dtu_nm_mvs_ft_epoch35.ckpt
+python npbgpp.py --mode train  --python python --weights ~/ckpts/npbgpp_dtu_nm_mvs_ft_epoch35.ckpt
+
+# 3) Novel-view orbit (the real comparison vs 3DGS): build the orbit scene on
+#    Windows, then render + assemble the gif inside WSL.
+python npbgpp.py --mode orbit-prep                       # Windows (OpenCV + COLMAP)
+python npbgpp.py --mode orbit --python python --weights ~/ckpts/npbgpp_dtu_nm_mvs_ft_epoch35.ckpt
 ```
+
+`--mode render` is the headline NPBG++ mode: `eval_only=true` predicts descriptors
+feed-forward from the pretrained net + point cloud and rasterizes the views — no
+per-scene optimisation. It auto-collects `*_rendered.png` / `*_gt.png` into
+`track_a/npbgpp/renders/`. `--mode train` optionally fine-tunes on our 4 views.
+
+**`--mode orbit-prep` / `--mode orbit` — novel-view orbit gif.** `render` only
+re-paints the 4 captured views; it is not a novel-view test. The orbit modes are.
+`orbit-prep` builds a *second* scene `data/quasar_orbit/` that keeps the 4 real
+rectified views as the input/source set and appends N (default 60) **novel orbit
+poses** as render targets — the same elliptical path `gs3d_orbit.py` traces
+(cloud-median look target, in the rig's right/up plane, `--amp_scale` 1.5), so the
+two methods are frame-comparable. Mechanically it writes a single-PINHOLE COLMAP
+model with the 4 real + N orbit images (orbit views get black placeholder PNGs —
+the eval renderer paints against a learned background, never the GT, so they are
+unused), black-loads `mvs_pc.ply`, and emits `configs/datasets/quasar_orbit.yaml`
+whose test `target_views_indices` are the orbit views (their complement, the 4
+real views, becomes the source set the descriptors are aggregated from). `orbit`
+runs the same `eval_only` path against that scene, collects `orbit_*_rendered.png`
+in frame order into `track_a/npbgpp/renders/orbit/`, and writes
+`track_a/npbgpp/renders/npbgpp_orbit.gif` (`--fps`, default 20). Compare it to
+`track_a/gs3d/renders/gs3d_orbit.gif` (`python gs3d.py --mode orbit && python
+gs3d.py --mode gif`). On our 454-point cloud both orbits confirm the same finding:
+NPBG++ shows sparse descriptor blobs, 3DGS shows off-axis spikes/floaters — the
+capture/MVS stage is the bottleneck, not the renderer.
 
 ## Implementation notes for Cursor
 
-- `npbgpp.py` is a preparation and launch script. Its job is to format inputs for the NPBG++ repo and invoke its training and rendering scripts via subprocess.
-- Use `common.py` helpers for paths / `run` / COLMAP-pose parsing where useful.
-- Load `mvs/static_fused.ply` as the point cloud input.
-- Camera poses come from `rig/sparse/` — convert to the format NPBG++ expects (see the npbgpp repo's data loader for the exact convention).
-- Training images are the 4 views in `mvs/static/`.
-- Output trained descriptors and network checkpoint to `track_a/npbgpp/output/`.
-- Render a set of novel views (interpolated camera path around the scene) to `track_a/npbgpp/renders/` for manual visual comparison against 3DGS.
-- If the npbgpp repo is not found at `../npbgpp`, print a clear error with the clone instructions.
+- `npbgpp.py` is a prep + launch script, mirroring `gs3d.py` so 3DGS and NPBG++
+  run on identical inputs (same `static_fused.ply`, same calibrated poses).
+- **The repo ships a COLMAP loader (`ColmapScene`), but it's strict:** it reads
+  `<scene>/sparse/cameras.bin` and uses the **first camera only**, expecting a
+  **PINHOLE** model (`fx, fy, cx, cy`) shared by every image, plus same-size
+  **PNG** images and a `mvs_pc.ply`. Our four cameras have different
+  intrinsics/distortion, so **prep undistorts each raw `mvs/static/<pos>.jpg` to
+  one common pinhole K** (mean focal length, centred principal point) and writes
+  a single-camera COLMAP model. Undistorting changes only intrinsics, so the
+  poses + point cloud stay aligned.
+- Prep produces, under `track_a/npbgpp/data/quasar/`:
+  `images/<pos>.png` (4 rectified views), `sparse/{cameras,images,points3D}.bin`
+  (single-PINHOLE model, via `colmap model_converter`), and `mvs_pc.ply`.
+- Prep also writes a tailored Hydra config into the repo at
+  `configs/datasets/quasar_one_scene.yaml`. The stock `colmap_one_scene.yaml`
+  hardcodes val/holdout indices up to 95, which trips the loader's
+  `0 <= idx < len(views)` asserts on a 4-view scene; the tailored config zeroes
+  those out so all four views train. `data_root` is passed on the CLI
+  (`datasets.data_root=...`) so the same config works from Windows or WSL.
+- Train/render shell out to the repo's `train_net.py` (Hydra), run from inside
+  the repo dir, into `track_a/npbgpp/output/` (`hydra.run.dir`); render then
+  auto-collects `*_rendered.png` / `*_gt.png` into `track_a/npbgpp/renders/` for
+  visual comparison against the 3DGS orbit.
+- **Single-GPU under WSL:** the repo's `build.py` always wraps datasets in a
+  `DistributedSampler` (needs a process group), and the `project` trainer config
+  forces `accelerator=ddp`, which defaults to the **NCCL** backend — and NCCL's
+  socket setup fails under WSL. `npbgpp.py` works around this by setting
+  `PL_TORCH_DISTRIBUTED_BACKEND=gloo` (+ `MASTER_ADDR/PORT`) before launching, so
+  a trivial world_size=1 group initialises without NCCL.
+- **Result on our data (validated):** with the DTU checkpoint, the feed-forward
+  render runs cleanly but quality is poor (PSNR ~2.5). The cause is the **input
+  geometry, not the renderer**: our MVS cloud is only ~454 points from a 4-view
+  narrow-baseline capture, so the rasterized descriptors cover a tiny fraction of
+  each frame and the net can only fill small gaps. This mirrors 3DGS's failure on
+  the same input — a clean comparative finding (the capture/MVS stage is the
+  bottleneck, not the reconstruction method).
+- If the npbgpp repo is not found at `../npbgpp`, prep/train/render print the
+  clone instructions.
+
+## Improving static-scene quality (quirks & levers)
+
+Use this when iterating on quality. Forward any extra Hydra arg to `train_net.py`
+by appending it after `--`, e.g.
+`python npbgpp.py --mode render --weights ... -- system.visibility_scale=4.0`.
+
+**NPBG++ never creates geometry.** It renders the input cloud as-is (454 points,
+no densification, no `.ply` output). Output coverage is hard-capped by the input.
+So the levers, in rough order of impact:
+
+1. **Denser / wider MVS cloud (biggest lever, upstream).** 454 points from a
+   4-view narrow baseline is the real bottleneck — the `_raster.png` diagnostic
+   (projected points) covers only a few percent of the frame. More views, a wider
+   baseline, or looser MVS filtering (see `mvs.py`) all raise the point count and
+   directly raise the ceiling for *both* NPBG++ and 3DGS. Compare `_raster.png`
+   density before/after to judge whether geometry or the network is limiting.
+2. **`system.visibility_scale` (quickest in-renderer win for sparse clouds).**
+   This scales the splat radius of each point in the rasterizer. With a sparse
+   cloud, raising it (try `2.0`, `4.0`, `8.0`) makes each point cover more pixels,
+   filling white gaps — at the cost of blur. We currently pass `1.0`.
+3. **Scene scale / checkpoint match.** The DTU checkpoint was trained on
+   object-centric scenes normalized to a unit-ish scale; our coords are in **mm**
+   with `top_left` at the origin, which is a large, off-center frame. Two things
+   to try: (a) other checkpoints — `npbgpp_scannet_epoch38.ckpt` (real indoor,
+   may generalize better to a full desk scene) or `npbgpp_nerf_*`; (b) normalize
+   the cloud + camera centers to ~unit scale centered at the cloud centroid before
+   prep (NPBG++'s near/far + visibility heuristics assume a moderate scale).
+4. **Per-scene fine-tune (`--mode train`).** Feed-forward (`--mode render`,
+   `eval_only=true`) uses the pretrained net untouched. `--mode train` fine-tunes
+   on our 4 views, which can sharpen appearance — but with only 4 views it will
+   overfit those views (same caveat as 3DGS), so judge it on a held-out view.
+5. **Other dataset knobs** (in `quasar_one_scene.yaml` or via `--`):
+   `datasets.selection_count` (# source views aggregated per target; max 3 with
+   our 4-view set), `datasets.n_point` (cap points; leave `~` to keep all),
+   `datasets.train_image_size` / `datasets.train_random_shift` (fine-tune crops).
+
+**Render outputs** land in `track_a/npbgpp/output/rendered/<dataset>/test_epoch*/`
+as per-view triplets: `_gt.png` (target), `_raster.png` (projected points —
+coverage diagnostic), `_rendered.png` (network output). `npbgpp.py` copies the
+`_rendered`/`_gt` pairs into `track_a/npbgpp/renders/`.
 
 ---
 
@@ -565,15 +728,19 @@ The risk for this rig is that 3DGS is less forgiving of sparse initialization. I
 ## How to run
 
 ```bash
-python gs3d.py --mode train     # optimize Gaussians from MVS init
-python gs3d.py --mode render    # render novel views after training
+python gs3d.py --mode prep      # build track_a/gs3d/input/ (undistort + init)
+python gs3d.py --mode train     # optimize Gaussians from MVS init (runs prep)
+python gs3d.py --mode render    # re-render the 4 captured views (sanity check)
+python gs3d.py --mode orbit     # render a NOVEL camera path (novel-view eval)
+python gs3d.py --mode gif       # stitch orbit frames -> renders/gs3d_orbit.gif
 ```
 
 ## Implementation notes for Cursor
 
-- `gs3d.py` is a preparation and launch script.
-- The 3DGS repo expects input in COLMAP format: a folder of images plus a `sparse/` model. Prepare `track_a/gs3d/input/images/` (copy the 4 static views) and `track_a/gs3d/input/sparse/` (copy from `rig/sparse/`).
-- Pass the MVS point cloud `mvs/static_fused.ply` as the initialization point cloud. The 3DGS repo accepts this via `--init_pcd` or by placing it in the expected location — check the repo's README for the exact flag.
+- `gs3d.py` is a preparation and launch script. `--mode train` runs prep first.
+- **The vanilla 3DGS loader only accepts PINHOLE / SIMPLE_PINHOLE COLMAP cameras — it rejects our `OPENCV` (distortion) rig model.** So prep runs `colmap image_undistorter` on `mvs/static/` + `rig/sparse/` to produce undistorted images and a PINHOLE model. image_undistorter keeps the world frame, so the dense cloud stays aligned.
+- Prep lays out `track_a/gs3d/input/` as the loader expects: `images/` (undistorted views) and `sparse/0/` (the PINHOLE model).
+- **Init cloud:** the vanilla repo has no real `--init_pcd` flag; instead it loads `sparse/0/points3D.ply` directly as the init point cloud when that file exists. So prep copies `mvs/static_fused.ply` to `track_a/gs3d/input/sparse/0/points3D.ply`.
 - Launch training:
   ```bash
   python ../gaussian-splatting/train.py \
@@ -581,13 +748,14 @@ python gs3d.py --mode render    # render novel views after training
     -m track_a/gs3d/output \
     --iterations 30000
   ```
-- After training, render a novel-view path:
+  `gs3d.py --mode train` does this with `--python` defaulting to the current interpreter (override it to point at the env where the 3DGS CUDA submodules are installed).
+- After training, render and collect images into `track_a/gs3d/renders/`:
   ```bash
-  python ../gaussian-splatting/render.py \
-    -m track_a/gs3d/output \
-    --skip_train
+  python ../gaussian-splatting/render.py -m track_a/gs3d/output
   ```
-- Copy renders to `track_a/gs3d/renders/` for manual visual comparison against NPBG++.
+- **`--mode render`** re-renders the 4 captured viewpoints into `output/train/ours_*/` (and copies them to `renders/`). This only proves the model fits the captured views — it is *not* a novel-view test.
+- **`--mode orbit`** is the real novel-view evaluation. It launches `gs3d_orbit.py` (in the gs env), which loads the trained Gaussians and renders a smooth elliptical camera path looping around the centroid of the 4 capture cameras, writing frames to `track_a/gs3d/renders/orbit/`. Tunables: `--frames` (default 120) and `--amp_scale` (path radius vs. the capture half-spread; `1.0` ≈ stay within the rig, larger pushes further into untrained territory). The novel cameras are built with the repo's own `getWorld2View2`/`getProjectionMatrix` via `MiniCam`, so the convention matches training.
+- **`--mode gif`** stitches the `orbit/` frames into `track_a/gs3d/renders/gs3d_orbit.gif` (`--fps`, default 20) via `common.make_gif`. NPBG++'s `--mode orbit` traces the same path (same `common`-based math) and writes `track_a/npbgpp/renders/npbgpp_orbit.gif`, so the two gifs are a direct novel-view comparison.
 - If the gaussian-splatting repo is not found at `../gaussian-splatting`, print a clear error with the clone instructions.
 
 ---

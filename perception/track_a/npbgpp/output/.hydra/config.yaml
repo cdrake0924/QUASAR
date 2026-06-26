@@ -1,0 +1,220 @@
+cache_dir: .cache
+eval_only: true
+weights_path: /home/cdrake0924/ckpts/npbgpp_dtu_nm_mvs_ft_epoch35.ckpt
+callbacks:
+  fit:
+  - _target_: npbgplusplus.utils.callbacks.CheckpointEveryEpoch
+  test: null
+dataloader:
+  train_data_mode: each
+  train:
+    total_batch_size: 1
+    num_workers: 0
+    shuffle: true
+    pin_memory: false
+  val:
+    total_batch_size: 1
+    num_workers: 0
+    pin_memory: false
+  test:
+    total_batch_size: 1
+    num_workers: 0
+    pin_memory: false
+datasets:
+  scene_class_name: npbgplusplus.data.ColmapScene
+  scene_name: quasar
+  train_num_samples: 2000
+  train_random_zoom: null
+  train_random_shift: false
+  train_image_size: null
+  data_root: /mnt/c/Projects/QUASAR/perception/track_a/npbgpp/data
+  scene_subroot: ${datasets.data_root}
+  images_subroot: ${datasets.data_root}
+  val_indices: []
+  holdout_indices: []
+  cache_images: false
+  selection_count: 3
+  noise_sigma: null
+  n_point: null
+  pc_name: mvs_pc.ply
+  train:
+  - dataset_name: ${datasets.scene_name}_finetune
+    dataset_class:
+      _target_: npbgplusplus.data.ViewSceneWrapper
+      scene_dataset:
+        _target_: ${datasets.scene_class_name}
+        _convert_: all
+        scene_root: ${datasets.scene_subroot}/${datasets.scene_name}
+        images_root: ${datasets.images_subroot}/${datasets.scene_name}/images
+        pc_path: ${datasets.scene_subroot}/${datasets.scene_name}/${datasets.pc_name}
+        num_samples: ${datasets.train_num_samples}
+        random_zoom: ${datasets.train_random_zoom}
+        random_shift: ${datasets.train_random_shift}
+        image_size: ${datasets.train_image_size}
+        exclude_indices: []
+        noise_sigma: ${datasets.noise_sigma}
+        n_point: ${datasets.n_point}
+      selection_count: ${datasets.selection_count}
+  val: []
+  test:
+  - dataset_name: ${datasets.scene_name}_eval
+    dataset_class:
+      _target_: npbgplusplus.data.ViewSceneWrapper
+      scene_dataset:
+        _target_: ${datasets.scene_class_name}
+        _convert_: all
+        scene_root: ${datasets.scene_subroot}/${datasets.scene_name}
+        images_root: ${datasets.images_subroot}/${datasets.scene_name}/images
+        pc_path: ${datasets.scene_subroot}/${datasets.scene_name}/${datasets.pc_name}
+        noise_sigma: ${datasets.noise_sigma}
+        n_point: ${datasets.n_point}
+      selection_method: ''
+loggers:
+- _target_: pytorch_lightning.loggers.TestTubeLogger
+  save_dir: tb_logs
+system:
+  system_class:
+    _target_: npbgplusplus.modeling.NPBGPlusPlus
+  save_rendered_eval_images: true
+  max_scenes_per_train_epoch: 4
+  descriptor_dim: 8
+  bg_rgb_color:
+  - 1.0
+  - 1.0
+  - 1.0
+  use_masks: false
+  freeze_refiner: false
+  align_view_images: true
+  align_during_rendering: true
+  color_aug_p: 0.8
+  visibility_scale: 1.0
+  style_weight: 0.0
+  style_img_path: ../../example/style.png
+  freeze_feature_extractor: false
+  freeze_aggregator: false
+  feature_extractor:
+    _target_: npbgplusplus.modeling.Unet
+    _convert_: all
+    encoder_name: spnasnet_100
+    out_channels: 8
+    decoder_channels:
+    - 256
+    - 128
+    - 64
+    - 32
+    - 16
+    decoder_layers:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    act_layer:
+      _target_: hydra.utils.get_class
+      path: torch.nn.LeakyReLU
+    norm_layer:
+      _target_: hydra.utils.get_class
+      path: torch.nn.Identity
+    upsample: bilinear
+    decoder_kernel_size: 3
+    pretrained_encoder: true
+    skip_rgb: true
+    append_rgb: false
+    eval_mode: true
+  aggregator:
+    _target_: npbgplusplus.modeling.SphereAggregator
+    type: learnable_v
+    m: 6
+    tanh: false
+    depth: 1
+    width: 16
+    learnable_freq: false
+  rasterizer:
+    _target_: npbgplusplus.modeling.NearestScatterRasterizer
+    _convert_: all
+    descriptor_dim: ${system.descriptor_dim}
+    cat_mask: true
+    scales:
+    - 1.0
+    - 0.5
+    - 0.25
+    - 0.125
+    - 0.0625
+    ss_scale:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    invert_mask_values: false
+    learnable: false
+  refiner:
+    _target_: npbgplusplus.modeling.RefinerUnetV2
+    _convert_: all
+    in_channels:
+    - 9
+    - 9
+    - 9
+    - 9
+    - 9
+    out_channels: 3
+    filters:
+    - 16
+    - 32
+    - 48
+    - 64
+    - 80
+    stem_conv_block_name: gated
+    encoder_conv_block_name: gated
+    decoder_conv_block_name: gated
+    padding_mode: reflect
+    use_skip: true
+  postprocessing_transform: null
+trainer:
+  accelerator: ddp
+  accumulate_grad_batches: 1
+  amp_backend: native
+  amp_level: O2
+  auto_lr_find: false
+  auto_scale_batch_size: false
+  auto_select_gpus: false
+  benchmark: false
+  checkpoint_callback: true
+  check_val_every_n_epoch: 1
+  default_root_dir: null
+  deterministic: false
+  fast_dev_run: false
+  gpus: 1
+  gradient_clip_val: 0.0
+  gradient_clip_algorithm: norm
+  ipus: null
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  limit_test_batches: 1.0
+  log_gpu_memory: min_max
+  log_every_n_steps: 50
+  prepare_data_per_node: true
+  profiler: simple
+  overfit_batches: 0.0
+  plugins: null
+  precision: 32
+  max_epochs: 1000
+  min_epochs: 1
+  max_steps: null
+  min_steps: null
+  max_time: null
+  num_nodes: 1
+  num_sanity_val_steps: 0
+  num_processes: 1
+  reload_dataloaders_every_n_epochs: 0
+  replace_sampler_ddp: false
+  resume_from_checkpoint: null
+  sync_batchnorm: false
+  terminate_on_nan: false
+  tpu_cores: null
+  track_grad_norm: -1
+  val_check_interval: 1.0
+  weights_summary: top
+  weights_save_path: null
+  move_metrics_to_cpu: false
+  multiple_trainloader_mode: max_size_cycle

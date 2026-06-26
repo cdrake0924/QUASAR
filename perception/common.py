@@ -242,3 +242,119 @@ def count_ply_points(path):
     except Exception:
         return 0
     return 0
+
+
+# PLY scalar type -> (struct char, byte size). Covers the COLMAP fused.ply set.
+_PLY_TYPES = {
+    "char": ("b", 1), "int8": ("b", 1),
+    "uchar": ("B", 1), "uint8": ("B", 1),
+    "short": ("h", 2), "int16": ("h", 2),
+    "ushort": ("H", 2), "uint16": ("H", 2),
+    "int": ("i", 4), "int32": ("i", 4),
+    "uint": ("I", 4), "uint32": ("I", 4),
+    "float": ("f", 4), "float32": ("f", 4),
+    "double": ("d", 8), "float64": ("d", 8),
+}
+
+
+def read_ply_xyz(path):
+    """
+    Read just the (x, y, z) vertex coordinates from a PLY file.
+
+    Supports `ascii` and `binary_little_endian` PLYs with arbitrary extra
+    per-vertex properties (e.g. COLMAP fused.ply ships normals + rgb). Returns
+    an (N, 3) float64 numpy array. Used to find a robust scene center for the
+    novel-view orbit path (median of points resists MVS outliers).
+    """
+    import struct
+
+    with open(path, "rb") as f:
+        if f.readline().strip() != b"ply":
+            raise ValueError(f"Not a PLY file: {path}")
+        fmt = None
+        n_vertex = 0
+        props = []          # list of (name, type) in declaration order
+        in_vertex = False
+        while True:
+            raw = f.readline()
+            if not raw:
+                raise ValueError(f"Unexpected EOF in PLY header: {path}")
+            line = raw.decode("ascii", "ignore").strip()
+            tok = line.split()
+            if not tok:
+                continue
+            if tok[0] == "format":
+                fmt = tok[1]
+            elif tok[0] == "element":
+                in_vertex = tok[1] == "vertex"
+                if in_vertex:
+                    n_vertex = int(tok[2])
+            elif tok[0] == "property" and in_vertex:
+                # property <type> <name>  (we don't expect list props here)
+                props.append((tok[2], tok[1]))
+            elif tok[0] == "end_header":
+                break
+
+        names = [n for n, _ in props]
+        for axis in ("x", "y", "z"):
+            if axis not in names:
+                raise ValueError(f"PLY missing '{axis}' property: {path}")
+
+        if fmt == "ascii":
+            xi, yi, zi = names.index("x"), names.index("y"), names.index("z")
+            out = np.empty((n_vertex, 3), dtype=np.float64)
+            for r in range(n_vertex):
+                vals = f.readline().split()
+                out[r] = (float(vals[xi]), float(vals[yi]), float(vals[zi]))
+            return out
+
+        if fmt != "binary_little_endian":
+            raise ValueError(f"Unsupported PLY format '{fmt}': {path}")
+
+        # Build a struct format for one vertex; record x/y/z field positions.
+        chars = "<"
+        field_pos = {}
+        for i, (name, typ) in enumerate(props):
+            if typ not in _PLY_TYPES:
+                raise ValueError(f"Unsupported PLY property type '{typ}'")
+            chars += _PLY_TYPES[typ][0]
+            if name in ("x", "y", "z"):
+                field_pos[name] = i
+        stride = struct.calcsize(chars)
+        unpack = struct.Struct(chars).unpack_from
+        buf = f.read(stride * n_vertex)
+        out = np.empty((n_vertex, 3), dtype=np.float64)
+        xi, yi, zi = field_pos["x"], field_pos["y"], field_pos["z"]
+        for r in range(n_vertex):
+            v = unpack(buf, r * stride)
+            out[r] = (v[xi], v[yi], v[zi])
+        return out
+
+
+# --- GIF assembly ------------------------------------------------------------
+
+def make_gif(frames, out_path, fps=20, loop=0):
+    """
+    Assemble an ordered list (or glob) of image files into an animated GIF.
+
+    Used to turn the per-frame orbit PNGs from 3DGS / NPBG++ into a single
+    looping clip for side-by-side novel-view comparison. `frames` may be a glob
+    string (sorted) or an explicit ordered list of paths. Requires Pillow.
+    """
+    import glob as _glob
+    from PIL import Image
+
+    if isinstance(frames, str):
+        frames = sorted(_glob.glob(frames))
+    frames = list(frames)
+    if not frames:
+        raise FileNotFoundError(f"make_gif: no frames to assemble ({out_path})")
+
+    imgs = [Image.open(p).convert("RGB") for p in frames]
+    duration = max(1, int(round(1000.0 / float(fps))))
+    out_dir = os.path.dirname(out_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    imgs[0].save(out_path, save_all=True, append_images=imgs[1:],
+                 duration=duration, loop=loop, optimize=True, disposal=2)
+    return out_path, len(imgs)

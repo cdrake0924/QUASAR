@@ -1,0 +1,1 @@
+Namespace(sh_degree=3, source_path='C:\\Projects\\QUASAR\\perception\\track_a\\gs3d\\input', model_path='C:\\Projects\\QUASAR\\perception\\track_a\\gs3d\\output', images='images', depths='', resolution=-1, white_background=False, train_test_exp=False, data_device='cuda', eval=False)

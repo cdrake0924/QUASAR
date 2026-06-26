@@ -1,0 +1,8 @@
+[2026-06-26 15:24:01,653][__main__][INFO] - Current working directory: /mnt/c/Projects/QUASAR/perception/track_a/npbgpp/orbit_output
+[2026-06-26 15:24:01,654][__main__][INFO] - Original working directory: /mnt/c/Projects/QUASAR/npbgpp
+[2026-06-26 15:24:07,841][timm.models.helpers][INFO] - Loading pretrained weights from url (https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/spnasnet_100-048bc3f4.pth)
+[2026-06-26 15:24:07,986][__main__][INFO] - Loaded weights /home/cdrake0924/ckpts/npbgpp_dtu_nm_mvs_ft_epoch35.ckpt successfully!
+[2026-06-26 15:24:08,023][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 0
+[2026-06-26 15:24:08,024][torch.distributed.distributed_c10d][INFO] - Rank 0: Completed store-based barrier for 1 nodes.
+[2026-06-26 15:24:18,108][npbgplusplus.data.build][INFO] - Dataset (quasar_orbit_eval) in stage=test contains 60 elements
+[2026-06-26 15:24:18,396][npbgplusplus.data.base][INFO] - /mnt/c/Projects/QUASAR/perception/track_a/npbgpp/data/quasar_orbit #points=torch.Size([454, 3])
