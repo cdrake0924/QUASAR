@@ -1,0 +1,17 @@
+Intrinsic calibration report
+  resolution: 640x480  (center 320, 240)
+  principal-point tolerance: 0.15 of image dim
+  reprojection fail gate: 1.0 px
+
+top_left (camera 2): OK
+  fx=784.40 fy=775.54 cx=340.25 cy=259.08  reproj=0.411 px
+
+top_right (camera 4): OK
+  fx=845.21 fy=841.42 cx=316.04 cy=235.87  reproj=0.286 px
+
+bot_left (camera 1): OK
+  fx=820.58 fy=820.80 cx=315.78 cy=238.38  reproj=0.383 px
+
+bot_right (camera 0): OK
+  fx=802.99 fy=800.18 cx=330.98 cy=244.28  reproj=0.319 px
+
