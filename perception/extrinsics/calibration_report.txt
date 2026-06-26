@@ -1,0 +1,11 @@
+Extrinsic calibration report
+  square_size_mm:        30
+  RMS target (px):       0.6
+  RMS fail gate (px):    1.0
+
+  pair                       RMS_px      sets  verdict
+  top_left<->top_right       0.5021     40/40  OK
+  top_left<->bot_left        0.5883     12/40  OK
+  top_left<->bot_right       0.6457     10/40  WARN
+
+  worst RMS: 0.6457 px  ->  PASS
