@@ -32,6 +32,7 @@ quasar/
     ├── static_scene.py            ← capture helper for Track A (one synced frame)
     ├── dynamic_scene.py           ← capture helper for Track B (multi-frame sequence)
     ├── mvs.py                     ← Stage 4: dense point cloud (static/dynamic modes)
+    ├── depth_supplement.py        ← Stage 4b: Depth Anything V2 point cloud supplement (Track A only)
     ├── npbgpp.py                  ← Track A-1: Neural Point-Based Graphics++ (NPBG++)
     ├── gs3d.py                    ← Track A-2: 3D Gaussian Splatting
     ├── scgs.py                    ← Track B: SC-GS dynamic reconstruction
@@ -156,6 +157,12 @@ sudo apt install colmap
 Each reconstruction method requires cloning its own external repository — see the relevant stage sections below for setup instructions.
 
 ```bash
+# Stage 4b: Depth Anything V2 (Track A point cloud supplement)
+git clone https://github.com/DepthAnything/Depth-Anything-V2
+cd Depth-Anything-V2 && pip install -r requirements.txt && cd ..
+# download metric indoor checkpoint (~1.3GB):
+# https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Indoor-Large
+
 # Track A-1: NPBG++
 # NOTE: this is a 2021 stack (torch 1.9.1 + source-built PyTorch3D + a custom
 # CUDA extension) and does NOT build cleanly on native Windows. Build it in
@@ -200,7 +207,7 @@ Intrinsic calibration finds each camera's internal optical properties — focal 
 
 This is done using a checkerboard pattern. OpenCV detects the corners of the checkerboard in multiple images taken from different angles, then solves for K using the known physical geometry of the checkerboard squares.
 
-> **Why this stage is critical.** A bad `K` — especially an off-center principal point `(cx, cy)` — silently breaks MVS later: with the optical center wrong, every back-projected ray is mis-aimed, so triangulating the scene produces reprojection errors far above COLMAP's filter and dense fusion yields **0 points**. A flat checkerboard at limited depths can still produce a low *extrinsic* RMS with a bad `K`, so the error hides until MVS. For a 640×480 camera the principal point must land near **(320, 240)**; values like `cy=108` or `cy=397` mean the calibration is bad and must be redone.
+> **Why this stage is critical.** A bad `K` — especially an off-center principal point `(cx, cy)` — silently breaks MVS later: with the optical center wrong, every back-projected ray is mis-aimed, so triangulating the scene produces reprojection errors far above COLMAP's filter and dense fusion yields **0 points**. A flat checkerboard at limited depths can still produce a low *extrinsic* RMS with a bad `K`, so the error hides until MVS. For an 800×600 camera the principal point must land near **(400, 300)**; values like `cy=108` or `cy=500` mean the calibration is bad and must be redone.
 
 ## How to run
 
@@ -227,7 +234,7 @@ python intrinsics.py --force    # save even if the gate FAILs
 
 ## Implementation notes for Cursor
 
-- Resolution: **640×480** for all cameras throughout this project.
+- Resolution: **800×600 at 15fps** for all cameras throughout this project.
 - Camera indices come from `camera.json`. Iterate in order: `top_left`, `top_right`, `bot_left`, `bot_right`.
 - Image naming: `img_{camera_number}_{photo_number}.jpg` — e.g. `img_1_4.jpg`. Camera number is the integer value from `camera.json`, not the position key.
 - Images save to `intrinsics/`.
@@ -256,17 +263,35 @@ This is done by showing the checkerboard to all 4 cameras simultaneously and usi
 
 ## Physical rig geometry
 
-The camera array is a fixed 2×2 grid with known physical spacing:
+The camera array is a fixed 2×2 grid with a 300mm baseline between adjacent cameras:
 
 ```
-top_left ——— ~180mm ——— top_right
-    |                         |
-  ~180mm                    ~180mm
-    |                         |
-bot_left  ——— ~180mm ——— bot_right
+top_left ——— 300mm ——— top_right
+    |                       |
+  300mm                   300mm
+    |                       |
+bot_left  ——— 300mm ——— bot_right
 ```
 
-These measurements are a rough estimate and should not be used for any validation
+The diagonal baseline (top_left → bot_right, top_right → bot_left) is:
+```
+sqrt(300² + 300²) ≈ 424mm
+```
+COLMAP MVS uses all available camera pairs including diagonals, so the effective stereo baseline for depth estimation ranges from 300mm (adjacent) to 424mm (diagonal). This is significantly wider than the previous ~180mm rig and directly improves point cloud density and depth precision.
+
+## Camera toe-in (convergence alignment)
+
+All four cameras are physically angled **5 degrees inward** toward the center of the 2×2 array. This is a **converged camera configuration** — rather than parallel optical axes, all cameras converge on a shared point in the scene.
+
+**Why toe-in:** With parallel cameras, each camera's outer field of view covers area the other cameras don't see, wasting overlap budget. Toeing in maximizes the shared field of view in the center of the scene where your subject sits, giving MVS more multi-view constraints per surface point and directly increasing point cloud density.
+
+**Target working distance:** 5 degrees of toe-in optimally converges at approximately **1.7m** from the rig:
+```
+D = (baseline/2) / tan(5°) = 150 / tan(5°) ≈ 1713mm ≈ 1.7m
+```
+Position your subject at roughly 1.5–2.0m from the rig for best reconstruction quality. Closer than 1m and the convergence angle becomes too steep; beyond 3m the baseline becomes small relative to scene depth and depth precision degrades.
+
+**Calibration note:** The toe-in angle is a physical property of the rig mount — it is automatically captured by `extrinsics.py` via the checkerboard solve and stored in `extrinsics/poses.npz`. No special handling is needed in code; the calibration sees the real optical axes regardless of angle.
 
 ## How to run
 
@@ -308,7 +333,7 @@ python extrinsics.py --force    # save even if the gate FAILs
 
 - Load `camera.json` to get device indices and position labels.
 - Load `intrinsics/K_{n}.txt` and `intrinsics/dist_{n}.txt` for each camera before opening streams.
-- Resolution: **640×480**.
+- Resolution: **800×600 at 15fps**.
 - Detection: use `cv2.findChessboardCorners()` followed by `cv2.cornerSubPix()` for refinement. Only capture when corners are found in **all 4 cameras in the same loop iteration**.
 - Image saving: each camera gets its own subfolder matching its position key.
   - `extrinsics/top_left/img_1.jpg`, `extrinsics/top_left/img_2.jpg`, etc.
@@ -361,10 +386,10 @@ COLMAP's text-format sparse model consists of three files:
 ```
 # Camera list with one line of data per camera:
 # CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]
-1 OPENCV 640 480 fx fy cx cy k1 k2 p1 p2
-2 OPENCV 640 480 fx fy cx cy k1 k2 p1 p2
-3 OPENCV 640 480 fx fy cx cy k1 k2 p1 p2
-4 OPENCV 640 480 fx fy cx cy k1 k2 p1 p2
+1 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
+2 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
+3 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
+4 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
 ```
 
 **`rig/sparse/images.txt`** — one entry per camera, containing its pose as a quaternion + translation. COLMAP stores poses as **world-to-camera** transforms, and the extrinsic calibration in `extrinsics/poses.npz` is **already world-to-camera** (`top_left` is identity / zero, the world origin). So `rig.py` writes `R` and `t` straight through — no inversion — it only has to convert the rotation matrix to a quaternion.
@@ -390,7 +415,7 @@ No interactive steps. Reads calibration files, writes the three model files, pri
 - Use the `OPENCV` camera model in `cameras.txt` with params `fx fy cx cy k1 k2 p1 p2` from the calibration. Camera IDs are `1..4` in `POSITION_ORDER` order.
 - Image names in `images.txt` are `{position}.jpg` (e.g. `top_left.jpg`) — these must match the filenames `mvs.py` places in each frame workspace.
 - Write `points3D.txt` as an empty file with only the header comment line (points are triangulated later by `mvs.py`).
-- **Print the camera centers** `C = -R.T @ t` for all 4 cameras, plus the inter-camera distances (in mm, since calibration was done in mm), so the user can verify the 2×2 layout is physically correct — e.g. confirm `top_left`→`top_right` ≈ 180 mm and that the centers form a plausible square — before running MVS.
+- **Print the camera centers** `C = -R.T @ t` for all 4 cameras, plus the inter-camera distances (in mm, since calibration was done in mm), so the user can verify the 2×2 layout is physically correct — e.g. confirm `top_left`→`top_right` ≈ 300mm, `top_left`→`bot_right` ≈ 424mm, and that the centers form a plausible square — before running MVS.
 
 ---
 
@@ -491,12 +516,12 @@ colmap point_triangulator \
     --image_path  <workspace>/images \
     --input_path  <workspace>/sparse \
     --output_path <workspace>/dense \
-    --output_type COLMAP --max_image_size 640
+    --output_type COLMAP --max_image_size 800
 
   colmap patch_match_stereo \
     --workspace_path <workspace>/dense \
     --workspace_format COLMAP \
-    --PatchMatchStereo.max_image_size 640 \
+    --PatchMatchStereo.max_image_size 800 \
     --PatchMatchStereo.geom_consistency 1 \
     --PatchMatchStereo.depth_min <d> \
     --PatchMatchStereo.depth_max <D>
@@ -510,6 +535,103 @@ colmap point_triangulator \
 - After processing, print a summary: frames processed, average/min/max point count, any frames that failed.
 - **GPU note:** `patch_match_stereo` requires a CUDA GPU — there is no CPU fallback in COLMAP. (`feature_extractor` / matcher can fall back to CPU.)
 - CLI: `--mode` (static/dynamic), `--start_frame`, `--end_frame`, `--depth_min`, `--depth_max`, `--fresh`.
+
+---
+
+---
+
+# Stage 4b — Depth Anything V2 Supplement (Track A only)
+
+**File:** `depth_supplement.py`
+**Output:** `mvs/static_fused.ply` (replaces the MVS-only version)
+**Depends on:** `mvs/static_fused.ply`, `mvs/static/`, `intrinsics/K_*.txt`, `intrinsics/dist_*.txt`, `extrinsics/poses.npz`, `camera.json`
+**Runs:** Only for Track A (static scene). Track B uses MVS point clouds as-is.
+
+## Why this is needed
+
+With only 4 cameras, COLMAP MVS produces a sparse point cloud — typically only a few hundred to a few thousand points — because PatchMatch requires pixel agreement across multiple views. Surfaces only visible to one or two cameras, textureless regions, and areas with depth discontinuities all produce holes. NPBG++ renders directly from this cloud: if a surface has zero points the network has nothing to work with and that region renders blank.
+
+Depth Anything V2 is a monocular depth estimator that produces a **dense depth map for every pixel** of a single image using learned priors about scene geometry. Running it on each of your 4 camera views and back-projecting the results fills the holes that MVS left behind, giving NPBG++ dense coverage of the full scene.
+
+## How it works
+
+**Step 1 — Run Depth Anything V2 on each camera view.**
+Each of the 4 images in `mvs/static/` is passed through the Depth Anything V2 model, producing a full-resolution depth map. These are relative depth values — the numbers are unitless and have no relationship to real-world millimeters yet.
+
+**Step 2 — Scale and shift alignment to MVS.**
+The MVS cloud (`mvs/static_fused.ply`) provides ground truth depth at a sparse set of 3D points. For each camera:
+1. Project the MVS points onto the camera image plane using the calibrated K and extrinsic pose.
+2. Sample the Depth Anything depth map at those projected pixel locations.
+3. Fit a scale `s` and shift `t` via least squares so that `depth_mvs ≈ s × depth_da + t`. This maps the Depth Anything output into real millimeter units in your calibrated coordinate frame.
+
+```python
+# da_vals: Depth Anything values at MVS pixel locations
+# mvs_vals: corresponding real depths from MVS (in mm)
+A = np.stack([da_vals, np.ones_like(da_vals)], axis=1)
+s, t = np.linalg.lstsq(A, mvs_vals, rcond=None)[0]
+aligned_depth = s * depth_da_full + t
+```
+
+**Step 3 — Back-project to 3D.**
+For each pixel (u, v) with aligned depth d, recover the 3D point using the calibrated intrinsics:
+```python
+x = (u - cx) * d / fx
+y = (v - cy) * d / fy
+z = d
+```
+Then transform from camera space to world space using the extrinsic pose.
+
+**Step 4 — Merge with MVS cloud.**
+Combine the 4 back-projected dense clouds with the original MVS cloud using Open3D:
+- Voxel downsample to 5mm voxels to remove redundant points
+- Statistical outlier removal (`remove_statistical_outlier`) to filter Depth Anything noise at object boundaries and depth discontinuities
+- Save the merged cloud back to `mvs/static_fused.ply`, overwriting the MVS-only version
+
+The MVS points anchor the scale; the Depth Anything points fill the coverage. NPBG++ and 3DGS both read `mvs/static_fused.ply` — after running this script they automatically get the denser cloud.
+
+## Setup
+
+```bash
+pip install torch torchvision
+# Clone Depth Anything V2
+cd quasar/
+git clone https://github.com/DepthAnything/Depth-Anything-V2
+cd Depth-Anything-V2
+pip install -r requirements.txt
+```
+
+Download the metric indoor checkpoint (best match for close-range scenes):
+```bash
+# ViT-Large metric indoor model (~1.3GB)
+wget https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Indoor-Large/resolve/main/depth_anything_v2_metric_indoor_vitl.pth \
+  -O checkpoints/depth_anything_v2_metric_indoor_vitl.pth
+```
+
+## How to run
+
+```bash
+python depth_supplement.py
+```
+
+Run this after `python mvs.py --mode static` and before `npbgpp.py` or `gs3d.py`. It reads `mvs/static_fused.ply`, supplements it with Depth Anything V2 depth from all 4 views, and writes the merged cloud back to `mvs/static_fused.ply`.
+
+Optional flags:
+- `--voxel_size 5.0` — voxel downsampling size in mm (default 5mm; lower = denser but slower)
+- `--outlier_neighbors 20` — statistical outlier removal neighbor count (default 20)
+- `--outlier_std 2.0` — outlier std ratio (default 2.0; lower = more aggressive filtering)
+- `--model_path` — path to the Depth Anything V2 checkpoint (default: `../Depth-Anything-V2/checkpoints/depth_anything_v2_metric_indoor_vitl.pth`)
+- `--no_overwrite` — save merged cloud to `mvs/static_fused_supplemented.ply` instead of overwriting
+
+## Implementation notes for Cursor
+
+- `depth_supplement.py` is a standalone script — it does not import from `mvs.py`.
+- Use `common.py` helpers: `load_camera_indices`, `load_intrinsics`, `load_poses`, `POSITION_ORDER`.
+- Load each camera's image from `mvs/static/{position}.jpg`. Undistort using `cv2.undistort` with the calibrated K and dist before passing to Depth Anything.
+- Depth Anything V2 inference: load the model from the checkpoint, run `model.infer_image(img)` per the repo's API. Output is a float32 numpy array of shape `(H, W)`.
+- For the alignment fit, use only MVS points that project **inside the image bounds** with depth > 0. Filter out points where the Depth Anything value is at the top or bottom 2% of the depth map (likely sky or foreground pop artifacts).
+- Print per-camera alignment stats: scale `s`, shift `t`, number of MVS anchor points used, and RMS residual of the fit. If RMS is high (> 20% of mean depth) warn the user — it likely means MVS coverage in that camera is too thin to anchor the alignment reliably.
+- After merging, print point counts: MVS-only count, supplemented count, final merged count after voxel downsample and outlier removal.
+- If the Depth Anything V2 repo is not found at `../Depth-Anything-V2`, print a clear error with the setup instructions above.
 
 ---
 
@@ -850,8 +972,8 @@ python ../SC-GS/train_gui.py \
   --gt_alpha_mask_as_dynamic_mask \
   --gs_with_motion_mask \
   --init_isotropic_gs_with_all_colmap_pcl \
-  --W 640 \
-  --H 480
+  --W 800 \
+  --H 600
 ```
 
 Training runs in two automatic phases:
@@ -893,6 +1015,7 @@ python rig.py               # Stage 3: write COLMAP rig model from calibration
 # ── Track A: static novel-view synthesis ─────────────────────────
 python static_scene.py        # capture one synced frame from all 4 cameras
 python mvs.py --mode static   # dense point cloud for the static frame
+python depth_supplement.py    # supplement MVS cloud with Depth Anything V2 (Track A only)
 python npbgpp.py --mode train && python npbgpp.py --mode render
 python gs3d.py   --mode train && python gs3d.py   --mode render
 # then inspect track_a/npbgpp/renders/ vs track_a/gs3d/renders/ by eye
@@ -910,14 +1033,23 @@ python scgs.py --prepare && python scgs.py --train
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Intrinsic reprojection error > 1.0px | Poor checkerboard images | Recollect — vary angles more, avoid motion blur |
+| Principal point far from (400, 300) | Checkerboard not reaching corners/edges | Recollect with board at all 4 corners and strong tilt |
 | Extrinsic translation magnitude wrong | Wrong camera.json indices | Swap device indices in camera.json |
-| `rig.py` poses look wrong | World-to-camera conversion error | Verify R_colmap = R.T and t_colmap = -R.T @ t |
-| MVS produces sparse or holey clouds | Low texture or bad lighting | Add surface texture, improve lighting |
-| NPBG++ renders are blurry | Too few training views (only 4) | Lower learning rate, train longer, add views |
-| 3DGS Gaussians don't converge | Sparse MVS init, large holes | Try denser MVS output or lower `--densification_interval` |
+| Adjacent camera distance ≠ ~300mm in rig.py output | Calibration error or wrong indices | Re-run extrinsics.py; check camera.json mapping |
+| `rig.py` poses look wrong | World-to-camera convention error | Verify poses.npz is already world-to-camera — do NOT invert |
+| MVS produces very few points (<500) | Insufficient multi-view overlap | Check toe-in alignment; subject should be at ~1.5–2.0m from rig |
+| MVS produces sparse or holey clouds | Low texture or bad lighting | Add surface texture, use structured light or patterned background |
+| depth_supplement.py alignment RMS high | Too few MVS anchor points for that camera | Run MVS first and verify static_fused.ply has points; check that camera sees the scene |
+| Depth Anything output looks inverted | Wrong depth convention | Check model output sign; some checkpoints return inverse depth |
+| NPBG++ renders are blurry | Sparse point cloud even after supplement | Increase `--visibility_scale`; check `_raster.png` coverage diagnostic |
+| 3DGS Gaussians don't converge | Sparse MVS init, large holes | Run depth_supplement.py first; lower `--densification_interval` |
 | SC-GS loss doesn't decrease | Bad initialization cloud | Verify init_cloud.ply covers the scene; increase node_num |
 | SC-GS dynamic masks are noisy | Background subtraction failing | Manually inspect median background images; adjust threshold |
+| Cameras not converging on subject | Toe-in angle misaligned | Adjust physical mounts; subject should appear near center of all 4 frames simultaneously |
 
+
+***Do not worry about what is below
+***DO NOT REMOVE THESE ITEMS
 Foundation stereo stepping for more points
 worry about non overlapping points for the camera
 take out 3dgs focus on npbg maybe keep it as a validator

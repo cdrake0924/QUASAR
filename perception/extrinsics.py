@@ -50,9 +50,9 @@ CHECKERBOARD = (8, 6)
 SQUARE_SIZE_MM = 30
 
 # Capture resolution used everywhere in this project.
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
-FPS = 30
+FRAME_WIDTH = 800
+FRAME_HEIGHT = 600
+FPS = 15
 
 # Minimum seconds between two auto-captures so successive synchronized sets
 # are actually different views of the board.
@@ -135,7 +135,7 @@ def load_intrinsics(camera_number):
 
 def open_camera(index):
     """
-    Open a webcam at the given OS index at 640x360.
+    Open a webcam at the given OS index at FRAME_WIDTH x FRAME_HEIGHT.
 
     Tries DirectShow first (most reliable for USB UVC cameras on Windows),
     then Media Foundation, then any backend. MJPG is requested before the

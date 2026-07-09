@@ -252,7 +252,7 @@ def main():
                         help="Training iterations (default 30000).")
     parser.add_argument("--max_image_size", type=int, default=2000,
                         help="image_undistorter max size (default 2000; the "
-                             "640x480 inputs are never upscaled).")
+                             "800x600 inputs are never upscaled).")
     parser.add_argument("--frames", type=int, default=120,
                         help="orbit mode: number of novel frames (default 120).")
     parser.add_argument("--amp_scale", type=float, default=1.5,

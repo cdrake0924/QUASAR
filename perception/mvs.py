@@ -465,8 +465,9 @@ def main():
                         help="(dynamic) first frame number, inclusive.")
     parser.add_argument("--end_frame", type=int, default=None,
                         help="(dynamic) last frame number, inclusive.")
-    parser.add_argument("--max_image_size", type=int, default=640,
-                        help="Max image dimension for PatchMatch (default 640).")
+    parser.add_argument("--max_image_size", type=int, default=800,
+                        help="Max image dimension for PatchMatch (default 800, "
+                             "matching the 800x600 capture resolution).")
     parser.add_argument("--depth_min", type=float, default=None,
                         help="Override auto depth_min (mm).")
     parser.add_argument("--depth_max", type=float, default=None,

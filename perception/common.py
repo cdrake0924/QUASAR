@@ -27,8 +27,8 @@ REFERENCE = "top_left"
 IMAGE_EXTS = (".jpg", ".jpeg", ".png")
 
 # Capture resolution used throughout the project.
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
+FRAME_WIDTH = 800
+FRAME_HEIGHT = 600
 
 
 # --- Paths -------------------------------------------------------------------
