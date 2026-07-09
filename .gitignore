@@ -48,3 +48,7 @@ ImportExecutables-*.cmake
 
 # Ignore large 3D assets
 /assets/models/scenes
+
+# External reconstruction repos — cloned per README, not vendored
+/gaussian-splatting/
+/npbgpp/

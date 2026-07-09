@@ -917,3 +917,11 @@ python scgs.py --prepare && python scgs.py --train
 | 3DGS Gaussians don't converge | Sparse MVS init, large holes | Try denser MVS output or lower `--densification_interval` |
 | SC-GS loss doesn't decrease | Bad initialization cloud | Verify init_cloud.ply covers the scene; increase node_num |
 | SC-GS dynamic masks are noisy | Background subtraction failing | Manually inspect median background images; adjust threshold |
+
+Foundation stereo stepping for more points
+worry about non overlapping points for the camera
+take out 3dgs focus on npbg maybe keep it as a validator
+npbg should be a lot smaller
+sanity check the test models
+sanity check with 3dgs on npbg
+much larger rig to 300mm and angle in for more overlap
