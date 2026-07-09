@@ -35,9 +35,9 @@ import numpy as np
 
 # --- Configuration -----------------------------------------------------------
 
-FRAME_WIDTH = 800
-FRAME_HEIGHT = 600
-FPS = 15
+FRAME_WIDTH = 1024
+FRAME_HEIGHT = 768
+FPS = 10
 
 POSITION_ORDER = ["top_left", "top_right", "bot_left", "bot_right"]
 

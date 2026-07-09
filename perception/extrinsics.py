@@ -50,9 +50,9 @@ CHECKERBOARD = (8, 6)
 SQUARE_SIZE_MM = 30
 
 # Capture resolution used everywhere in this project.
-FRAME_WIDTH = 800
-FRAME_HEIGHT = 600
-FPS = 15
+FRAME_WIDTH = 1024
+FRAME_HEIGHT = 768
+FPS = 10
 
 # Minimum seconds between two auto-captures so successive synchronized sets
 # are actually different views of the board.

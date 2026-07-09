@@ -34,7 +34,7 @@ from common import (
     load_camera_indices,
 )
 
-FPS = 15
+FPS = 10
 
 
 # --- Camera I/O --------------------------------------------------------------

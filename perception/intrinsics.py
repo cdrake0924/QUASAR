@@ -43,9 +43,9 @@ import numpy as np
 CHECKERBOARD = (8, 6)
 
 # Capture resolution used everywhere in this project.
-FRAME_WIDTH = 800
-FRAME_HEIGHT = 600
-FPS = 15
+FRAME_WIDTH = 1024
+FRAME_HEIGHT = 768
+FPS = 10
 
 # Number of valid checkerboard views to collect per camera. More views with
 # good spatial coverage give a far more stable distortion / principal point

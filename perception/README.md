@@ -207,7 +207,7 @@ Intrinsic calibration finds each camera's internal optical properties — focal 
 
 This is done using a checkerboard pattern. OpenCV detects the corners of the checkerboard in multiple images taken from different angles, then solves for K using the known physical geometry of the checkerboard squares.
 
-> **Why this stage is critical.** A bad `K` — especially an off-center principal point `(cx, cy)` — silently breaks MVS later: with the optical center wrong, every back-projected ray is mis-aimed, so triangulating the scene produces reprojection errors far above COLMAP's filter and dense fusion yields **0 points**. A flat checkerboard at limited depths can still produce a low *extrinsic* RMS with a bad `K`, so the error hides until MVS. For an 800×600 camera the principal point must land near **(400, 300)**; values like `cy=108` or `cy=500` mean the calibration is bad and must be redone.
+> **Why this stage is critical.** A bad `K` — especially an off-center principal point `(cx, cy)` — silently breaks MVS later: with the optical center wrong, every back-projected ray is mis-aimed, so triangulating the scene produces reprojection errors far above COLMAP's filter and dense fusion yields **0 points**. A flat checkerboard at limited depths can still produce a low *extrinsic* RMS with a bad `K`, so the error hides until MVS. For a 1024×768 camera the principal point must land near **(512, 384)**; values like `cy=108` or `cy=700` mean the calibration is bad and must be redone.
 
 ## How to run
 
@@ -234,7 +234,7 @@ python intrinsics.py --force    # save even if the gate FAILs
 
 ## Implementation notes for Cursor
 
-- Resolution: **800×600 at 15fps** for all cameras throughout this project.
+- Resolution: **1024×768 at 10fps** for all cameras throughout this project.
 - Camera indices come from `camera.json`. Iterate in order: `top_left`, `top_right`, `bot_left`, `bot_right`.
 - Image naming: `img_{camera_number}_{photo_number}.jpg` — e.g. `img_1_4.jpg`. Camera number is the integer value from `camera.json`, not the position key.
 - Images save to `intrinsics/`.
@@ -281,7 +281,7 @@ COLMAP MVS uses all available camera pairs including diagonals, so the effective
 
 ## Camera toe-in (convergence alignment)
 
-All four cameras are physically angled **5 degrees inward** toward the center of the 2×2 array. This is a **converged camera configuration** — rather than parallel optical axes, all cameras converge on a shared point in the scene.
+All four cameras are physically angled **5 degrees inward** toward the center of the 2×2 array. This is a **converged camera configuration** — rather than parallel optical axes, all cameras converge on a shared point in the scene. This angle is not perfect and is more of a good estimation though.
 
 **Why toe-in:** With parallel cameras, each camera's outer field of view covers area the other cameras don't see, wasting overlap budget. Toeing in maximizes the shared field of view in the center of the scene where your subject sits, giving MVS more multi-view constraints per surface point and directly increasing point cloud density.
 
@@ -333,7 +333,7 @@ python extrinsics.py --force    # save even if the gate FAILs
 
 - Load `camera.json` to get device indices and position labels.
 - Load `intrinsics/K_{n}.txt` and `intrinsics/dist_{n}.txt` for each camera before opening streams.
-- Resolution: **800×600 at 15fps**.
+- Resolution: **1024×768 at 10fps**.
 - Detection: use `cv2.findChessboardCorners()` followed by `cv2.cornerSubPix()` for refinement. Only capture when corners are found in **all 4 cameras in the same loop iteration**.
 - Image saving: each camera gets its own subfolder matching its position key.
   - `extrinsics/top_left/img_1.jpg`, `extrinsics/top_left/img_2.jpg`, etc.
@@ -386,10 +386,10 @@ COLMAP's text-format sparse model consists of three files:
 ```
 # Camera list with one line of data per camera:
 # CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]
-1 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
-2 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
-3 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
-4 OPENCV 800 600 fx fy cx cy k1 k2 p1 p2
+1 OPENCV 1024 768 fx fy cx cy k1 k2 p1 p2
+2 OPENCV 1024 768 fx fy cx cy k1 k2 p1 p2
+3 OPENCV 1024 768 fx fy cx cy k1 k2 p1 p2
+4 OPENCV 1024 768 fx fy cx cy k1 k2 p1 p2
 ```
 
 **`rig/sparse/images.txt`** — one entry per camera, containing its pose as a quaternion + translation. COLMAP stores poses as **world-to-camera** transforms, and the extrinsic calibration in `extrinsics/poses.npz` is **already world-to-camera** (`top_left` is identity / zero, the world origin). So `rig.py` writes `R` and `t` straight through — no inversion — it only has to convert the rotation matrix to a quaternion.
@@ -516,12 +516,12 @@ colmap point_triangulator \
     --image_path  <workspace>/images \
     --input_path  <workspace>/sparse \
     --output_path <workspace>/dense \
-    --output_type COLMAP --max_image_size 800
+    --output_type COLMAP --max_image_size 1024
 
   colmap patch_match_stereo \
     --workspace_path <workspace>/dense \
     --workspace_format COLMAP \
-    --PatchMatchStereo.max_image_size 800 \
+    --PatchMatchStereo.max_image_size 1024 \
     --PatchMatchStereo.geom_consistency 1 \
     --PatchMatchStereo.depth_min <d> \
     --PatchMatchStereo.depth_max <D>
@@ -972,8 +972,8 @@ python ../SC-GS/train_gui.py \
   --gt_alpha_mask_as_dynamic_mask \
   --gs_with_motion_mask \
   --init_isotropic_gs_with_all_colmap_pcl \
-  --W 800 \
-  --H 600
+  --W 1024 \
+  --H 768
 ```
 
 Training runs in two automatic phases:
@@ -1033,7 +1033,7 @@ python scgs.py --prepare && python scgs.py --train
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Intrinsic reprojection error > 1.0px | Poor checkerboard images | Recollect — vary angles more, avoid motion blur |
-| Principal point far from (400, 300) | Checkerboard not reaching corners/edges | Recollect with board at all 4 corners and strong tilt |
+| Principal point far from (512, 384) | Checkerboard not reaching corners/edges | Recollect with board at all 4 corners and strong tilt |
 | Extrinsic translation magnitude wrong | Wrong camera.json indices | Swap device indices in camera.json |
 | Adjacent camera distance ≠ ~300mm in rig.py output | Calibration error or wrong indices | Re-run extrinsics.py; check camera.json mapping |
 | `rig.py` poses look wrong | World-to-camera convention error | Verify poses.npz is already world-to-camera — do NOT invert |
