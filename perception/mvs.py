@@ -504,6 +504,12 @@ def main():
         views = discover_static()
         jobs.append(("static", views, STATIC_WORK_DIR, STATIC_FUSED_PLY))
         ref_views = views
+        # A fresh MVS run is the source of truth; invalidate any preserved
+        # depth_supplement base so it can't shadow the new cloud.
+        stale = os.path.splitext(STATIC_FUSED_PLY)[0] + "_mvsonly.ply"
+        if os.path.exists(stale):
+            os.remove(stale)
+            print(f"  Removed stale supplement base: {os.path.basename(stale)}")
     else:
         if args.fresh:
             for name in os.listdir(MVS_DIR):

@@ -25,8 +25,8 @@ datasets:
   scene_name: quasar
   train_num_samples: 2000
   train_random_zoom: null
-  train_random_shift: false
-  train_image_size: null
+  train_random_shift: true
+  train_image_size: 512
   data_root: /mnt/c/Projects/QUASAR/perception/track_a/npbgpp/data
   scene_subroot: ${datasets.data_root}
   images_subroot: ${datasets.data_root}

@@ -86,6 +86,11 @@ PC_DST = os.path.join(SCENE_ROOT, "mvs_pc.ply")
 OUTPUT_DIR = os.path.join(NPBG_DIR, "output")
 RENDERS_DIR = os.path.join(NPBG_DIR, "renders")
 
+# Splat radius multiplier for the sphere rasterizer. >1 grows each point's
+# footprint so a sparse cloud paints fewer background holes (at the cost of
+# blur). 1.0 is sharpest; 1.5 filled holes but turned the scene to mush.
+VISIBILITY_SCALE = 1.0
+
 # --- Orbit (novel-view) scene -------------------------------------------------
 # A second scene that keeps the 4 real views as INPUT/source and adds N novel
 # orbit poses as render TARGETS, so the feed-forward renderer paints viewpoints
@@ -207,8 +212,11 @@ scene_class_name: npbgplusplus.data.ColmapScene
 scene_name: {SCENE_NAME}
 train_num_samples: 2000
 train_random_zoom: ~
-train_random_shift: false
-train_image_size: ~
+# Random 512px crops for training: full-frame 1024x768 + VGG/LPIPS losses OOM a
+# 12GB GPU (and ran at ~60s/it). Crops fit memory, run fast, and randomly cover
+# the frame so descriptors still see the whole scene across the epoch.
+train_random_shift: true
+train_image_size: 512
 data_root: PASS_VIA_CLI  # overridden by datasets.data_root=... at launch
 scene_subroot: ${{datasets.data_root}}
 images_subroot: ${{datasets.data_root}}
@@ -363,7 +371,7 @@ def train(python, weights, epochs, extra):
         "datasets=quasar_one_scene",
         f"datasets.data_root={DATA_ROOT}",
         "system=npbgpp_sphere",
-        "system.visibility_scale=1.0",
+        f"system.visibility_scale={VISIBILITY_SCALE}",
         f"weights_path={weights}",
         f"trainer.max_epochs={epochs}",
         "dataloader=small",
@@ -390,7 +398,7 @@ def render(python, weights, extra):
         "datasets=quasar_one_scene",
         f"datasets.data_root={DATA_ROOT}",
         "system=npbgpp_sphere",
-        "system.visibility_scale=1.0",
+        f"system.visibility_scale={VISIBILITY_SCALE}",
         f"weights_path={weights}",
         "eval_only=true",
         "dataloader=small",
@@ -721,7 +729,7 @@ def orbit_render(python, weights, fps, extra):
         "datasets=quasar_orbit",
         f"datasets.data_root={DATA_ROOT}",
         "system=npbgpp_sphere",
-        "system.visibility_scale=1.0",
+        f"system.visibility_scale={VISIBILITY_SCALE}",
         f"weights_path={weights}",
         "eval_only=true",
         "dataloader=small",

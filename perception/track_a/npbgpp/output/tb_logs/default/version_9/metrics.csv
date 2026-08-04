@@ -1,0 +1,2 @@
+vgg_loss,l1_d4_loss,dimred_loss,rgb_reg_loss,min_gpu_mem,max_gpu_mem,epoch,created_at
+1021.694580078125,0.16661401093006134,1207056.0,0.07029157131910324,3205.0,3205.0,0,2026-07-16 22:58:13.433488

@@ -603,8 +603,8 @@ pip install -r requirements.txt
 Download the metric indoor checkpoint (best match for close-range scenes):
 ```bash
 # ViT-Large metric indoor model (~1.3GB)
-wget https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Indoor-Large/resolve/main/depth_anything_v2_metric_indoor_vitl.pth \
-  -O checkpoints/depth_anything_v2_metric_indoor_vitl.pth
+wget https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Large/resolve/main/depth_anything_v2_metric_hypersim_vitl.pth \
+  -O checkpoints/depth_anything_v2_metric_hypersim_vitl.pth
 ```
 
 ## How to run
@@ -619,7 +619,7 @@ Optional flags:
 - `--voxel_size 5.0` — voxel downsampling size in mm (default 5mm; lower = denser but slower)
 - `--outlier_neighbors 20` — statistical outlier removal neighbor count (default 20)
 - `--outlier_std 2.0` — outlier std ratio (default 2.0; lower = more aggressive filtering)
-- `--model_path` — path to the Depth Anything V2 checkpoint (default: `../Depth-Anything-V2/checkpoints/depth_anything_v2_metric_indoor_vitl.pth`)
+- `--model_path` — path to the Depth Anything V2 checkpoint (default: `../Depth-Anything-V2/checkpoints/depth_anything_v2_metric_hypersim_vitl.pth`)
 - `--no_overwrite` — save merged cloud to `mvs/static_fused_supplemented.ply` instead of overwriting
 
 ## Implementation notes for Cursor
